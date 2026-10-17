@@ -4,7 +4,7 @@
 // camera's eye (or the empty desk) locks the pointer and the mouse turns you; Esc lets it go.
 // Without a lock, dragging on the eye turns you too.
 
-import { gyroMove, gyroTurn, hasGyro, servoStep } from './index';
+import { gyroMove, gyroTurn, hasGyro, saveSetup, servoStep } from './index';
 import { VERBS } from '../core/verbs';
 import { frameHooks } from '../ui';
 import type { Game } from '../core/types';
@@ -84,4 +84,34 @@ addEventListener('mousemove', (e) => {
   if (!document.pointerLockElement && !dragging) return;
   const g = thaw()?.g;
   if (g) gyroTurn(g, e.movementX * 0.004);
+});
+
+// ?scene=body stages the body for judging: vidicon, gyro heart, ledger, clock of hours, tunnel tongue
+// and spark finger on; servo gait, a slot board and two power modules in the ledger; two setups
+// saved; three mites coming from the east for the clock to read.
+let staged = new URLSearchParams(location.search).get('scene') !== 'body';
+frameHooks.push((g) => {
+  if (staged) return;
+  staged = true;
+  const p = g.player;
+  g.ents = g.ents.filter((e) => e.kind !== 'item' || Math.hypot(e.x - p.x, e.y - p.y) > 8);
+  p.slots = 6;
+  p.core = 10;
+  for (const mod of ['vidicon-tube', 'gyro-heart', 'ledger', 'clock-of-hours', 'tunnel-tongue', 'spark-finger']) {
+    p.installed.push({ uid: g.nextId++, mod, on: true, readyAt: 0, data: {} });
+    g.stats.mods.push(mod);
+  }
+  for (const mod of ['servo-gait', 'slot-board', 'votive-battery', 'heart-shard']) p.inv.push({ kind: 'mod', mod });
+  const on = (mods: string[]) => p.installed.forEach((i) => (i.on = mods.includes(i.mod)));
+  on(['vidicon-tube', 'gyro-heart', 'clock-of-hours', 'spark-finger']);
+  saveSetup(g, 'battle');
+  on(['vidicon-tube', 'gyro-heart', 'ledger', 'tunnel-tongue']);
+  saveSetup(g, 'explore');
+  on(['vidicon-tube', 'gyro-heart', 'ledger', 'clock-of-hours', 'tunnel-tongue', 'spark-finger']);
+  p.dir = Math.PI / 2;
+  for (const [x, y] of [[11.5, 6.5], [11.5, 10.5], [11.5, 8.5]]) g.ents.push({ id: g.nextId++, kind: 'enemy', x, y, enemy: { type: 'mite', hp: 2, readyAt: 0, data: { noticed: true } } });
+  g.log.push(
+    ['a body, staged. you face east; three mites come. esc, then wasd walks; click the eye to turn with the mouse.'],
+    [{ text: 'dig', cmd: 'dig' }, '  ', { text: 'setup battle', cmd: 'setup battle' }, '  ', { text: 'setup explore', cmd: 'setup explore' }, '  ', { text: 'status', cmd: 'status' }],
+  );
 });
