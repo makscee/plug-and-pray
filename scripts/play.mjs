@@ -14,16 +14,16 @@ const STEPS = [
   ['install stepper'], [1],
   ['go e 3'], [2, 'g.player.x >= 11.5 && g.player.path.length === 0'],
   ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 2/4"))'],
-  // body slice: slot boards, the ledger, the servo gait on real arrow keys, setups, the clock
-  [0, '["slot-board","slot-board","ledger","servo-gait","clock-of-hours","ember-cell"].forEach(m => g.player.inv.push({ kind: "mod", mod: m })) ?? true'],
-  ['install slot board'], ['install slot board', 'g.player.slots === 5'],
-  ['install ledger'], ['install ember'], ['install servo'], [2, 'document.querySelectorAll(".ledger-row button").length >= 2'],
+  // body slice (self-contained: back in the start chamber, power not under test, every slot full)
+  [0, '(Object.assign(g.player, { x: 8.5, y: 8.5, path: [], core: 20, slots: g.player.installed.length }), ["slot-board","slot-board","slot-board","slot-board","ledger","servo-gait","clock-of-hours","gyro-heart"].forEach(m => g.player.inv.push({ kind: "mod", mod: m })), window.full = g.player.slots, true)'],
+  ['install slot board'], ['install slot board'], ['install slot board'], ['install slot board', 'g.player.slots === window.full + 4'],
+  ['install ledger'], ['install servo'], [2, 'document.querySelectorAll(".ledger-row button").length >= 2'],
   [0, 'document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })) && g.player.path.length === 1'],
-  [1, 'g.player.y === 8.5'],
-  ['remove stepper'], ['install clock'], [2, 'document.querySelector("canvas.clock") !== null'],
+  [1, 'g.player.y === 9.5 && g.player.dir === Math.PI'],
+  ['install clock'], [2, 'document.querySelector("canvas.clock") !== null'],
   ['save setup battle'], ['off clock'], ['setup battle', 'g.player.installed.find(i => i.mod === "clock-of-hours").on'],
-  ['remove servo', 'g.player.inv.push({ kind: "mod", mod: "gyro-heart" })'], ['install gyro'], [2.5, 'g.player.dir === Math.PI'],
-  [0, 'document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }))'], [0.2], [0.4, 'g.player.y > 8.6'],
+  ['remove servo'], ['install gyro'], [2.5],
+  [0, 'document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }))'], [0.2], [0.4, 'g.player.y > 9.6'],
   [0, 'document.body.dispatchEvent(new KeyboardEvent("keyup", { key: "w", bubbles: true }))'], [0.2, 'g.player.move === null'],
 ];
 
