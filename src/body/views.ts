@@ -47,7 +47,8 @@ const ledger: MakeView = (el) => {
         const r = document.createElement('div');
         r.className = 'ledger-row';
         const name = document.createElement('span');
-        name.textContent = itemName(it) + (it.kind === 'mod' ? ` · ${def(it).family}` : '');
+        name.textContent = itemName(it);
+        if (it.kind === 'mod') name.title = `${def(it).family}: ${def(it).text}`;
         r.append(name, ...actions(it).map(([t, c]) => button(t, c)));
         return r;
       });
@@ -59,9 +60,12 @@ const ledger: MakeView = (el) => {
       }
       const foot = document.createElement('div');
       foot.className = 'ledger-sets';
-      foot.append('setups: ', ...sets.flatMap((n) => [button(n, `setup ${n}`), ' ']));
-      if (!sets.length) foot.append('none yet. ');
-      foot.append(button('save as battle', 'save setup battle'), ' ', button('save as explore', 'save setup explore'));
+      const use = document.createElement('div');
+      use.append('setup: ', ...sets.flatMap((n) => [button(n, `setup ${n}`), ' ']));
+      if (!sets.length) use.append('none saved');
+      const save = document.createElement('div');
+      save.append('save on-set as: ', button('battle', 'save setup battle'), ' ', button('explore', 'save setup explore'));
+      foot.append(use, save);
       box.replaceChildren(head, ...rows, foot);
     },
   };
@@ -103,15 +107,17 @@ const clock: MakeView = (el, inst) => {
       for (const f of foresee(g, param<number>(inst, 'ahead', 1))) {
         const [ex, ey] = at(f.e.x, f.e.y);
         const [fx, fy] = at(f.x, f.y);
-        ctx.strokeStyle = '#7a6a5a';
+        ctx.strokeStyle = '#a05030';
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(ex, ey);
         ctx.lineTo(fx, fy);
         ctx.stroke();
-        ctx.fillStyle = '#7a6a5a';
-        ctx.fillRect(ex - 1.5, ey - 1.5, 3, 3);
+        ctx.lineWidth = 1;
+        ctx.fillStyle = '#d04030';
+        ctx.fillRect(ex - 2, ey - 2, 4, 4);
         ctx.strokeStyle = '#f0a050';
-        ctx.strokeRect(fx - 3, fy - 3, 6, 6);
+        ctx.strokeRect(fx - 4, fy - 4, 8, 8);
       }
       // you, and your facing
       ctx.fillStyle = '#d8c8b0';
