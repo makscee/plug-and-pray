@@ -9,10 +9,11 @@ import { hash, rng, type Rng } from '../core/rng';
 import { RES, type Chunk, type Game, type Item } from '../core/types';
 import { floors, rooms } from './gen';
 import { nextLog } from './vectors';
+import { ZONES, zoneFar } from './zones';
 
 /** a module for a chunk this far out (in chunks): tiers open up with distance; uniques never roll */
 export function lootMod(r: Rng, far: number): Item {
-  const maxTier = far < 2 ? 0 : far < 4 ? 1 : 2;
+  const maxTier = ZONES[zoneFar(far)].tier;
   const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique');
   const m = r.pick(pool);
   const item: Item = { kind: 'mod', mod: m.id };

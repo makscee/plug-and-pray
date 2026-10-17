@@ -4,8 +4,10 @@
 // pointed at, then to a printer, the ninth eye or a cache, placed in the chunk the vector ends in.
 // The shards each give a third of the Engine's vector. Installing the Engine ends the run: 'thaw'.
 
-import { CHUNK, chunkHook } from '../core/grid';
-import { dist, say, spawn, tickHooks } from '../core/game';
+import { CHUNK, chunkHook, open } from '../core/grid';
+import { dist, say, spawn, spawnEnemy, tickHooks } from '../core/game';
+import { ELITE } from '../fight';
+import { zoneAt, zoneOf } from './zones';
 import { active, def, param } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import { verb } from '../core/verbs';
@@ -21,15 +23,24 @@ export interface Plan {
 }
 
 const plans = new Map<number, Plan>();
-/** the seed's fixed places: shards at 2, 4 and 6 chunks out, the Engine at 8, all on different bearings */
+/** the seed's fixed places: one shard in each zone past the cradle (about 2.5, 4.5 and 6.5 chunks out),
+ *  the Engine at 8 in the furnace, all on different bearings */
 export function plan(seed: number): Plan {
   let p = plans.get(seed);
   if (p) return p;
   const r = rng(hash(seed, 21));
   const a0 = r() * Math.PI * 2;
   const at = (d: number, a: number): [number, number] => [Math.round(Math.sin(a) * d), Math.round(-Math.cos(a) * d)];
+  // nudge the distance until the rounded chunk lands in the zone it is meant for
+  const inZone = (z: number, d: number, a: number): [number, number] => {
+    for (const dd of [d, d - 0.4, d + 0.4, d - 0.8, d + 0.8]) {
+      const c = at(dd, a);
+      if (zoneOf(c[0], c[1]) === z) return c;
+    }
+    return at(d, a);
+  };
   p = {
-    shards: [at(2, a0), at(4, a0 + 2.1 + r() * 0.6), at(6, a0 + 4.2 + r() * 0.6)],
+    shards: [inZone(1, 2.5, a0), inZone(2, 4.5, a0 + 2.1 + r() * 0.6), inZone(3, 6.5, a0 + 4.2 + r() * 0.6)],
     engine: at(8, a0 + Math.PI + r() - 0.5),
   };
   plans.set(seed, p);
@@ -91,16 +102,28 @@ chunkHook((g: Game, c: Chunk) => {
     const [x, y] = spot(g.seed, cx, cy, 1, c);
     spawn(g, { kind: 'item', x, y, item: { kind: 'card', card: SHARDS[k].id } });
     spawn(g, { kind: 'item', x, y, item: { kind: 'res', res: 'ichor', n: 1 } });
+    guard(g, x, y, ELITE[Math.max(1, Math.min(3, zoneAt(x, y)))]);
   });
   if (c.cx === p.engine[0] && c.cy === p.engine[1]) {
     const [x, y] = spot(g.seed, c.cx, c.cy, 2, c);
     spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'thaw-engine' } });
+    guard(g, x, y, 'saint');
   }
   for (const v of g.vectors) {
     const [cx, cy] = chunkOf(v.x, v.y);
     if (cx === c.cx && cy === c.cy && v.what !== 'scripture shard' && v.what !== 'thaw engine') drop(g, v);
   }
 });
+
+/** an elite stands over a shard (and the engine): a cell or two off it, at full strength for its zone */
+function guard(g: Game, x: number, y: number, type: string): void {
+  for (const [dx, dy] of [[2, 0], [-2, 0], [0, 2], [0, -2], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    if (!open(g, x + dx, y + dy)) continue;
+    const e = spawnEnemy(g, type, x + dx, y + dy);
+    e.enemy!.data.elite = true;
+    return;
+  }
+}
 
 /** where a planned thing lies, as a cell centre */
 export function shardAt(g: Game, k: number): [number, number] {

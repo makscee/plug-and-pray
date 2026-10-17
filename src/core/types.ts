@@ -85,6 +85,8 @@ export interface Chunk {
   cy: number;
   /** CHUNK*CHUNK cells, row by row; see Cell */
   cells: Uint8Array;
+  /** which zone it lies in (src/world/zones.ts): the sight layer reads it for the look */
+  zone?: number;
 }
 
 /** a console line: text, and buttons that type a command */

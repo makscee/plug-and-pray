@@ -9,7 +9,7 @@ export function dpsOf(list: { mod: string; roll?: Roll }[]): number {
   for (const i of list) {
     if (MODS[i.mod]?.family !== 'weapon') continue;
     const v = param<number>(i, 'damage', 1) / param<number>(i, 'cooldown', 1);
-    d += param(i, 'aim', 'auto') === 'aimed' ? v * 0.6 : v;
+    d += param<string>(i, 'aim', 'auto') === 'aimed' ? v * 0.6 : v;
   }
   return d;
 }

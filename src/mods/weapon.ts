@@ -2,7 +2,11 @@
 // adds aimed ones (shoot down your facing; with the gyro heart, the mouse).
 
 import { dist, strike } from '../core/game';
-import { family, param } from '../core/mods';
+import { active, family, param } from '../core/mods';
+import type { Game } from '../core/types';
+
+/** the overclock coil's haste: every weapon cools this many times faster */
+export const haste = (g: Game): number => 1 + active(g, 'body').reduce((s, i) => s + param<number>(i, 'haste', 0), 0);
 import { clear } from '../core/grid';
 
 family('weapon', {
@@ -12,12 +16,11 @@ family('weapon', {
     if (g.t < ready) return;
     const range = param<number>(inst, 'range', 1.3);
     const p = g.player;
-    const target = g.ents
-      .filter((e) => e.enemy && dist(e, p) <= range && clear(g, p.x, p.y, e.x, e.y))
-      .sort((a, b) => dist(a, p) - dist(b, p))[0];
-    if (!target) return;
-    inst.data.readyAt = g.t + param<number>(inst, 'cooldown', 1);
-    strike(g, target, param<number>(inst, 'damage', 1));
+    const near = g.ents.filter((e) => e.enemy && dist(e, p) <= range && clear(g, p.x, p.y, e.x, e.y)).sort((a, b) => dist(a, p) - dist(b, p));
+    if (!near.length) return;
+    inst.data.readyAt = g.t + param<number>(inst, 'cooldown', 1) / haste(g);
+    // a sweeping weapon (the censer flail) hits everything in reach, the rest the nearest
+    for (const t of param(inst, 'sweep', false) ? near : near.slice(0, 1)) strike(g, t, param<number>(inst, 'damage', 1));
   },
 });
 

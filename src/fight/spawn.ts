@@ -5,7 +5,8 @@ import { CHUNK, Cell, chunkHook } from '../core/grid';
 import { spawn, spawnEnemy } from '../core/game';
 import { hash, rng, type Rng } from '../core/rng';
 import { lootMod } from '../world/spawn';
-import type { Chunk, Game } from '../core/types';
+import type { Chunk, Entity, Game } from '../core/types';
+import { ZONES, zoneAt, zoneFar } from '../world/zones';
 
 /** cells closer than this to where you wake hold no enemy (mites sense 6) */
 const CALM = 7.5;
@@ -23,17 +24,25 @@ function floorCell(r: Rng, c: Chunk): [number, number] | null {
   return [c.cx * CHUNK + (k % CHUNK) + 0.5, c.cy * CHUNK + ((k / CHUNK) | 0) + 0.5];
 }
 
-/** what a chunk this far out holds: [enemy, chance, how many]; a row may repeat (another group) */
+/** what a chunk this far out holds: [enemy, chance, how many]; a row may repeat (another group).
+ *  By zone (src/world/zones.ts): the cradle has mites and a seraph; the choir nave swarms and seraph lines
+ *  and mimics; the ossuary walkers and the hum; the furnace furnace-seraphs, walkers and hum packs. */
 export function table(far: number): [string, number, number][] {
-  const t: [string, number, number][] = [];
   if (far === 0) return [['mite', 1, 2]]; // the start chunk's conduits
-  if (far < 1.5) return [['mite', 0.85, 2], ['mite', 0.35, 2], ['seraph', 0.25, 1]]; // the first ring
-  t.push(['mite', far < 3 ? 0.6 : 0.45, 3]);
-  t.push(['mimic', far < 3 ? 0.08 : 0.15, 1]); // tuning #1328: was 0.15 everywhere
-  if (far >= 2.5) t.push(['seraph', 0.3, 1]); // tuning #1328: was 2 (seraphs killed runs at the first shard)
-  if (far >= 3.5) t.push(['walker', 0.25, 1]); // tuning #1328: was 2.8, 0.3
-  if (far >= 4) t.push(['hum', 0.25, 1]); // tuning #1328: was 3.5
-  return t;
+  const z = zoneFar(far);
+  if (z === 0) return [['mite', 0.85, 2], ['mite', 0.35, 2], ['seraph', 0.25, 1]];
+  if (z === 1) return [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.4, 1], ['mimic', 0.1, 1]];
+  if (z === 2) return [['mite', 0.6, 4], ['walker', 0.55, 1], ['seraph', 0.35, 1], ['hum', 0.35, 1], ['mimic', 0.15, 1]];
+  return [['mite', 0.5, 5], ['walker', 0.5, 1], ['pyre', 0.45, 1], ['hum', 0.4, 2], ['mimic', 0.15, 1]];
+}
+
+/** a foe made for its zone: hp scaled here, its damage by `FOE.damage` in the hurt hook */
+export function foe(g: Game, type: string, x: number, y: number): Entity {
+  const e = spawnEnemy(g, type, x, y);
+  const z = ZONES[zoneAt(x, y)].foe;
+  e.enemy!.hp = Math.round(e.enemy!.hp * z.hp * 10) / 10;
+  e.enemy!.data.mult = z.damage;
+  return e;
 }
 
 export function fillFoes(g: Game, c: Chunk): void {
@@ -47,7 +56,7 @@ export function fillFoes(g: Game, c: Chunk): void {
       // a group stands together: a few tenths apart in its cell
       const [x, y] = [at[0] + (k - (n - 1) / 2) * 0.3, at[1]];
       if (type === 'mimic') spawn(g, { kind: 'item', x, y, item: lootMod(r, far), data: { mimic: true } });
-      else spawnEnemy(g, type, x, y);
+      else foe(g, type, x, y);
     }
   }
 }

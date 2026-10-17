@@ -11,6 +11,7 @@ import { hash, rng } from '../core/rng';
 import { addItem, findInst, findItem, verb } from '../core/verbs';
 import type { Entity, Game, Item, Line, Res } from '../core/types';
 import { lootMod } from './spawn';
+import { ZONES, zoneFar } from './zones';
 
 export const MAX_SLOTS = 8;
 export type Cost = Partial<Record<Res, number>>;
@@ -31,7 +32,7 @@ export function slotCost(g: Game): Cost {
   return c;
 }
 
-export const tierAt = (far: number) => (far < 2 ? 0 : far < 4 ? 1 : 2);
+export const tierAt = (far: number) => ZONES[zoneFar(far)].tier;
 export function modCost(far: number): Cost {
   return PRICES.print[tierAt(far)];
 }

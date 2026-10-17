@@ -42,6 +42,7 @@ export interface Run {
   resEnd: number;
   kills: number;
   homes: number;
+  recycled: number;
   log: string[];
 }
 
@@ -142,7 +143,7 @@ export function play(seed: number, o: Opts): Run {
   const g = newGame(seed);
   startKit(g);
   const P = g.player;
-  const run: Run = { seed, style: o.style, ended: 'time', t: 0, marks: {}, snaps: [], steps: [], bought: [], resPeak: 0, resEnd: 0, kills: 0, homes: 0, log: [] };
+  const run: Run = { seed, style: o.style, ended: 'time', t: 0, marks: {}, snaps: [], steps: [], bought: [], resPeak: 0, resEnd: 0, kills: 0, homes: 0, recycled: 0, log: [] };
   const seen = new Set<string>();
   const banned = new Set<object>();
   const visits = new Map<string, number>();
@@ -162,6 +163,8 @@ export function play(seed: number, o: Opts): Run {
 
   /** one decision: a command (then a short wait) or a wait */
   let why = '';
+  let cur: { ref: object; until: number } | null = null;
+  let explore: { x: number; y: number; until: number } | null = null;
   let fightSig = '';
   let fightSince = 0;
   function decide(): string | number {
@@ -169,11 +172,12 @@ export function play(seed: number, o: Opts): Run {
     const px = Math.floor(P.x);
     const py = Math.floor(P.y);
     for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) seen.add(key(px + dx, py + dy));
-    const foes = g.ents.filter((e) => e.enemy && dist(e, P) < 9 && !ENEMIES[e.enemy.type]?.hidden).sort((a, b) => dist(a, P) - dist(b, P));
-    const close = foes.filter((e) => dist(e, P) < 2.2);
+    const foes = g.ents.filter((e) => e.enemy && dist(e, P) < 9 && (!ENEMIES[e.enemy.type]?.hidden || dist(e, P) < 2.2)).sort((a, b) => dist(a, P) - dist(b, P));
+    const close = foes.filter((e) => dist(e, P) < 1.6 || (dist(e, P) < 2.2 && e.enemy!.data.noticed));
     const hpFrac = P.hp / P.maxHp;
     // nearly dead with something on you: fold home
-    if (hpFrac < 0.3 && close.length && !g.events.some(() => false)) {
+    const outOfDepth = !ready(zoneHere());
+    if (hpFrac < (outOfDepth ? 0.5 : 0.3) && close.length) {
       if (!(P as any)._homing || g.t > (P as any)._homing) {
         (P as any)._homing = g.t + 3.2;
         run.homes++;
@@ -252,6 +256,12 @@ export function play(seed: number, o: Opts): Run {
     for (const i of P.inv) if (i.kind === 'mod' && pick.has(i) && P.installed.length < P.slots) return 'install ' + labelOf(i);
     for (const i of P.installed) if (!i.on && MODS[i.mod].power + powerUsed(g) <= powerMax(g)) return 'on ' + labelOf(i);
     if (active(g, 'mind').some((i) => param(i, 'what', '') === 'reader') && P.inv.some((i) => i.kind === 'card')) return 'read card';
+    // grind what the loadout leaves out (keep spare power modules: they come in when power runs short)
+    const spare = P.inv.find((i) => i.kind === 'mod' && !pick.has(i) && MODS[i.mod].family !== 'unique' && MODS[i.mod].family !== 'power' && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader') && !(MODS[i.mod].family === 'lamp' && !P.inv.concat(P.installed as any).some((x: any) => x !== i && MODS[x.mod]?.family === 'lamp')));
+    if (spare && 'mod' in spare) {
+      run.recycled++;
+      return 'recycle ' + labelOf(spare);
+    }
     // buy at a machine in reach
     const buy = buyHere();
     if (buy) return buy;
@@ -305,8 +315,19 @@ export function play(seed: number, o: Opts): Run {
   }
   function machineOffers(m: Entity): { cmd: string; ok: boolean }[] {
     const out: { cmd: string; ok: boolean }[] = [];
-    if (m.data?.altar) for (const [cmd, cost] of altar.offers(g, m)) out.push({ cmd, ok: afford(cost) });
-    if (m.kind === 'printer') {
+    if (m.data?.altar) for (const [cmd, cost] of altar.offers(g, m)) out.push({ cmd, ok: afford(cost) && (cmd !== 'offer mend' || P.hp < P.maxHp * 0.5) });
+    if (m.kind === 'printer' && m.data?.shop) {
+      const zone = Math.max(targetZone(), zoneHere());
+      const pick = bestLoadout(g, zone, true);
+      const worst = Math.min(...P.installed.filter((i) => pick.has(i)).map((i) => worth(g, i, zone, false)).filter((w) => w > 0 && w < 900), 999);
+      printer.offers(g, m).forEach((it, k) => {
+        if (!it || it.kind !== 'mod') return;
+        const w = worth(g, it, zone, false);
+        const powerShort = MODS[it.mod].family === 'power' && param(it, 'power', 0) > 0 && powerUsed(g) >= powerMax(g) - 1;
+        const good = (w > worst * 1.15 && w > 20) || (P.installed.length < P.slots && w > 20) || powerShort;
+        out.push({ cmd: `buy ${k + 1}`, ok: good && afford(printer.priceOf(it)) });
+      });
+    } else if (m.kind === 'printer') {
       const pr = printer;
       {
         if (P.slots < pr.MAX_SLOTS) out.push({ cmd: 'print slot', ok: afford(pr.slotCost(g)) });
@@ -320,19 +341,23 @@ export function play(seed: number, o: Opts): Run {
   const afford = (c: Partial<Record<Res, number>>) => Object.entries(c).every(([r, n]) => resOf(g, r as Res) >= (n as number));
 
   /** where to go next: an item worth taking, a machine with something affordable, the target, or new floor */
-  function goal(): { x: number; y: number; ref?: object; explore?: number } | null {
+  function goal(): { x: number; y: number; ref?: object; explore?: number; zone?: number } | null {
     const v = nextTarget();
     const zt = v ? zones.zoneAt(v.x, v.y) : 0;
     const go = v && ready(zt);
     // the farthest zone the player is willing to wander in now
     const roam = go ? zt : Math.max(0, Math.min(zones.ZONES.length - 1, bestReadyZone()));
-    const items = g.ents.filter((e) => e.kind === 'item' && !banned.has(e) && dist(e, P) < 14 && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()));
-    const machines = g.ents.filter((e) => (e.kind === 'printer' || e.data?.altar) && !banned.has(e) && dist(e, P) < 30 && machineOffers(e).some((x) => x.ok));
+    const items = g.ents.filter((e) => e.kind === 'item' && !banned.has(e) && dist(e, P) < 24 && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()));
+    const machines = g.ents.filter((e) => (e.kind === 'printer' || e.data?.altar) && !banned.has(e) && dist(e, P) < 30 && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()) && machineOffers(e).some((x) => x.ok));
+    // keep going for what it chose a moment ago (two near things must not pull it back and forth)
+    if (cur && g.t < cur.until && !banned.has(cur.ref) && g.ents.includes(cur.ref as Entity) && (items.includes(cur.ref as Entity) || machines.includes(cur.ref as Entity)))
+      return { x: (cur.ref as Entity).x, y: (cur.ref as Entity).y, ref: cur.ref, zone: roam };
     const near = [...items, ...machines].sort((a, b) => dist(a, P) - dist(b, P))[0];
-    if (near) return { x: near.x, y: near.y, ref: near };
-    if (go) return { x: v!.x, y: v!.y, ref: v as object };
+    if (near) cur = { ref: near, until: g.t + 20 };
+    if (near) return { x: near.x, y: near.y, ref: near, zone: roam };
+    if (go) return { x: v!.x, y: v!.y, ref: v as object, zone: zt };
     // no vector yet, or not ready: explore new floor inside the roam zone
-    return { x: P.x, y: P.y, explore: roam };
+    return { x: P.x, y: P.y, explore: roam, zone: roam };
   }
   function bestReadyZone(): number {
     let z = 0;
@@ -342,6 +367,7 @@ export function play(seed: number, o: Opts): Run {
 
   function walkTo(t: ReturnType<typeof goal>): string | number {
     if (!t) return 'listen';
+    const allowed = Math.max(t.zone ?? 0, zoneHere());
     const px = Math.floor(P.x);
     const py = Math.floor(P.y);
     const here = key(px, py);
@@ -362,13 +388,15 @@ export function play(seed: number, o: Opts): Run {
         const ny = y + oy;
         const k = key(nx, ny);
         if (d.has(k) || cellAt(g, nx, ny) !== Cell.floor) continue;
+        if (zones.zoneAt(nx + 0.5, ny + 0.5) > allowed && zones.zoneAt(x + 0.5, y + 0.5) <= allowed) continue; // a careful player keeps out of zones it is not ready for
         d.set(k, d.get(key(x, y))! + 1);
         prev.set(k, [x, y]);
         q.push([nx, ny]);
       }
     }
     let target: [number, number] | null = null;
-    if (t.explore !== undefined) {
+    if (t.explore !== undefined && explore && g.t < explore.until && d.has(key(explore.x, explore.y)) && !(explore.x === px && explore.y === py)) target = [explore.x, explore.y];
+    else if (t.explore !== undefined) {
       let best = Infinity;
       for (const [x, y] of q) {
         if (seen.has(key(x, y))) continue;
@@ -385,6 +413,7 @@ export function play(seed: number, o: Opts): Run {
         seen.clear();
         return 1;
       }
+      explore = { x: target[0], y: target[1], until: g.t + 25 };
     } else if (d.has(key(Math.floor(t.x), Math.floor(t.y)))) target = [Math.floor(t.x), Math.floor(t.y)];
     else {
       let best = Infinity;

@@ -1,6 +1,7 @@
 // HP and the body: slow regeneration after a few quiet seconds, body modules on top of it
 // (more hp, faster regen, armour off each hit), and the mirror ward that returns the next hit.
-import { say, START_HP, strike, tickHooks, hurtHooks, ENEMIES } from '../core/game';
+import { dist, hurt, REACH, say, START_HP, strike, tickHooks, hurtHooks, ENEMIES } from '../core/game';
+import { COLD, HEAT, SEAR, zoneAt } from '../world/zones';
 import { active, family, param } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 
@@ -15,11 +16,40 @@ export function tickBody(g: Game, dt: number): void {
   const p = g.player;
   p.maxHp = START_HP + sum(g, 'hp');
   if (p.hp > p.maxHp) p.hp = p.maxHp;
-  if (g.t - p.hurtAt >= QUIET && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + (REGEN + sum(g, 'regen')) * dt);
+  const z = zoneAt(p.x, p.y);
+  // the ossuary's cold: no mending without a lamp on (body modules still mend, at half)
+  const cold = z === COLD && !active(g, 'lamp').length;
+  const regen = cold ? sum(g, 'regen') / 2 : REGEN + sum(g, 'regen');
+  if (g.t - p.hurtAt >= QUIET && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + regen * dt);
+  // the furnace's heat sears unless something keeps it off
+  if (z === HEAT) {
+    const sear = SEAR * Math.max(0, 1 - sum(g, 'heatproof')) * dt;
+    if (sear > 0) {
+      if (p.hp - sear <= 0) {
+        say(g, 'the furnace burns you down.');
+        hurt(g, p.hp + 1);
+      } else p.hp -= sear;
+    }
+  }
+  // the suture moth: a quick stitch when you are below half, then it rests
+  for (const i of body(g)) {
+    const mend = param<number>(i, 'mend', 0);
+    if (!mend || p.hp >= p.maxHp / 2 || g.t < ((i.data.mendAt as number) ?? 0)) continue;
+    i.data.mendAt = g.t + param<number>(i, 'recharge', 20);
+    p.hp = Math.min(p.maxHp, p.hp + mend);
+    say(g, `the suture moth stitches you: +${mend} hp.`);
+  }
 }
 tickHooks.push(tickBody);
 
 const wardReady = (g: Game, i: Inst) => g.t >= ((i.data.wardAt as number) ?? 0);
+
+// a foe's zone first: the deep ones hit harder (src/world/zones.ts FOE)
+hurtHooks.unshift((g, n, from) => {
+  const src = from && (g.ents.find((e) => e.id === from.id) ?? from);
+  const mult = (src?.enemy?.data.mult as number) ?? 1;
+  return n * mult;
+});
 
 // the ward first: it takes the whole hit and sends it back; then armour softens what is left
 hurtHooks.push((g, n, from) => {
@@ -32,7 +62,14 @@ hurtHooks.push((g, n, from) => {
   if (src?.enemy) strike(g, src, n);
   return 0;
 });
-hurtHooks.push((g, n) => (n > 0 ? Math.max(0, n - sum(g, 'armour')) : n));
+hurtHooks.push((g, n) => (n > 0 ? Math.max(n > 0.5 ? 0.25 : 0, n - sum(g, 'armour')) : n));
+// thorns: whatever strikes you up close takes some back
+hurtHooks.push((g, n, from) => {
+  const thorns = sum(g, 'thorns');
+  const src = from && g.ents.find((e) => e.id === from.id);
+  if (thorns > 0 && n > 0 && src?.enemy && dist(src, g.player) <= REACH + 0.2) strike(g, src, thorns);
+  return n;
+});
 
 family('body', {
   status: (g, inst) => (param(inst, 'ward', false) ? [[wardReady(g, inst) ? 'ward: ready' : 'ward: recharging']] : []),
