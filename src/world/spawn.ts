@@ -1,5 +1,5 @@
 // What a new chunk holds: loot by distance, enemies, printers. The start chamber is fixed:
-// the pinhole eye at your feet, the stepper relay across the chamber, the spark finger one chunk east,
+// you wake with an eye, legs and a map (src/tune/start.ts); a halo at your feet, a spark finger across the chamber, the spark finger one chunk east,
 // the card reader and a first memory card one chunk south, a printer one chunk west.
 
 import { CHUNK, chunkHook, Cell } from '../core/grid';
@@ -40,9 +40,9 @@ export function fill(g: Game, c: Chunk): void {
   const at = (x: number, y: number) => [c.cx * CHUNK + x + 0.5, c.cy * CHUNK + y + 0.5] as const;
   if (c.cx === 0 && c.cy === 0) {
     const [ex, ey] = at(8, 8);
-    spawn(g, { kind: 'item', x: ex, y: ey, item: { kind: 'mod', mod: 'pinhole-eye' } });
+    spawn(g, { kind: 'item', x: ex, y: ey, item: { kind: 'mod', mod: 'halo' } });
     const [sx, sy] = at(10, 6);
-    spawn(g, { kind: 'item', x: sx, y: sy, item: { kind: 'mod', mod: 'stepper-relay' } });
+    spawn(g, { kind: 'item', x: sx, y: sy, item: { kind: 'mod', mod: 'spark-finger' } });
     return;
   }
   const r = rng(hash(g.seed, 11, c.cx, c.cy));

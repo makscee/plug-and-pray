@@ -22,5 +22,5 @@ tickHooks.push((g) => {
   if (told.has(g) || !active(g, 'gait').some((i) => param(i, 'go', false))) return;
   told.add(g);
   const lines = [toward(g, 'spark-finger', 'a spark snaps, on and off'), toward(g, 'card-reader', 'a card reader ticks, waiting for a card')].filter((l): l is Line => !!l);
-  if (lines.length) say(g, 'your legs answer. now you can hear farther:', ...lines, ['the walls bend; ', { text: 'listen', cmd: 'listen' }, ' finds the way.']);
+  if (lines.length) say(g, 'you hear:', ...lines, ['the walls bend; ', { text: 'listen', cmd: 'listen' }, ' finds the way.']);
 });

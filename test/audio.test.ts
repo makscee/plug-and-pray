@@ -34,6 +34,7 @@ describe('sound: what plays when', () => {
     exec(g, 'take');
     expect(now(e, g)).toEqual(['take']);
     g.events = [];
+    g.player.inv.push({ kind: 'mod', mod: 'pinhole-eye' }); // the start chamber holds a halo now (10-18)
     exec(g, 'install pinhole');
     const plays = listen(e, g);
     expect(plays.map((p) => p.cue)).toEqual(['install', 'warm']);
@@ -47,6 +48,7 @@ describe('sound: what plays when', () => {
     const g = newGame(1);
     listen(e, g);
     exec(g, 'take');
+    g.player.inv.push({ kind: 'mod', mod: 'pinhole-eye' }); // the start chamber holds a halo now (10-18)
     exec(g, 'install pinhole');
     run(g, 1.2);
     listen(e, g);
@@ -65,6 +67,7 @@ describe('sound: what plays when', () => {
     exec(g, 'crawl n');
     hear(e, g, 2.5);
     exec(g, 'take');
+    g.player.inv.push({ kind: 'mod', mod: 'stepper-relay' });
     exec(g, 'install stepper');
     hear(e, g, 1);
     exec(g, 'go e 3');

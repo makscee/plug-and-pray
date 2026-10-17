@@ -12,10 +12,11 @@ const run = (g: Game, s: number) => {
 };
 
 describe('the spine', () => {
-  it('starts blind with the eye at your feet', () => {
+  it('a bare game starts blind with a halo at your feet (the page adds the starting kit)', () => {
     const g = newGame(1);
     exec(g, 'take');
-    expect(text(g)).toContain('pinhole eye');
+    expect(text(g)).toContain('halo');
+    g.player.inv.push({ kind: 'mod', mod: 'pinhole-eye' });
     exec(g, 'install pinhole');
     expect(g.player.installed).toHaveLength(1);
     expect(working(g, g.player.installed[0])).toBe(false);

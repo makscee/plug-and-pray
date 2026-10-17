@@ -6,7 +6,7 @@
 
 import { say } from '../core/game';
 import { Cell, cell, ensure } from '../core/grid';
-import { family, MODS, param } from '../core/mods';
+import { active, family, MODS, param } from '../core/mods';
 import type { Game } from '../core/types';
 import { addItem, exec, verb } from '../core/verbs';
 import { frameHooks } from '../ui';
@@ -15,7 +15,23 @@ import { near, see, shoot, type Mode } from './scene';
 import './lamp';
 import './scanner';
 
-family('camera', {});
+/** the facing as a compass word, and the turn to its left and right */
+export const WORDS = ['n', 'e', 's', 'w'];
+export const facing = (dir: number) => ((Math.round(dir / (Math.PI / 2)) % 4) + 4) % 4;
+
+// every eye can turn you and step you forward once your legs answer (Maks 10-18: the camera alone
+// told him nothing about where he was facing)
+family('camera', {
+  buttons: (g) => {
+    if (!active(g, 'gait').some((i) => param(i, 'go', false))) return [];
+    const f = facing(g.player.dir);
+    return [
+      { label: '◀ turn', cmd: `face ${WORDS[(f + 3) % 4]}` },
+      { label: '▲ step', cmd: `go ${WORDS[f]} 1` },
+      { label: 'turn ▶', cmd: `face ${WORDS[(f + 1) % 4]}` },
+    ];
+  },
+});
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16 - 0.5);
 
@@ -44,7 +60,8 @@ const DUSK = [0x0a0807, 0xe2b47c, 0x84492a, 0x6a6c78, 0x2e2e36, 0xc4823e, 0x5230
 export type Filter = (px: Uint8Array, res: number, opts: { colors: number; noise: number; t: number; range?: number }) => void;
 export const FILTERS: Record<string, Filter> = {
   color(px, res, { colors }) {
-    if (!colors) return;
+    // full colour eyes lift a dark frame a little too (10-18: the first corridor read as black)
+    if (!colors) return expose(px, res, 200, 2.5);
     expose(px, res);
     if (colors <= DUSK.length) {
       // nearest palette colour after a Bayer nudge: flat areas stay one colour, edges cross-hatch
@@ -195,13 +212,17 @@ view('camera', (el, inst, g) => {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = res;
   canvas.className = 'eye';
-  el.append(canvas);
+  const label = document.createElement('div');
+  label.className = 'facing';
+  el.append(label, canvas);
   const ctx = canvas.getContext('2d')!;
   const img = ctx.createImageData(res, res);
   const prev = new Float32Array(res * res * 4);
   let next = 0;
   return {
     update(g) {
+      const f = 'facing ' + ['north', 'east', 'south', 'west'][facing(g.player.dir)];
+      if (label.textContent !== f) label.textContent = f;
       const warm = inst.on && g.t >= inst.readyAt;
       if (!warm) {
         if (!inst.on) ctx.clearRect(0, 0, res, res);

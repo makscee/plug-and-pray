@@ -94,13 +94,17 @@ function mapView(el: HTMLElement, inst: Inst): View {
       }
       const yx = (p.x - ox) * px;
       const yy = (p.y - oy) * px;
+      // you: an arrowhead pointing the way you face, big enough to read at a glance
+      const [fx, fy] = [Math.sin(p.dir), -Math.cos(p.dir)];
+      const r = Math.max(5, px * 1.6);
       ctx.fillStyle = CSS.you;
-      ctx.fillRect(yx - px / 2, yy - px / 2, px, px);
-      ctx.strokeStyle = CSS.you;
       ctx.beginPath();
-      ctx.moveTo(yx, yy);
-      ctx.lineTo(yx + Math.sin(p.dir) * px * 2, yy - Math.cos(p.dir) * px * 2);
-      ctx.stroke();
+      ctx.moveTo(yx + fx * r, yy + fy * r);
+      ctx.lineTo(yx - fx * r * 0.6 - fy * r * 0.7, yy - fy * r * 0.6 + fx * r * 0.7);
+      ctx.lineTo(yx - fx * r * 0.2, yy - fy * r * 0.2);
+      ctx.lineTo(yx - fx * r * 0.6 + fy * r * 0.7, yy - fy * r * 0.6 - fx * r * 0.7);
+      ctx.closePath();
+      ctx.fill();
     },
   };
 }
