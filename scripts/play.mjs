@@ -43,6 +43,13 @@ const STEPS = [
   ['remove servo'], ['install gyro'], [2.5],
   [0, 'document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }))'], [0.2], [0.4, 'g.player.y > 9.6'],
   [0, 'document.body.dispatchEvent(new KeyboardEvent("keyup", { key: "w", bubbles: true }))'], [0.2, 'g.player.move === null'],
+  // finish (#1325): the Thaw Engine ends the run; light, melting windows, the end card, wake again
+  [0, '(g.player.slots++, g.player.inv.push({ kind: "mod", mod: "thaw-engine" }), true)'],
+  ['install thaw engine'], [0.2, 'g.ended === "thaw" && document.querySelector(".thaw-end .thaw-heart") !== null'],
+  [3, 'document.querySelector(".win.melting") !== null'],
+  [6, 'document.querySelector(".thaw-card")?.textContent.includes("modules found")'],
+  [0, '(document.querySelector(".thaw-card button").click(), true)'],
+  [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0'],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);

@@ -1,0 +1,31 @@
+/* the Thaw Engine ending: src/end/index.ts sets --light, --beat (on .thaw-end) and --m (on each window) */
+.thaw-end { position: fixed; inset: 0; z-index: 9500; pointer-events: none; --light: 0; --beat: 0; }
+.thaw-light {
+  position: absolute; inset: -20%;
+  background: radial-gradient(circle at 50% 55%, #fff4dc 0, #f6c27a calc(var(--light) * 22%), #e07a3a calc(var(--light) * 48%), #7a2a1400 calc(var(--light) * 85% + 2%));
+  opacity: calc(var(--light) * 0.95);
+  mix-blend-mode: screen;
+}
+.thaw-heart {
+  position: absolute; left: 50%; top: 55%; width: 90px; height: 90px; border-radius: 50%;
+  transform: translate(-50%, -50%) scale(calc(0.4 + var(--light) * 1.2 + var(--beat) * 0.35));
+  background: radial-gradient(circle, #fffaf0 0, #ffcf86 35%, #f0a05000 70%);
+  opacity: calc(0.25 + var(--light) * 0.75);
+  filter: blur(2px);
+}
+.win.melting { transform-origin: 50% 0; transition: none; pointer-events: none; }
+.win.melting .drip {
+  position: absolute; top: 100%; width: 6px; margin-left: -3px; border-radius: 0 0 3px 3px;
+  height: calc(var(--m, 0) * var(--len) * 140px);
+  background: linear-gradient(#100d0c, #3a2f28 60%, #f0a050);
+}
+.thaw-card {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  min-width: 460px; padding: 28px 36px; text-align: center; pointer-events: auto;
+  background: #fff4dccc; color: #3a1a0a; border: 1px solid #e07a3a; box-shadow: 0 0 80px #ffcf86;
+}
+.thaw-card p { margin: 0 0 14px; }
+.thaw-card .big { font-size: 40px; }
+.thaw-card .run { color: #7a3a1a; }
+.thaw-card button { color: #a03a10; font-size: 26px; }
+.thaw-end ~ .hpbar, body[data-state='thaw'] .hpbar { opacity: 0; }
