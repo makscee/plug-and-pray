@@ -4,128 +4,62 @@
 }
 
 :root {
-  --bg: #0b0b0c;
-  --text: #9a9a93;
-  --head: #d8d8d0;
-  --amber: #ffb000;
-  --border: #2a2a2a;
-  --line: 22px;
-  --font: 'VT323', ui-monospace, monospace;
+  --bg: #060505;
+  --win: #100d0c;
+  --line: #3a2f28;
+  --fg: #d8c8b0;
+  --dim: #7a6a5a;
+  --acc: #f0a050;
+  --hurt: #d04030;
 }
 
 * { box-sizing: border-box; }
-
-html, body {
-  margin: 0;
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font: 20px/var(--line) var(--font);
-  user-select: none;
-}
-
-#desk {
-  min-height: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 24px;
-  padding: 48px 24px;
-}
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; }
+body { font: 20px/1.1 'VT323', ui-monospace, monospace; }
+#desk { position: fixed; inset: 0; }
 
 .win {
-  border: 1px solid var(--border);
-  background: var(--bg);
+  position: absolute;
+  background: var(--win);
+  border: 1px solid var(--line);
+  min-width: 180px;
+  box-shadow: 0 6px 24px #0008;
+  user-select: none;
 }
-.win[hidden] { display: none; }
 .win .title {
-  color: var(--head);
-  padding: 2px 8px;
-  border-bottom: 1px solid var(--border);
-  line-height: var(--line);
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+  color: var(--fg);
 }
-.win .body { padding: 6px 10px; }
+.win .dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--dim); cursor: pointer; flex: none; }
+.win[data-state='on'] .dot { background: var(--acc); border-color: var(--acc); }
+.win[data-state='warm'] .dot { animation: warm 0.5s steps(2) infinite; border-color: var(--acc); }
+.win[data-state='off'] .body { opacity: 0.35; }
+.win[data-win='console'] .dot { display: none; }
+@keyframes warm { 50% { background: var(--acc); } }
+.win .body { padding: 6px 8px; }
+.win .foot { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 0 8px; }
+.win .foot:not(:empty) { padding: 4px 8px 6px; border-top: 1px solid var(--line); }
+.win .flavour { margin: 0; max-width: 220px; color: var(--dim); }
 
-.win-term .body { width: calc(48ch + 20px); }
-.rows {
-  height: calc(var(--rows) * var(--line));
-  overflow: hidden;
-  white-space: pre;
+button {
+  font: inherit; color: var(--acc); background: none; border: 0; padding: 0; cursor: pointer;
 }
-.line { height: var(--line); white-space: pre; }
-.line.head { color: var(--head); }
-.input { white-space: pre; margin-top: 6px; }
-.input .typed { color: var(--head); }
-.cursor { color: var(--amber); animation: blink 1s steps(1) infinite; }
-@keyframes blink { 50% { opacity: 0; } }
-.bar {
-  margin-top: 6px;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 2ch;
-  min-height: var(--line);
+button:hover { text-decoration: underline; }
+
+.win-console { width: 440px; }
+.win-console .out { height: 240px; overflow-y: auto; white-space: pre-wrap; }
+.win-console .out .echo { color: var(--dim); }
+.win-console .in { display: flex; color: var(--dim); }
+.win-console input {
+  flex: 1; font: inherit; color: var(--fg); background: none; border: 0; outline: 0; padding: 0; caret-color: var(--acc);
 }
 
-.tok { color: var(--amber); cursor: pointer; }
-.tok:hover { background: var(--amber); color: #000; }
-.tok.dim { opacity: 0.4; cursor: default; }
-.tok.dim:hover { background: none; color: var(--amber); }
-.btn.on { background: var(--amber); color: #000; }
+canvas.eye { display: block; width: 240px; height: 240px; image-rendering: pixelated; background: #000; }
 
-.win-map .body {
-  width: 320px;
-  height: 320px;
-  overflow: auto;
-  white-space: pre;
+.dead {
+  position: fixed; inset: 0; display: grid; place-items: center; background: #000c; z-index: 9999; text-align: center;
 }
-.forest .tree + .tree { margin-top: var(--line); }
-
-/* the end (src/end): landscape fades, then the rows, then the card */
-body[data-end] > :not(#desk):not(.end-card) { transition: opacity 3s ease-in; }
-body[data-end='scene'] > :not(#desk):not(.end-card),
-body[data-end='rows'] > :not(#desk):not(.end-card),
-body[data-end='card'] > :not(#desk):not(.end-card) { opacity: 0; }
-#desk { transition: opacity 2.5s ease-in; }
-body[data-end='rows'] #desk,
-body[data-end='card'] #desk { opacity: 0; pointer-events: none; }
-.end-card {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--line);
-}
-.end-card.fade-in { animation: fade-in 2s ease-out; }
-@keyframes fade-in { from { opacity: 0; } }
-.end-name { color: var(--head); font-size: 40px; line-height: 44px; }
-.end-again { color: var(--amber); cursor: pointer; }
-.end-again:hover { background: var(--amber); color: #000; }
-.win-map .title .layer.on { color: var(--head); }
-.win-map .title .layer:not(.on) { color: var(--amber); }
-.terrain { position: relative; width: 300px; height: 300px; overflow: hidden; }
-.terrain svg { display: block; }
-.tlabel { position: absolute; line-height: 22px; white-space: pre; }
-
-.win-frame .body { width: calc(320px + 20px); }
-.frame canvas {
-  display: block;
-  width: 320px;
-  height: 320px;
-  image-rendering: pixelated;
-}
-.frame .under { margin-top: 4px; white-space: pre; }
-
-/* CAM: the scene behind the windows, which turn see-through */
-#cam {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 0;
-}
-#desk { position: relative; z-index: 1; }
-body.cam-on .win { background: rgba(11, 11, 12, 0.62); }
+.dead p { margin: 0 0 16px; }
