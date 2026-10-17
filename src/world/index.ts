@@ -6,3 +6,4 @@ import './vectors';
 import './printer';
 import './drain';
 import './mind';
+import './stage';
