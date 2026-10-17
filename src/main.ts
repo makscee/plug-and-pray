@@ -22,7 +22,7 @@ function boot(g: Game): void {
   say(
     g,
     'core ok. slots 0/3. power 0/4.',
-    'no sight. no gait. you can only crawl: crawl n, e, s, w.',
+    ['no sight. no gait. you can only crawl: ', ...['n', 'e', 's', 'w'].flatMap((d) => [{ text: d, cmd: `crawl ${d}` }, ' '])],
     'you hear: a slow drip, close. something heavy breathing, far.',
     [{ text: 'take', cmd: 'take' }, '  ', { text: 'inv', cmd: 'inv' }, '  ', { text: 'listen', cmd: 'listen' }, '  ', { text: 'help', cmd: 'help' }],
   );

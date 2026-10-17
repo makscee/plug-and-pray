@@ -58,9 +58,24 @@ export function open(id: string, title: string, at?: [number, number]): Win {
   el.addEventListener('pointerdown', () => (el.style.zIndex = String(++top)));
   drag(el, t);
   desk().append(el);
+  // once its body is filled, a new module window moves to the first spot that covers no other window
+  if (!at) queueMicrotask(() => {
+    const spot = free(el);
+    if (spot) [el.style.left, el.style.top] = [spot[0] + 'px', spot[1] + 'px'];
+  });
   const w = { id, el, title: t, body, foot, dot };
   wins.set(id, w);
   return w;
+}
+
+/** the first free top-left (row by row from the top left, 16 px steps) where `el` overlaps no window */
+function free(el: HTMLElement): [number, number] | null {
+  const { width: w, height: h } = el.getBoundingClientRect();
+  const others = [...document.querySelectorAll<HTMLElement>('.win')].filter((o) => o !== el).map((o) => o.getBoundingClientRect());
+  for (let y = 24; y + h <= innerHeight - 8; y += 16)
+    for (let x = 24; x + w <= innerWidth - 8; x += 16)
+      if (!others.some((r) => x < r.right + 8 && x + w + 8 > r.left && y < r.bottom + 8 && y + h + 8 > r.top)) return [x, y];
+  return null;
 }
 
 export function close(id: string): void {
