@@ -65,10 +65,14 @@ export function fill(g: Game, c: Chunk): void {
     const [x, y] = cellIn(r, c, g.seed);
     spawn(g, { kind: 'item', x, y, item: { kind: 'card', card: nextLog(g) } });
   }
+  if (far >= 3 && r.chance(0.3)) {
+    const [x, y] = cellIn(r, c, g.seed);
+    spawn(g, { kind: 'item', x, y, item: { kind: 'res', res: 'ichor', n: 1 } });
+  }
   const loot = r.int(1, 2) + (far >= 4 ? 1 : 0);
   for (let k = 0; k < loot; k++) {
     const [x, y] = cellIn(r, c, g.seed);
-    spawn(g, { kind: 'item', x, y, item: r.chance(0.5) ? lootMod(r, far) : { kind: 'res', res: r.pick(far >= 3 ? RES : RES.slice(0, 3)), n: r.int(1, 3) } });
+    spawn(g, { kind: 'item', x, y, item: r.chance(0.55) ? lootMod(r, far) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 3) } });
   }
   if (far >= 1.5 && r.chance(0.7)) {
     const n = r.int(1, 3);
