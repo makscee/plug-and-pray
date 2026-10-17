@@ -79,11 +79,12 @@ frameHooks.push((g, dt) => {
   if (e.card) e.card.style.opacity = Math.min(1, (t - CARD) / 1.2).toFixed(3);
 });
 
-// ?scene=end stages the ending for judging: a few modules installed, then the engine; the sequence plays at once
-const staged = new WeakSet<Game>();
+// ?scene=end stages the ending for judging: a few modules installed, then the engine; the sequence plays at once.
+// Once per page load, so wake again starts a plain run.
+let staged = false;
 frameHooks.push((g) => {
-  if (staged.has(g) || !/[?&]scene=end\b/.test(globalThis.location?.search ?? '')) return;
-  staged.add(g);
+  if (staged || !/[?&]scene=end\b/.test(globalThis.location?.search ?? '')) return;
+  staged = true;
   Object.assign(g.player, { slots: 5, core: 12 });
   for (const mod of ['vidicon-tube', 'stepper-relay', 'map-spool', 'thaw-engine']) {
     g.player.inv.push({ kind: 'mod', mod });

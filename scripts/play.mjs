@@ -49,7 +49,7 @@ const STEPS = [
   [3, 'document.querySelector(".win.melting") !== null'],
   [6, 'document.querySelector(".thaw-card")?.textContent.includes("modules found")'],
   [0, '(document.querySelector(".thaw-card button").click(), true)'],
-  [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0'],
+  [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);
