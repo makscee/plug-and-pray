@@ -8,8 +8,12 @@ import { verb } from '../core/verbs';
 import type { Game } from '../core/types';
 
 family('gait', {
-  buttons: (g, inst) =>
-    param<boolean>(inst, 'go', false) ? ['n', 'e', 's', 'w'].map((d) => ({ label: d, cmd: `go ${d}` })) : [],
+  buttons: (g, inst) => [
+    ...(param<boolean>(inst, 'go', false) ? ['n', 'e', 's', 'w'].map((d) => ({ label: d, cmd: `go ${d}` })) : []),
+    // body slice: the servo gait's steps (arrow keys do the same), the tunnel tongue's dig
+    ...(param<boolean>(inst, 'keys', false) ? ['n', 'e', 's', 'w'].map((d) => ({ label: d, cmd: `step ${d}` })) : []),
+    ...(param<boolean>(inst, 'dig', false) ? [{ label: 'dig', cmd: 'dig' }] : []),
+  ],
 });
 
 const can = (key: string) => (g: Game) => active(g, 'gait').some((i) => param(i, key, false));

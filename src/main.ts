@@ -5,6 +5,7 @@ import './fight/ui';
 import { newGame, say, tick } from './core/game';
 import { Screen } from './ui';
 import { start } from './audio';
+import './body/input';
 import type { Game } from './core/types';
 
 const params = new URLSearchParams(location.search);

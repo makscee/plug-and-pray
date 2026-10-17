@@ -73,3 +73,11 @@ canvas.eye { display: block; width: 240px; height: 240px; image-rendering: pixel
 .hurtflash { position: fixed; inset: 0; pointer-events: none; z-index: 8999; background: radial-gradient(transparent 40%, var(--hurt)); opacity: 0; }
 .hurtflash.on { animation: hurtflash 0.45s ease-out; }
 @keyframes hurtflash { from { opacity: 0.55; } to { opacity: 0; } }
+/* body slice: the ledger and the clock of hours */
+.ledger { width: 244px; }
+.ledger-head { color: var(--dim); margin-bottom: 4px; }
+.ledger-row { display: flex; gap: 10px; }
+.ledger-row span { flex: 1; min-width: 0; }
+.ledger-row.dim { color: var(--dim); }
+.ledger-sets { margin-top: 6px; color: var(--dim); }
+canvas.clock { display: block; width: 132px; height: 132px; }

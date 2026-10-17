@@ -5,3 +5,4 @@ import './weapon';
 import './power';
 import '../fight';
 import '../world';
+import '../body';
