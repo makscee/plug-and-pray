@@ -7,6 +7,7 @@ import { Screen } from './ui';
 import { start } from './audio';
 import './body/input';
 import './audio/hook';
+import './end';
 import type { Game } from './core/types';
 
 const params = new URLSearchParams(location.search);

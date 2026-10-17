@@ -31,7 +31,9 @@ export function get(id: string): Win | undefined {
 /** open (or return) a window; `at` is its first position in px, else it cascades */
 export function open(id: string, title: string, at?: [number, number]): Win {
   const have = wins.get(id);
-  if (have) return have;
+  // a window left from the last run (restart empties the desk) is made anew
+  if (have?.el.isConnected) return have;
+  if (!desk().children.length) cascade = 0;
   const el = document.createElement('section');
   el.className = 'win';
   el.dataset.win = id;

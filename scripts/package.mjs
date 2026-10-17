@@ -1,48 +1,63 @@
-// npm run package: the submission package from a real run of the latest build.
-// Builds dist/ (npm run package runs `npm run build` first), plays the whole game at normal speed with
-// play.mjs's STEPS, saves five 1280x720 screenshots into submission/ along the way, and zips dist/
-// into submission/thaw.zip with index.html at its root for the itch.io HTML5 upload.
+// npm run package: the submission package from the latest build (npm run package runs `npm run build` first).
+// Five 1280x720 screenshots on seed 1, each a short run typed like look.mjs (commands, numbers step the
+// clock, 'js:' stages), some from the slices' ?scene= stagings; then dist/ zipped into submission/thaw.zip
+// with index.html at its root for the itch.io HTML5 upload.
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
-import { play, STEPS } from './play.mjs';
+import { chromium } from 'playwright';
 
 const OUT = 'submission';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// the stagings say "staged: ..." in the console; a screenshot shows the console as a player would see it
+const CLEAN = "js:thaw.g.log.splice(0, thaw.g.log.length, ...thaw.g.log.filter((l) => !JSON.stringify(l).includes('staged'))), thaw.screen.con.shown = 1e9";
+const ENGINE = "js:thaw.g.player.slots++, thaw.g.player.inv.push({ kind: 'mod', mod: 'thaw-engine' })";
 
-/** the step after which each screenshot is taken: [kind, text, expect] as in STEPS, the first match */
+/** file, query, steps; the steps after the page loads, as look.mjs takes them */
 const SHOTS = [
-  { file: '1-boot.png', after: ['tok', '5', 'display ok'], before: true, settle: 500 },
-  { file: '2-first-frame.png', after: ['tok', 'n', 'in view'], settle: 1500 },
-  { file: '3-terrain-drive.png', after: ['node', '@HAB', 'driving'], settle: 4500 },
-  { file: '4-packet.png', after: ['tok', '4 pods 3 nominal', '36/64'], settle: 500 },
-  { file: '5-cam.png', after: ['verb', 'cam', 'cam open'], settle: 3000 },
+  ['1-wake.png', '?seed=1&still', ['listen', 0.5]],
+  ['2-pinhole.png', '?seed=1&still', ['take', 'install pinhole', 1.5, 'crawl e', 2.5, 'crawl n', 2.5, 'take', 'install stepper', 1.2, 'go e 3', 2.2]],
+  ['3-deep.png', '?seed=1&scene=world-deep&still', [1.5, CLEAN, 'go e 2', 1.5]],
+  ['4-fight.png', '?seed=1&scene=fight', [1.5, CLEAN, 'click:button[data-cmd=shoot]', 1.2]],
+  ['5-thaw.png', '?seed=1&scene=world-engine&still', [1, CLEAN, 'take thaw', ENGINE, 'install thaw engine', 1.2, 0.8]],
 ];
-
-const index = (step) => STEPS.findIndex((s) => s[0] === step[0] && s[1] === step[1] && s[2] === step[2]) + 1;
-const at = new Map();
-for (const s of SHOTS) {
-  const n = index(s.after);
-  if (!n) throw new Error(`package: no step ${JSON.stringify(s.after)} in play.mjs`);
-  // `before`: the shot is taken after the step before it, while the screen is still five rows
-  at.set(s.before ? n - 1 : n, s);
-}
 
 if (!existsSync('dist/index.html')) throw new Error('package: no dist/, run npm run build first');
 mkdirSync(OUT, { recursive: true });
 
-await play({
-  fast: false,
-  shot: async (n, page) => {
-    const s = at.get(n);
-    if (!s) return;
-    await wait(s.settle);
-    await page.screenshot({ path: `${OUT}/${s.file}` });
-    console.log(`package: ${OUT}/${s.file}`);
-  },
-});
+const port = 4000 + Math.floor(Math.random() * 1000);
+const srv = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { stdio: 'ignore' });
+process.on('exit', () => srv.kill());
+await new Promise((r) => setTimeout(r, 2500));
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+let failed = false;
+
+for (const [file, query, steps] of SHOTS) {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  await page.goto(`http://localhost:${port}/${query}`);
+  await page.waitForFunction(() => window.thaw);
+  await page.evaluate(() => document.fonts.ready);
+  await wait(800);
+  const still = query.includes('still');
+  for (const s of steps) {
+    // a number steps the clock on ?still runs and waits that long on real-clock ones
+    if (typeof s === 'number') await (still ? page.evaluate((x) => window.step(x), s) : wait(s * 1000));
+    else if (s.startsWith('js:')) await page.evaluate(s.slice(3));
+    else if (s.startsWith('click:')) await page.click(s.slice(6));
+    else await page.evaluate((c) => window.thaw.send(c), s);
+    await wait(60);
+  }
+  await wait(400);
+  await page.screenshot({ path: `${OUT}/${file}` });
+  console.log(`package: ${OUT}/${file}${errs.length ? '  errors: ' + errs.join('; ') : ''}`);
+  if (errs.length) failed = true;
+  await page.close();
+}
+await browser.close();
 
 rmSync(`${OUT}/thaw.zip`, { force: true });
 execFileSync('zip', ['-qrX', `../${OUT}/thaw.zip`, '.'], { cwd: 'dist', stdio: 'inherit' });
 console.log(`package: ${OUT}/thaw.zip`);
-process.exit(0);
+process.exit(failed ? 1 : 0);

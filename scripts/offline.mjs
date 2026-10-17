@@ -1,6 +1,6 @@
 // npm run offline: the game loads offline after the first load (sw/sw.js).
 // Serves dist/ with vite preview (run `npm run build` first), or checks PLAY_URL (e.g. https://makscee.github.io/thaw/):
-// loads ?new, waits for the service worker to hold the page, goes offline, reloads, expects the boot screen.
+// loads ?seed=1, waits for the service worker to hold the page, goes offline, reloads, expects the wake console.
 
 import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
@@ -19,19 +19,19 @@ if (server)
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const page = await context.newPage();
-const boot = () => page.waitForFunction(() => document.body.innerText.includes('shell ready'), null, { timeout: 15000 });
+const boot = () => page.waitForFunction(() => document.body.innerText.includes('core ok'), null, { timeout: 15000 });
 try {
-  await page.goto(`${BASE}?new&fast`);
+  await page.goto(`${BASE}?seed=1`);
   await boot();
   await page.evaluate(() => navigator.serviceWorker.ready);
   await context.setOffline(true);
   await page.reload();
   await boot();
-  // a fresh visit offline: the plain URL, then ?new
-  for (const q of ['', '?new']) {
+  // a fresh visit offline: the plain URL, then another seed
+  for (const q of ['', '?seed=2']) {
     const p = await context.newPage();
     await p.goto(BASE + q);
-    await p.waitForFunction(() => document.body.innerText.includes('shell ready'), null, { timeout: 15000 });
+    await p.waitForFunction(() => document.body.innerText.includes('core ok'), null, { timeout: 15000 });
     await p.close();
   }
   const font = await page.evaluate(() => document.fonts.load('20px VT323').then((f) => f.length > 0, () => false));
