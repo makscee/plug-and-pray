@@ -6,6 +6,8 @@ import { chromium } from 'playwright';
 import { spawn } from 'child_process';
 
 const STEPS = [
+  // sound slice: audio on (as the first click does), every cue once; the run below then plays through it
+  [0, '(thawAudio.start(), thawAudio.CUES.forEach((c) => thawAudio.cue(c, { secs: 0.5, uid: 999 })), thawAudio.started())'],
   ['take', 'g.player.inv.some(i => i.mod === "pinhole-eye")'],
   ['install pinhole', 'g.player.installed.length === 1'],
   [1.5, 'document.querySelector("canvas.eye") !== null'],
