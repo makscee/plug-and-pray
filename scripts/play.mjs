@@ -14,6 +14,11 @@ const STEPS = [
   ['install stepper'], [1],
   ['go e 3'], [2, 'g.player.x >= 11.5 && g.player.path.length === 0'],
   ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 2/4"))'],
+  // world: the reader and a card lie a chunk south; this hands them over (the check is the setup)
+  [0, '(g.player.slots = 5, g.player.inv.push({ kind: "mod", mod: "card-reader" }, { kind: "mod", mod: "map-spool" }, { kind: "card", card: "log-surveyor" }), true)'],
+  ['install card reader'], ['install map spool'], [1.5, 'document.querySelector("canvas.map") !== null'],
+  ['read card', 'g.vectors.length === 1 && g.vectors[0].what === "scripture shard"'],
+  ['vectors', 'g.log.some(l => JSON.stringify(l).includes("bearing"))'],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);
