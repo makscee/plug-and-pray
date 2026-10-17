@@ -5,7 +5,7 @@
 import { clear } from '../core/grid';
 import type { Game } from '../core/types';
 
-const last = new WeakMap<Game, string>();
+const last = new WeakMap<Game, Map<number, string>>();
 
 /** mark the cells within `range` that you can see from where you stand */
 export function see(g: Game, range: number): void {
@@ -13,9 +13,11 @@ export function see(g: Game, range: number): void {
   const i = Math.floor(p.x);
   const j = Math.floor(p.y);
   // the same cell and range as last time sees the same cells (unless a vein was drained: rare)
-  const k = `${i},${j},${range},${g.chunks.size}`;
-  if (last.get(g) === k) return;
-  last.set(g, k);
+  let m = last.get(g);
+  if (!m) last.set(g, (m = new Map()));
+  const k = `${i},${j},${g.chunks.size}`;
+  if (m.get(range) === k) return;
+  m.set(range, k);
   const r = Math.ceil(range);
   for (let y = j - r; y <= j + r; y++)
     for (let x = i - r; x <= i + r; x++) {

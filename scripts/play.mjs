@@ -95,6 +95,20 @@ const STEPS = [
   ['reroll', 'g.ents.find(e => e.id === 9998).data.offers.every(Boolean)'],
   ['recycle stepper', '!g.player.inv.some(i => i.mod === "stepper-relay") && JSON.stringify(g.log).includes("you grind stepper relay down")'],
   [0.2, 'document.querySelector(".panel-inv [data-cmd^=\'recycle\']") !== null'],
+  // eyes and map on a long walk (Maks's third playtest: an eye went dark or froze, the map stayed dark):
+  // walk out ~3 chunks; every eye stays lit and keeps changing, and the map spool unrolls as you go
+  [0, `(document.querySelectorAll(".dead, .thaw-end").forEach(e => e.remove()), thaw.restart(1), true)`],
+  [0, `(g.player.slots = 12, g.player.core = 20, g.player.hp = g.player.maxHp = 999, g.ents = g.ents.filter(e => !e.enemy), true)`],
+  ...['pinhole-eye', 'dawn-eye', 'map-spool', 'stepper-relay'].flatMap((id) => [[0, `(g.player.installed.some(i => i.mod === "${id}") || (g.player.inv.some(i => i.mod === "${id}") || g.player.inv.push({ kind: "mod", mod: "${id}" }), thaw.send("install " + "${id}".replace("-", " "))), true)`]]),
+  [2, `(window.__eye = () => [...document.querySelectorAll("canvas.eye")].map(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let s = 0, h = 0; for (let i = 0; i < d.length; i += 4) { s += d[i] + d[i + 1] + d[i + 2]; h = (h * 31 + d[i] + 7 * d[i + 1]) | 0; } return [s / (d.length / 4) / 3, h]; }), window.__walk = { seen: g.seen.size, x: g.player.x, y: g.player.y, rows: [], last: "" }, document.querySelectorAll("canvas.eye").length >= 2)`],
+  ...Array.from({ length: 40 }, () => [
+    [0, `(() => { const P = g.player, W = window.__walk; g.ents = g.ents.filter(e => !e.enemy); P.hp = P.maxHp; if (P.path.length) return true; const back = { n: "s", s: "n", e: "w", w: "e" }; const ds = [["n", 0, -1], ["e", 1, 0], ["s", 0, 1], ["w", -1, 0]].filter(([d, dx, dy]) => d !== back[W.last] && g.chunks.get(Math.floor((Math.floor(P.x) + dx) / 16) + "," + Math.floor((Math.floor(P.y) + dy) / 16)) && thaw.g.chunks.get(Math.floor((Math.floor(P.x) + dx) / 16) + "," + Math.floor((Math.floor(P.y) + dy) / 16)).cells[((Math.floor(P.y) + dy) % 16 + 16) % 16 * 16 + ((Math.floor(P.x) + dx) % 16 + 16) % 16] === 1); ds.sort((a, b) => Math.hypot(P.x + b[1] * 6 - W.x, P.y + b[2] * 6 - W.y) - Math.hypot(P.x + a[1] * 6 - W.x, P.y + a[2] * 6 - W.y)); const d = ds[0] || ["n", 0, -1]; W.last = d[0]; thaw.send("go " + d[0] + " 6"); return true; })()`],
+    [1.5, `(window.__walk.rows.push([...window.__eye(), [Math.floor(g.player.x * 2), Math.floor(g.player.y * 2), g.player.dir].join() + (thaw.g.chunks && [1, 2].every(k => { const x = Math.floor(g.player.x + Math.sin(g.player.dir) * k), y = Math.floor(g.player.y - Math.cos(g.player.dir) * k), c = g.chunks.get(Math.floor(x / 16) + ',' + Math.floor(y / 16)); return c && c.cells[(y % 16 + 16) % 16 * 16 + (x % 16 + 16) % 16] === 1; }) ? '' : ' wall')]), true)`],
+  ]).flat(),
+  [0, `(() => { const W = window.__walk, n = W.rows[0].length - 1; for (let k = 0; k < n; k++) { const means = W.rows.map(r => r[k][0]); let stuck = 0; for (let j = 1; j < W.rows.length; j++) if (W.rows[j][n] !== W.rows[j - 1][n] && !W.rows[j][n].endsWith('wall') && W.rows[j][k][1] === W.rows[j - 1][k][1]) stuck++; if (Math.min(...means) < 20 || stuck > 2) return false; } return Math.hypot(g.player.x - W.x, g.player.y - W.y) > 20 && g.seen.size - W.seen > 300; })()`],
+  // a lost GL context (a GPU reset) comes back: the eyes are lit again a moment later
+  [0, `(thawGL().getContext("webgl2").getExtension("WEBGL_lose_context").loseContext(), true)`],
+  ['face s'], [1.2], ['face e'], [1.2, `window.__eye().every(([m]) => m > 20)`],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);
@@ -114,7 +128,7 @@ try {
     else await p.evaluate((c) => window.thaw.send(c), cmd);
     if (check) {
       const pass = await p.evaluate((c) => { const g = window.thaw.g; return !!eval(c); }, check);
-      if (!pass) throw new Error(`step ${ok + 1} (${cmd}): expected ${check}\nlog: ${await p.evaluate(() => JSON.stringify(thaw.g.log.slice(-8)))}`);
+      if (!pass) throw new Error(`step ${ok + 1} (${cmd}): expected ${check}\nwalk: ${await p.evaluate(() => window.__walk ? JSON.stringify({ d: Math.hypot(thaw.g.player.x - __walk.x, thaw.g.player.y - __walk.y), seen: thaw.g.seen.size - __walk.seen, eyes: __walk.rows[0].slice(0, -1).map((_, k) => [Math.round(Math.min(...__walk.rows.map(r => r[k][0]))), __walk.rows.filter((r, j) => j && r.at(-1) !== __walk.rows[j - 1].at(-1) && !r.at(-1).endsWith('wall') && r[k][1] === __walk.rows[j - 1][k][1]).length, __walk.rows.length]) }) : '')}\nlog: ${await p.evaluate(() => JSON.stringify(thaw.g.log.slice(-8)))}`);
     }
     if (errs.length) throw new Error(`step ${ok + 1} (${cmd}): ${errs[0]}`);
     ok++;

@@ -50,7 +50,7 @@ export function does(m: Modish): string {
     }
     case 'mind': {
       const w = p<string>('what');
-      if (w === 'map') return `map · draws what you have seen, ${n(p<number>('span'))} cells across`;
+      if (w === 'map') return `map · unrolls what lies in sight ${n(p<number>('reveal'))} cells around you, ${n(p<number>('span'))} cells across`;
       if (w === 'log') return `log · keeps ${n(p<number>('keep'))} places that matter, noted within ${n(p<number>('range'))} cells, each with go`;
       if (w === 'reader') return 'reader · reads memory cards: read card';
       if (w === 'ledger') return 'ledger · everything you carry, in rows';
