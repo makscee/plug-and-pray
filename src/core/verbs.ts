@@ -195,7 +195,7 @@ const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'c
 const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].when!(g));
 
 export interface Action { label: string; cmd: string }
-/** every action open right now, grouped (move · items · modules · other): the console's actions bar */
+/** moves and the plain verbs open right now: the console's actions bar (items and modules have their own panels) */
 export function actions(g: Game): [string, Action[]][] {
   const p = g.player;
   const a = (label: string, cmd = label): Action => ({ label, cmd });
@@ -216,18 +216,7 @@ export function actions(g: Game): [string, Action[]][] {
     else move.push(a(`crawl ${d}`));
   }
   if (ok(g, 'stop') && p.path.length > 1) move.push(a('stop'));
-  const items: Action[] = [];
-  const near = reach(g).filter((e) => e.item);
-  if (near.length) items.push(a('take all', 'take'));
-  for (const e of near) items.push(a(`take ${itemName(e.item!)}`));
-  const free = p.installed.length < p.slots;
-  for (const it of p.inv) {
-    if (it.kind === 'mod' && free) items.push(a(`install ${def(it).name}`));
-    if (it.kind === 'card' && ok(g, 'read')) items.push(a('read card'));
-  }
-  if (VERBS.print && g.ents.some((e) => e.kind === 'printer' && dist(e, p) < 2)) items.push(a('print slot'), a('print module'));
-  const mods: Action[] = p.installed.map((i) => a(`${i.on ? 'off' : 'on'} ${def(i).name}`));
   const other = Object.keys(VERBS).filter((v) => !ARGS.has(v) && v !== 'stop' && ok(g, v)).map((v) => a(v));
-  const groups: [string, Action[]][] = [['move', move], ['items', [...new Set(items.map((x) => x.cmd))].map((c) => items.find((x) => x.cmd === c)!)], ['modules', mods], ['other', other]];
+  const groups: [string, Action[]][] = [['move', move], ['other', other]];
   return groups.filter(([, xs]) => xs.length);
 }

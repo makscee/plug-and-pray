@@ -51,7 +51,8 @@ export function open(id: string, title: string, at?: [number, number]): Win {
   el.append(t, body, foot);
   // new module windows fill a row along the top, then a second row
   const k = cascade++;
-  const perRow = Math.max(1, Math.floor((innerWidth - 24) / 280));
+  // the right edge belongs to the panels (modules, inventory, nearby)
+  const perRow = Math.max(1, Math.floor((innerWidth - 24 - 280) / 280));
   const [x, y] = at ?? [24 + (k % perRow) * 280, 24 + Math.floor(k / perRow) % 2 * 330];
   if (at) cascade--;
   el.style.left = x + 'px';
@@ -116,6 +117,7 @@ function drag(el: HTMLElement, handle: HTMLElement): void {
       const y = Math.max(0, Math.min(innerHeight - 24, m.clientY - sy));
       el.style.left = x + 'px';
       el.style.top = y + 'px';
+      el.dataset.moved = '1';
     };
     const up = () => {
       handle.removeEventListener('pointermove', move);

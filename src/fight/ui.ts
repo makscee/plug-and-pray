@@ -1,6 +1,8 @@
 // The fight on screen: an hp bar always on top, and a red flash when you are hurt.
 import { ENEMIES } from '../core/game';
+import { powerMax, powerUsed } from '../core/mods';
 import { frameHooks } from '../ui';
+import { pips } from '../ui/panels';
 import { hpText } from './report';
 
 let bar: HTMLElement | null = null;
@@ -26,9 +28,13 @@ frameHooks.push((g) => {
   const [b, f] = els();
   const p = g.player;
   const text = `${hpText(p.hp)}/${p.maxHp}`;
-  if (b.dataset.text !== text) {
-    b.dataset.text = text;
-    b.innerHTML = `hp <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}`;
+  const [su, pu, pm] = [p.installed.length, powerUsed(g), powerMax(g)];
+  const key = `${text} ${su}/${p.slots} ${pu}/${pm}`;
+  if (b.dataset.text !== key) {
+    b.dataset.text = key;
+    // hp, then the two resources every choice spends: slots and power
+    b.innerHTML = `hp <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
+      `<span class="sep">·</span>slots ${su}/${p.slots} ${pips(su, p.slots)}<span class="sep">·</span>power ${pu}/${pm} ${pips(pu, pm)}`;
   }
   b.dataset.low = String(p.hp <= p.maxHp * 0.3);
   if (seenGame !== g) {

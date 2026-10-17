@@ -16,6 +16,17 @@ const STEPS = [
   ['face e'], [0.1, 'document.querySelector("[data-cmd=\'go e 1\']") !== null'],
   // console (Maks's playtest): the actions bar lists what you can do now; go and unstuck from the start
   [0, '[...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd.startsWith("go ")) && [...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd === "unstuck")'],
+  // panels (Maks's second playtest): install and remove by click in the modules / inventory windows, take by click in nearby; slots in the HUD
+  [0, '(g.player.inv.push({ kind: "mod", mod: "pinhole-eye" }), true)'],
+  [0.1, '!!document.querySelector(".panel-inv [data-cmd=\'install pinhole eye\']")'],
+  [0, '(document.querySelector(".panel-inv [data-cmd=\'install pinhole eye\']").click(), g.player.installed.some(i => i.mod === "pinhole-eye"))'],
+  [0.1, 'document.querySelector(".panel-modules").innerText.includes("pinhole eye") && document.querySelector(".hpbar").innerText.includes("slots 4/6")'],
+  [0, '(document.querySelector(".panel-modules [data-cmd=\'remove pinhole eye\']").click(), !g.player.installed.some(i => i.mod === "pinhole-eye"))'],
+  [0, '(g.ents.push({ id: g.nextId++, kind: "item", x: g.player.x, y: g.player.y, item: { kind: "res", res: "glass", n: 2 } }), true)'],
+  [0.1, '!!document.querySelector(".panel-near [data-cmd=\'take 2 glass\']")'],
+  [0, '(document.querySelector(".panel-near [data-cmd=\'take 2 glass\']").click(), g.player.inv.some(i => i.res === "glass"))'],
+  [0.1, 'document.querySelector(".panel-near").innerText.includes("nothing here") && document.querySelector(".panel-inv").innerText.includes("glass")'],
+  [0, '(g.player.inv = g.player.inv.filter(i => i.mod !== "pinhole-eye" && i.res !== "glass"), true)'],
   ['go e 3'], [2, 'g.player.x >= 11.5 && g.player.path.length === 0'],
   ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 4/6"))'],
   // unstuck: out of a wall at once; otherwise home to where you woke after 3 s
