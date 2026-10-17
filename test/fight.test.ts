@@ -54,7 +54,7 @@ describe('fight', () => {
     run(g, 0.1);
     expect(shots(g)).toHaveLength(1);
     run(g, 2);
-    expect(g.player.hp).toBe(8);
+    expect(g.player.hp).toBe(8.5);
     const h = armed();
     spawnEnemy(h, 'seraph', 5.5, 8.5);
     run(h, 0.1);

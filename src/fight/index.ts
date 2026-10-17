@@ -52,7 +52,7 @@ function walker(g: Game, e: Entity, dt: number): void {
 }
 
 enemy('mite', { name: 'a choir mite', hp: 1, speed: 2, damage: 1, cooldown: 1.8, sense: 6 });
-enemy('seraph', { name: 'a seraph lamp', hp: 3, speed: 0, damage: 2, cooldown: 3, sense: 8, ai: seraph });
+enemy('seraph', { name: 'a seraph lamp', hp: 3, speed: 0, damage: 1.5, cooldown: 3.5, sense: 8, ai: seraph });
 enemy('walker', { name: 'an ossuary walker', hp: 6, speed: 0.7, damage: 2, cooldown: 2.5, sense: 7, ai: walker });
 enemy('hum', { name: 'the hum', hp: 4, speed: 1.1, damage: 1, cooldown: 2, sense: 5, hidden: true });
 enemy('mimic', { name: 'a mimic', hp: 3, speed: 1.4, damage: 1.5, cooldown: 1.6, sense: 8 });
