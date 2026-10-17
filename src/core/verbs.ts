@@ -1,6 +1,7 @@
 // Console commands: `verb(name, def)`. A module family adds its verbs in its own file and makes them
 // available only while a module of it is on (`when`). Buttons anywhere type these same commands.
 
+import { does } from '../mods/describe';
 import { dist, itemName, reach, say, spawn } from './game';
 import { DIRS, open } from './grid';
 import { active, def, label, MODS, param, powerMax, powerUsed, switchOff, switchOn } from './mods';
@@ -86,7 +87,7 @@ verb('take', {
       addItem(g, e.item!);
       g.events.push({ type: 'take', at: [e.x, e.y] });
       const it = e.item!;
-      if (it.kind === 'mod') say(g, ['you take: ', ...itemButton(it)], `  ${def(it).text}`);
+      if (it.kind === 'mod') say(g, ['you take: ', ...itemButton(it)], `  ${does(it)}`);
       else say(g, ['you take: ', ...itemButton(it)]);
     }
   },
@@ -191,7 +192,7 @@ verb('listen', {
 export const allMods = () => Object.keys(MODS);
 
 /** verbs that need a word after them; the actions bar spells those out itself */
-const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'crawl', 'face', 'step', 'print', 'save', 'setup', 'conjure', 'read', 'goto']);
+const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'crawl', 'face', 'step', 'print', 'save', 'setup', 'conjure', 'read', 'goto', 'buy', 'info', 'recycle']);
 const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].when!(g));
 
 export interface Action { label: string; cmd: string }
