@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "play": "node scripts/play.mjs",
+    "offline": "node scripts/offline.mjs",
     "package": "npm run build && node scripts/package.mjs"
   },
   "devDependencies": {

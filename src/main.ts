@@ -8,6 +8,11 @@ import { render, still } from './scene';
 import { ambient, soundboard } from './audio';
 
 const params = new URLSearchParams(location.search);
+
+// offline after the first load (sw/sw.js); only where a service worker may run, never in dev
+const local = ['localhost', '127.0.0.1'].includes(location.hostname);
+if (import.meta.env.PROD && 'serviceWorker' in navigator && (location.protocol === 'https:' || local))
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
 if (params.has('new')) reset();
 
 const w = load();
