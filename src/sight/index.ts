@@ -5,8 +5,11 @@
 // next door (scanner.ts, lamp.ts).
 
 import { say } from '../core/game';
+import { Cell, cell, ensure } from '../core/grid';
 import { family, MODS, param } from '../core/mods';
-import { addItem, verb } from '../core/verbs';
+import type { Game } from '../core/types';
+import { addItem, exec, verb } from '../core/verbs';
+import { frameHooks } from '../ui';
 import { view } from '../ui/views';
 import { near, see, shoot, type Mode } from './scene';
 import './lamp';
@@ -203,4 +206,31 @@ verb('conjure', {
     addItem(g, { kind: 'mod', mod: id });
     say(g, `conjured ${MODS[id].name}.`);
   },
+});
+
+/** ?scene=sight: a staged look for judging the slice: six eyes and senses on, three cells from the
+ * nearest choir mite, facing it, halo lit, the spark finger on for when they come */
+export function stageSight(g: Game): void {
+  ensure(g, g.player.x, g.player.y, 3);
+  const foe = g.ents.filter((e) => e.enemy).sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))[0];
+  const p = g.player;
+  p.slots = 8;
+  p.core = 12;
+  for (const id of ['saints-lens', 'ember-iris', 'lattice-eye', 'bat-psalter', 'heat-choir', 'halo', 'spark-finger']) {
+    addItem(g, { kind: 'mod', mod: id });
+    exec(g, `install ${MODS[id].name}`);
+  }
+  if (!foe) return;
+  const steps: [number, number][] = [[0, 3], [0, -3], [3, 0], [-3, 0], [0, 2], [0, -2], [2, 0], [-2, 0]];
+  const [dx, dy] = steps.find(([dx, dy]) => cell(g, foe.x + dx, foe.y + dy) === Cell.floor && cell(g, foe.x + dx / 2, foe.y + dy / 2) === Cell.floor) ?? [0, 0.8];
+  p.x = foe.x + dx;
+  p.y = foe.y + dy;
+  p.dir = Math.atan2(-dx, dy);
+}
+
+let staged = false;
+frameHooks.push((g) => {
+  if (staged || !/[?&]scene=sight/.test(globalThis.location?.search ?? '')) return;
+  staged = true;
+  stageSight(g);
 });
