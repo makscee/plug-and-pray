@@ -66,7 +66,7 @@ describe('the body', () => {
     g.player.dir = -Math.PI / 2; // west
     const [x, y] = front(g);
     expect([x, y]).toEqual([4, 8]);
-    expect(cell(g, x, y)).toBe(Cell.wall);
+    setCell(g, x, y, Cell.wall); // whatever the generator made there
     exec(g, 'dig');
     expect(cell(g, x, y)).toBe(Cell.floor);
     exec(g, 'dig'); // still grinding

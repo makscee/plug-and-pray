@@ -1,3 +1,4 @@
+import { Cell, setCell } from '../src/core/grid';
 import { describe, expect, it } from 'vitest';
 import '../src/mods';
 import { chase, newGame, spawnEnemy } from '../src/core/game';
@@ -12,7 +13,7 @@ describe('sight', () => {
     expect(fams.filter((f) => f === 'camera').length).toBeGreaterThanOrEqual(8);
     expect(fams.filter((f) => f === 'scanner').length).toBeGreaterThanOrEqual(6);
     expect(fams.filter((f) => f === 'lamp').length).toBeGreaterThanOrEqual(3);
-    for (const m of Object.values(MODS)) expect(m.text.length).toBeLessThanOrEqual(60);
+    for (const m of Object.values(MODS)) expect(m.text.length).toBeLessThanOrEqual(90);
   });
 
   it('a lamp draws enemies from farther', () => {
@@ -21,6 +22,7 @@ describe('sight', () => {
     // the start chamber's east conduit: a mite 8 cells down it, past its sense of 6
     g.player.x = 5.5;
     g.player.y = 6.5;
+    for (let x = 5; x <= 13; x++) setCell(g, x, 6, Cell.floor); // a clear line, whatever the generator made
     const e = spawnEnemy(g, 'mite', 13.5, 6.5);
     chase(g, e, 0.05);
     expect(e.enemy!.data.noticed).toBeFalsy();

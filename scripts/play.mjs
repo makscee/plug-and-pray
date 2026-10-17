@@ -28,12 +28,12 @@ const STEPS = [
   ['vectors', 'g.log.some(l => JSON.stringify(l).includes("bearing"))'],
   // fight: an hp bar always; a nail psalm (handed over here) shoots a mite down your facing
   [0, 'document.querySelector(".hpbar")?.textContent.includes("10/10")'],
-  [0, '(g.player.inv.push({ kind: "mod", mod: "nail-psalm" }), true)'],
+  [0, '(g.player.core = 20, g.player.slots = 8, g.player.inv.push({ kind: "mod", mod: "nail-psalm" }), true)'],
   ['install nail'], [1.2, 'document.querySelector("[data-cmd=shoot]") !== null'],
   ['face w'], [0, '(g.ents.push({ id: 9999, kind: "enemy", x: g.player.x - 3, y: g.player.y, enemy: { type: "mite", hp: 2, readyAt: 0, data: {} } }), true)'],
   ['shoot'], [0.4, '!g.ents.some(e => e.id === 9999) && JSON.stringify(g.log).includes("the mite bursts")'],
   // body slice (self-contained: back in the start chamber, power not under test, every slot full)
-  [0, '(Object.assign(g.player, { x: 8.5, y: 8.5, path: [], core: 20, slots: g.player.installed.length }), ["slot-board","slot-board","slot-board","slot-board","ledger","servo-gait","clock-of-hours","gyro-heart"].forEach(m => g.player.inv.push({ kind: "mod", mod: m })), window.full = g.player.slots, true)'],
+  [0, '(Object.assign(g.player, { x: 8.5, y: 8.5, path: [], core: 20, installed: [], slots: 0 }), ["slot-board","slot-board","slot-board","slot-board","ledger","servo-gait","clock-of-hours","gyro-heart"].forEach(m => g.player.inv.push({ kind: "mod", mod: m })), window.full = g.player.slots, true)'],
   ['install slot board'], ['install slot board'], ['install slot board'], ['install slot board', 'g.player.slots === window.full + 4'],
   ['install ledger'], ['install servo'], [2, 'document.querySelectorAll(".ledger-row button").length >= 2'],
   [0, 'document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })) && g.player.path.length === 1'],
