@@ -1,6 +1,6 @@
 // The console: built in, always there. Output lines with buttons, and a typed input line.
 
-import { exec } from '../core/verbs';
+import { actions, exec } from '../core/verbs';
 import type { Game, Line } from '../core/types';
 import * as windows from './windows';
 
@@ -14,10 +14,12 @@ export class Console {
   history: string[] = [];
   hpos = 0;
   win: windows.Win;
+  bar: HTMLElement;
+  barKey = '';
 
   constructor(g: Game) {
     this.g = g;
-    this.win = windows.open('console', 'console', [Math.max(16, innerWidth / 2 - 220), Math.max(16, innerHeight - 340)]);
+    this.win = windows.open('console', 'console', [Math.max(16, innerWidth / 2 - 220), Math.max(16, innerHeight - 440)]);
     this.win.el.classList.add('win-console');
     this.out = document.createElement('div');
     this.out.className = 'out';
@@ -28,7 +30,9 @@ export class Console {
     this.input.spellcheck = false;
     this.input.autocomplete = 'off';
     row.append(this.input);
-    this.win.body.append(this.out, row);
+    this.bar = document.createElement('div');
+    this.bar.className = 'acts';
+    this.win.body.append(this.out, row, this.bar);
     this.input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         const v = this.input.value;
@@ -61,13 +65,44 @@ export class Console {
   /** print log lines the console has not shown yet */
   draw(): void {
     const log = this.g.log;
+    const o = this.out;
     if (this.shown > log.length) {
-      this.out.replaceChildren();
+      o.replaceChildren();
       this.shown = 0;
     }
-    for (; this.shown < log.length; this.shown++) this.out.append(line(log[this.shown], (c) => this.send(c)));
-    while (this.out.childElementCount > KEEP) this.out.firstElementChild!.remove();
-    this.out.scrollTop = this.out.scrollHeight;
+    if (this.shown < log.length) {
+      // follow new lines only when the reader is already at the bottom; scrolled up, they stay put
+      const atEnd = o.scrollHeight - o.scrollTop - o.clientHeight < 24;
+      for (; this.shown < log.length; this.shown++) o.append(line(log[this.shown], (c) => this.send(c)));
+      while (o.childElementCount > KEEP) o.firstElementChild!.remove();
+      if (atEnd) o.scrollTop = o.scrollHeight;
+    }
+    this.drawBar();
+  }
+
+  /** the actions bar: every action open right now, rebuilt only when the list changes */
+  drawBar(): void {
+    const groups = this.g.ended ? [] : actions(this.g);
+    const key = JSON.stringify(groups);
+    if (key === this.barKey) return;
+    this.barKey = key;
+    this.bar.replaceChildren(
+      ...groups.map(([name, xs]) => {
+        const row = document.createElement('div');
+        const h = document.createElement('span');
+        h.className = 'echo';
+        h.textContent = name;
+        row.append(h);
+        for (const x of xs) {
+          const b = document.createElement('button');
+          b.textContent = x.label;
+          b.dataset.cmd = x.cmd;
+          b.addEventListener('click', () => this.send(x.cmd));
+          row.append(b);
+        }
+        return row;
+      }),
+    );
   }
 }
 

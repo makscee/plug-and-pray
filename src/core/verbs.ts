@@ -2,6 +2,7 @@
 // available only while a module of it is on (`when`). Buttons anywhere type these same commands.
 
 import { dist, itemName, reach, say, spawn } from './game';
+import { DIRS, open } from './grid';
 import { active, def, label, MODS, param, powerMax, powerUsed, switchOff, switchOn } from './mods';
 import type { Game, Inst, Item, Line } from './types';
 
@@ -188,3 +189,45 @@ verb('listen', {
 
 /** for tests and the play script: every module in the table by id */
 export const allMods = () => Object.keys(MODS);
+
+/** verbs that need a word after them; the actions bar spells those out itself */
+const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'crawl', 'face', 'step', 'print', 'save', 'setup', 'conjure', 'read']);
+const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].when!(g));
+
+export interface Action { label: string; cmd: string }
+/** every action open right now, grouped (move · items · modules · other): the console's actions bar */
+export function actions(g: Game): [string, Action[]][] {
+  const p = g.player;
+  const a = (label: string, cmd = label): Action => ({ label, cmd });
+  const cx = Math.floor(p.x) + 0.5;
+  const cy = Math.floor(p.y) + 0.5;
+  const run = (d: string) => {
+    const [dx, dy] = DIRS[d];
+    let n = 0;
+    while (n < 9 && open(g, cx + dx * (n + 1), cy + dy * (n + 1))) n++;
+    return n;
+  };
+  const move: Action[] = [];
+  for (const d of ['n', 'e', 's', 'w']) {
+    const n = run(d);
+    if (!n) continue;
+    if (ok(g, 'go')) move.push(a(`go ${d} ${n}`));
+    else if (ok(g, 'step')) move.push(a(`step ${d}`));
+    else move.push(a(`crawl ${d}`));
+  }
+  if (ok(g, 'stop') && p.path.length > 1) move.push(a('stop'));
+  const items: Action[] = [];
+  const near = reach(g).filter((e) => e.item);
+  if (near.length) items.push(a('take all', 'take'));
+  for (const e of near) items.push(a(`take ${itemName(e.item!)}`));
+  const free = p.installed.length < p.slots;
+  for (const it of p.inv) {
+    if (it.kind === 'mod' && free) items.push(a(`install ${def(it).name}`));
+    if (it.kind === 'card' && ok(g, 'read')) items.push(a('read card'));
+  }
+  if (VERBS.print && g.ents.some((e) => e.kind === 'printer' && dist(e, p) < 2)) items.push(a('print slot'), a('print module'));
+  const mods: Action[] = p.installed.map((i) => a(`${i.on ? 'off' : 'on'} ${def(i).name}`));
+  const other = Object.keys(VERBS).filter((v) => !ARGS.has(v) && v !== 'stop' && ok(g, v)).map((v) => a(v));
+  const groups: [string, Action[]][] = [['move', move], ['items', [...new Set(items.map((x) => x.cmd))].map((c) => items.find((x) => x.cmd === c)!)], ['modules', mods], ['other', other]];
+  return groups.filter(([, xs]) => xs.length);
+}

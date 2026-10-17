@@ -50,7 +50,7 @@ button {
 button:hover { text-decoration: underline; }
 
 .win-console { width: 440px; }
-.win-console .out { height: 240px; overflow-y: auto; white-space: pre-wrap; }
+.win-console .out { height: 200px; overflow-y: auto; white-space: pre-wrap; }
 .win-console .out .echo { color: var(--dim); }
 .win-console .in { display: flex; color: var(--dim); }
 .win-console input {
@@ -59,6 +59,11 @@ button:hover { text-decoration: underline; }
 
 /* the eye's facing, above the picture (tuning 10-18) */
 .win .facing { color: var(--dim); font-size: 16px; margin: -2px 0 2px; }
+/* the actions bar: everything you can do now, always on screen */
+.win-console .acts { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); max-height: 110px; overflow-y: auto; }
+.win-console .acts div { display: flex; flex-wrap: wrap; gap: 0 16px; }
+.win-console .acts .echo { width: 66px; flex: none; }
+
 canvas.eye { display: block; width: 240px; height: 240px; image-rendering: pixelated; background: #000; }
 
 .dead {

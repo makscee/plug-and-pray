@@ -12,6 +12,8 @@ const STEPS = [
   ['take', 'g.player.inv.some(i => i.mod === "halo") && g.player.installed.length === 3'],
   [1.5, 'document.querySelector("canvas.eye") && document.querySelector(".facing").textContent === "facing north" && document.querySelector("canvas.map") && document.querySelector("[data-cmd=\'go n 1\']")'],
   ['face e'], [0.1, 'document.querySelector("[data-cmd=\'go e 1\']") !== null'],
+  // console (Maks's playtest): the actions bar lists what you can do now; go and unstuck from the start
+  [0, '[...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd.startsWith("go ")) && [...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd === "unstuck")'],
   ['go e 3'], [2, 'g.player.x >= 11.5 && g.player.path.length === 0'],
   ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 3/6"))'],
   // unstuck: out of a wall at once; otherwise home to where you woke after 3 s
@@ -19,6 +21,10 @@ const STEPS = [
   ['unstuck'], [3.2, 'g.player.x === 8.5 && g.player.y === 8.5'],
   // tuning (#1328): the legs' first hint names the card reader; listen gives cells and a compass word
   ['listen', 'JSON.stringify(g.log).includes("a card reader ticks") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],
+  // console: scrolled up, new lines leave the reader where they are
+  [0, '(document.querySelector(".win-console .out").scrollTop = 0, true)'],
+  ['status', 'document.querySelector(".win-console .out").scrollTop === 0'],
+  [0, '(document.querySelector(".win-console .out").scrollTop = 1e9, true)'],
   // sight (#1321): a lamp, a scanner, a heat eye and an edge eye (conjure works only on test runs)
   ['conjure halo'], ['install halo'], [1, 'g.player.installed.some(i => i.mod === "halo" && i.on)'],
   ['remove halo'], ['conjure heat choir'], ['install heat choir'], [1.5, 'document.querySelector("canvas.scan") !== null'],
