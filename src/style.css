@@ -110,11 +110,11 @@ body[data-end='card'] #desk { opacity: 0; pointer-events: none; }
 .terrain svg { display: block; }
 .tlabel { position: absolute; line-height: 22px; white-space: pre; }
 
-.win-frame .body { width: calc(256px + 20px); }
+.win-frame .body { width: calc(320px + 20px); }
 .frame canvas {
   display: block;
-  width: 256px;
-  height: 256px;
+  width: 320px;
+  height: 320px;
   image-rendering: pixelated;
 }
 .frame .under { margin-top: 4px; white-space: pre; }

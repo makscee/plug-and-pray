@@ -117,7 +117,7 @@ export interface State {
   /** which MAP layer shows */
   layer: 'forest' | 'terrain';
   /** what FRAME shows: the last snap, or a stored frame; `things` are the ids in view, left to right */
-  frame: { place: string; heading: number; res: 32 | 96; blur?: boolean; at?: [number, number]; things: string[]; still?: string } | null;
+  frame: { place: string; heading: number; res: 64 | 160; blur?: boolean; at?: [number, number]; things: string[]; still?: string } | null;
 }
 
 export interface World {

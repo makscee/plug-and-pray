@@ -1,9 +1,9 @@
 // The 3D world and the camera (DESIGN 8, 12): one Three.js plain, seen three ways:
-// render() for the frames (greys, dithered, plus an object-id pass for the `?` masks),
+// render() for the frames (colour, dithered to a dusk palette, plus an object-id pass for the `?` masks),
 // still() for the stored frames, cam() full screen at the end.
 
 import * as THREE from 'three';
-import { dither, shrink, smear } from './dither';
+import { dither, DUSK, DUSK32, shrink, smear } from './dither';
 import { figure, height, KM, off, plain, PLACES, type Plain } from './plain';
 
 export interface Thing {
@@ -14,7 +14,7 @@ export interface Thing {
 }
 
 export interface Shot {
-  /** res*res grey levels 0..255 (one-bit frames use 0 and 255) */
+  /** res*res*3 RGB, every pixel a colour of the frame's palette */
   pixels: Uint8Array;
   /** things in view, left to right */
   things: Thing[];
@@ -25,7 +25,7 @@ export interface View {
   place: string;
   /** degrees, 0 = north */
   heading: number;
-  res: 32 | 96;
+  res: 64 | 160;
   /** mid-road smear */
   blur?: boolean;
   /** km east/north, instead of the place's own position (a snap mid-road) */
@@ -37,8 +37,6 @@ const EYE = 1.95;
 const PITCH = -9;
 /** frames are rendered this many times larger, then averaged down */
 const SS = 4;
-const LO = 0.2;
-const HI = 0.62;
 
 let P: Plain | null = null;
 let gl: THREE.WebGLRenderer | null = null;
@@ -51,6 +49,9 @@ function setup(): { p: Plain; r: THREE.WebGLRenderer } {
     gl = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
     gl.shadowMap.enabled = true;
     gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    // the same look as cam, so a frame's colours are the colours the player later sees
+    gl.outputColorSpace = THREE.SRGBColorSpace;
+    gl.toneMapping = THREE.ACESFilmicToneMapping;
   }
   return { p: P, r: gl };
 }
@@ -94,21 +95,36 @@ function read(r: THREE.WebGLRenderer, t: THREE.WebGLRenderTarget, size: number):
   return out;
 }
 
-function greys(r: THREE.WebGLRenderer, p: Plain, res: number): Uint8Array {
+/** the scene as the cam sees it (tone mapped, sRGB), shrunk to res*res*3 */
+function colours(r: THREE.WebGLRenderer, p: Plain, res: number): Uint8Array {
   const size = res * SS;
-  const t = target(size);
-  r.setRenderTarget(t);
-  r.render(p.scene, camera);
+  // tone mapping only reaches the drawing buffer, not a render target: render there and read it back
   r.setRenderTarget(null);
-  const rgba = read(r, t, size);
-  const g = new Uint8Array(size * size);
-  for (let i = 0; i < g.length; i++) {
-    const l = (0.2126 * rgba[i * 4] + 0.7152 * rgba[i * 4 + 1] + 0.0722 * rgba[i * 4 + 2]) / 255;
-    // levels: the dark ground darker, the sky brighter, so one bit still reads
-    g[i] = Math.round(Math.min(1, Math.max(0, (Math.pow(l, 1 / 2.2) - LO) / (HI - LO))) * 255);
-  }
-  return shrink(g, size, res);
+  r.setSize(size, size, false);
+  r.render(p.scene, camera);
+  const c = r.getContext();
+  const buf = new Uint8Array(size * size * 4);
+  c.readPixels(0, 0, size, size, c.RGBA, c.UNSIGNED_BYTE, buf);
+  const rgb = new Uint8Array(size * size * 3);
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const i = ((size - 1 - y) * size + x) * 4;
+      rgb.set(buf.subarray(i, i + 3), (y * size + x) * 3);
+    }
+  return shrink(rgb, size, res);
 }
+
+/** a frame's palette and dither spread: eight dusk colours at 64, thirty-two and a light dither at 160;
+ * the colours are pushed a little apart first, so the palette's amber and rust both come out */
+function look(rgb: Uint8Array, res: number): Uint8Array {
+  const c = new Uint8Array(rgb.length);
+  for (let i = 0; i < rgb.length; i += 3) {
+    const l = 0.2126 * rgb[i] + 0.7152 * rgb[i + 1] + 0.0722 * rgb[i + 2];
+    for (let k = 0; k < 3; k++) c[i + k] = Math.max(0, Math.min(255, l + (rgb[i + k] - l) * SAT));
+  }
+  return res >= 160 ? dither(c, res, DUSK32, 16) : dither(c, res, DUSK, 36);
+}
+const SAT = 1.35;
 
 /** the object-id pass: every thing in a flat colour of its own, the rest black */
 function ids(r: THREE.WebGLRenderer, p: Plain, res: number): Thing[] {
@@ -168,9 +184,9 @@ export function render(v: View): Shot {
   p.figures.clear();
   p.self.visible = true;
   stand(p, e, n, v.heading);
-  let g = greys(r, p, v.res);
-  if (v.blur) g = smear(g, v.res, Math.round(v.res / 10));
-  const pixels = dither(g, v.res, v.res === 32 ? 2 : 4);
+  let c = colours(r, p, v.res);
+  if (v.blur) c = smear(c, v.res, Math.round(v.res / 10));
+  const pixels = look(c, v.res);
   return { pixels, things: ids(r, p, v.res) };
 }
 
@@ -205,7 +221,7 @@ const STILLS: Record<string, () => Still> = {
 
 export const STILL_NAMES = Object.keys(STILLS);
 
-/** a stored frame by name, at 32 by 32 one-bit */
+/** a stored frame by name, at 64 by 64 in the dusk palette */
 export function still(name: string): Shot {
   const { p, r } = setup();
   const s = (STILLS[name] ?? STILLS.land)();
@@ -219,7 +235,7 @@ export function still(name: string): Shot {
   }
   stand(p, s.at[0], s.at[1], s.heading, s.pitch ?? 0);
   p.self.visible = false;
-  const pixels = dither(greys(r, p, 32), 32, 2);
+  const pixels = look(colours(r, p, 64), 64);
   p.self.visible = true;
   p.figures.clear();
   p.habMast(false);
@@ -245,7 +261,7 @@ export async function cam(place: string, heading: number): Promise<void> {
   const r = camGl;
   document.body.prepend(r.domElement);
   document.body.classList.add('cam-on');
-  const [e, n] = where({ place, heading, res: 32 });
+  const [e, n] = where({ place, heading, res: 64 });
   const eye = new THREE.PerspectiveCamera(55, 1, 0.1, 9000);
   eye.rotation.order = 'YXZ';
   let mx = 0.5;

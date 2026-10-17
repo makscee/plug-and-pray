@@ -9,7 +9,7 @@ import { where } from './drive';
 export const DIRS: Record<string, number> = { n: 0, e: 90, s: 180, w: 270 };
 const DIR_NAME: Record<number, string> = { 0: 'n', 90: 'e', 180: 's', 270: 'w' };
 
-export type Eye = (v: { place: string; heading: number; res: 32 | 96; blur?: boolean; at?: [number, number] }) => string[];
+export type Eye = (v: { place: string; heading: number; res: 64 | 160; blur?: boolean; at?: [number, number] }) => string[];
 
 
 let eye: Eye | null = null;
@@ -39,7 +39,7 @@ verb('snap', {
   run(w, d = 'n') {
     const s = w.state;
     const heading = DIRS[d] ?? s.heading;
-    const res: 32 | 96 = s.bar.includes('optics') ? 96 : 32;
+    const res: 64 | 160 = s.bar.includes('optics') ? 160 : 64;
     s.heading = heading;
     // mid-road (DESIGN 8): from where the trip has got to, with the horizontal smear
     const view = s.trip ? { place: s.position, heading, res, blur: true, at: where(w) } : { place: s.position, heading, res };
@@ -90,14 +90,14 @@ verb('view', {
     if (!n?.lines?.frame) return say(`view: no frame ${id}`);
     const why = reachable(w, n.id);
     if (why) return say(`view: ${why}`);
-    w.state.frame = { place: w.state.position, heading: w.state.heading, res: 32, things: [], still: n.lines.frame };
+    w.state.frame = { place: w.state.position, heading: w.state.heading, res: 64, things: [], still: n.lines.frame };
     return open(w, { lines: [[`view ${n.name}`], ...n.lines.lines.map((l) => tokenize(w, l))], header: true });
   },
 });
 
 verb('optics', {
   takes: 'none',
-  run: (w) => say(w.state.bar.includes('optics') ? 'optics fitted. frames at 96 px, four greys.' : 'optics: not fitted'),
+  run: (w) => say(w.state.bar.includes('optics') ? 'optics fitted. frames at 160 px, 32 colours.' : 'optics: not fitted'),
 });
 
 verb('cam', {

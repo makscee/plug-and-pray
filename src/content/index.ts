@@ -230,11 +230,11 @@ export function world(): World {
   b.drive('INS', { label: 'crate', bus: 'dead', at: '?crate' }, {
     manifest: [
       'crate 7 of 9  for unit T-1',
-      'optics kit: 96 px, four greys',
+      'optics kit: 160 px, 32 colours',
       'spare card for NAV, yours is off:',
       'power NAV, mount it, then drive',
     ],
-    'optics*': 'optics: frames at 96 pixels, four greys.',
+    'optics*': 'optics: frames at 160 pixels, 32 colours.',
   });
 
   b.drive('HAB', { label: 'habitat', bus: 'ext', at: '@HAB' }, {
