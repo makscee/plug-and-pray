@@ -97,7 +97,8 @@ function toHabitat() {
   verb('dev');
   tok('NAV', 'waypoints');
   tok('waypoints', 'HAB 3.0 km bearing 040');
-  tok('HAB 3.0 km bearing 040', 'driving');
+  tok('HAB 3.0 km bearing 040', 'on the map');
+  tok('@HAB', 'driving');
   arrive();
   // the habitat: the outbox, the key, the pods, the radio's send, a home file
   verb('dev', 'habitat');
@@ -120,6 +121,7 @@ function toHabitat() {
   tok('home/');
   tok('ilya/');
   tok('card', 'RLY 3.1 km bearing 138');
+  tok('RLY 3.1 km bearing 138', 'on the map');
 }
 
 function lander() {
@@ -133,9 +135,9 @@ function lander() {
 }
 
 function relayAndSend() {
-  // RLY's line in the habitat's files, found again from the forest: drive lists only clicked places
-  tok('HAB/home/ilya/card', 'RLY 3.1 km bearing 138');
-  tok('RLY 3.1 km bearing 138', 'driving');
+  // RLY went on the map at the habitat, so drive lists it
+  verb('drive', 'RLY');
+  tok('@RLY', 'driving');
   arrive();
   snap('e', 'in view');
   tok('?mast', 'on the bus: RLY');
@@ -163,7 +165,8 @@ describe('the route a player takes', () => {
     tok('HAB');
     tok('cam/', 'module');
     tok('module', 'T-2 3.9 km bearing 250');
-    tok('T-2 3.9 km bearing 250', 'driving');
+    tok('T-2 3.9 km bearing 250', 'on the map');
+    tok('@T-2', 'driving');
     arrive();
     snap('w', 'in view');
     tok('?sibling', 'on the bus: T-2');
@@ -174,5 +177,51 @@ describe('the route a player takes', () => {
     relayAndSend();
     expect(w.state.ended).toBe('rescue');
     expect(w.state.sol).toBe(16);
+  });
+
+  it('wins with the habitat\'s cam when the sibling is cut', () => {
+    toHabitat();
+    verb('dev');
+    tok('HAB');
+    tok('cam/', 'module');
+    tok('HAB/cam/cam', 'installed');
+    lander();
+    verb('cam', 'cam open');
+    relayAndSend();
+    expect(w.state.armed).not.toContain('?sibling');
+    expect(w.state.ended).toBe('rescue');
+    expect(w.state.sol).toBe(13);
+  });
+});
+
+describe('a place line', () => {
+  /** to the crate's NAV with drive installed, the waypoints on screen */
+  function toWaypoints() {
+    toHabitat();
+    verb('dev');
+    tok('NAV');
+    tok('waypoints', 'LDR 1.5 km bearing 200');
+  }
+
+  it('goes on the map when the place is unknown, and does not drive', () => {
+    toWaypoints();
+    expect(w.state.places).not.toContain('@T-2');
+    tok('HAB');
+    tok('cam/');
+    tok('module', 'T-2 3.9 km bearing 250');
+    tok('T-2 3.9 km bearing 250', 'on the map');
+    expect(w.state.trip).toBeNull();
+    expect(w.state.places).toContain('@T-2');
+    expect(w.state.layer).toBe('terrain');
+  });
+
+  it('drives once the place is known, and drive lists it', () => {
+    toHabitat();
+    // ilya's card put RLY on the map at the habitat; drive lists it, the line now drives
+    expect(w.state.places).toContain('@RLY');
+    verb('drive', 'RLY  3.1 km  bearing 138');
+    tok('HAB/home/ilya/card', 'RLY 3.1 km bearing 138');
+    tok('RLY 3.1 km bearing 138', 'driving');
+    expect(w.state.trip?.to).toBe('@RLY');
   });
 });

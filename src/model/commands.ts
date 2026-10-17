@@ -52,7 +52,8 @@ export function defaultVerb(w: World, t: Token): string | null {
     case 'subsystem':
       return 'power';
     case 'place':
-      return w.state.bar.includes('drive') ? 'drive' : 'map';
+      // an unknown place line first goes on the map; a known one drives (#1320)
+      return w.state.bar.includes('drive') && w.state.places.includes(t.nodeId!) ? 'drive' : 'map';
     case 'thing':
       return 'arm';
     case 'fact':
