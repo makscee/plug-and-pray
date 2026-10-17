@@ -3,6 +3,7 @@
 import { CHUNK, clear, ensure, open } from './grid';
 import { def, label, tickMods } from './mods';
 import type { Entity, Game, Item, Line } from './types';
+import { lit } from '../sight/lamp';
 
 export interface EnemyDef {
   name: string;
@@ -110,7 +111,7 @@ export function chase(g: Game, e: Entity, dt: number): void {
   const p = g.player;
   const r = dist(e, p);
   if (!e.enemy!.data.noticed) {
-    if (r < d.sense && clear(g, e.x, e.y, p.x, p.y)) e.enemy!.data.noticed = true;
+    if (r < d.sense + lit(g) && clear(g, e.x, e.y, p.x, p.y)) e.enemy!.data.noticed = true;
     else return;
   }
   if (r > 1.1) {

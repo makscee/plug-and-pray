@@ -14,6 +14,11 @@ const STEPS = [
   ['install stepper'], [1],
   ['go e 3'], [2, 'g.player.x >= 11.5 && g.player.path.length === 0'],
   ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 2/4"))'],
+  // sight (#1321): a lamp, a scanner, a heat eye and an edge eye (conjure works only on test runs)
+  ['conjure halo'], ['install halo'], [1, 'g.player.installed.some(i => i.mod === "halo" && i.on)'],
+  ['remove halo'], ['conjure heat choir'], ['install heat choir'], [1.5, 'document.querySelector("canvas.scan") !== null'],
+  ['remove heat choir'], ['remove pinhole'], ['conjure ember iris'], ['install ember iris'], [2.5, 'document.querySelectorAll("canvas.eye").length === 1'],
+  ['remove ember iris'], ['conjure lattice eye'], ['install lattice eye'], [1.5, 'document.querySelectorAll("canvas.eye").length === 1'],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);
