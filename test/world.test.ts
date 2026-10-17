@@ -74,7 +74,7 @@ describe('the world', () => {
   it('a printer prints a slot and a module for resources', () => {
     const g = newGame(1);
     chunk(g, -1, 0);
-    const pr = g.ents.find((e) => e.kind === 'printer')!;
+    const pr = g.ents.find((e) => e.kind === 'printer' && !e.data?.shop)!;
     expect(pr).toBeTruthy();
     at(g, pr.x, pr.y);
     run(g, 0.1);
@@ -145,6 +145,6 @@ describe('the world', () => {
     chunk(g, -1, 0);
     expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === 'card-reader')).toBe(true);
     expect(g.ents.some((e) => e.item?.kind === 'card')).toBe(true);
-    expect(g.ents.some((e) => e.kind === 'printer' && Math.floor(e.x / CHUNK) === -1)).toBe(true);
+    expect(g.ents.some((e) => e.kind === 'printer' && !e.data?.shop && Math.floor(e.x / CHUNK) === -1)).toBe(true);
   });
 });

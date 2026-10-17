@@ -116,3 +116,9 @@ canvas.clock { display: block; width: 132px; height: 132px; }
 .pips b.over { border-style: dashed; }
 .hpbar .sep { margin: 0 8px; color: var(--dim); }
 .hpbar .pips b { width: 8px; height: 8px; }
+
+/* what a module does, on top of its window; hover it for power and warm-up */
+.win .does { margin: 0 0 4px; max-width: 240px; font-size: 16px; color: var(--fg); opacity: 0.8; }
+/* a carried module's name gets its own line: install, ?, recycle and drop sit under it */
+.win.panel-inv .row .modname { flex-basis: 100%; }
+.win.panel-inv .row .modname + .cost { flex: 1 1 0; padding-left: 8px; }

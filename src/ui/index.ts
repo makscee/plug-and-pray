@@ -1,5 +1,6 @@
 // The screen: the console plus one window per installed module, kept in step with the game every frame.
 
+import { costs, does } from '../mods/describe';
 import { def, families, label, working } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 import { Console } from './console';
@@ -49,6 +50,12 @@ export class Screen {
       w.el.classList.add('fam-' + d.family);
       w.dot.title = 'on / off';
       w.dot.addEventListener('click', () => this.con.send(`${inst.on ? 'off' : 'on'} ${d.name}`));
+      // what it does, in plain words, on top of every module window; the flavour under it when there's no view
+      const what = document.createElement('p');
+      what.className = 'does';
+      what.textContent = does(inst);
+      what.title = costs(inst);
+      w.body.append(what);
       const make = VIEWS[d.family];
       if (make) this.views.set(inst.uid, make(w.body, inst, g));
       else {

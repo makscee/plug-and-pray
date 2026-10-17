@@ -8,10 +8,15 @@ import { def, label, powerMax, powerUsed, working } from '../core/mods';
 import { VERBS } from '../core/verbs';
 import type { Game, Item } from '../core/types';
 import * as windows from './windows';
+import { costs, does } from '../mods/describe';
+import { affords, fmt, offers, PRICES, priceOf, scrapOf, shopNear } from '../world/printer';
+import type { Roll } from '../core/types';
 
 type Send = (cmd: string) => void;
 /** a row: text parts (a string, or [text, class]) then buttons ({label, cmd}, or a dim note) */
-type Part = string | [string, string] | { label: string; cmd?: string; note?: string };
+type Part = string | [string, string] | [string, string, string] | { label: string; cmd?: string; note?: string };
+/** a module's name part: hover shows what it does */
+const modName = (m: { mod: string; roll?: Roll }): Part => [label(m), 'name modname', `${does(m)}\n${costs(m)}`];
 
 const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].when!(g));
 export const PANEL_W = 260;
@@ -54,7 +59,7 @@ export class Panels {
     const rows = g.player.installed.map((i): Part[] => {
       const d = def(i);
       const state = !i.on ? 'off' : working(g, i) ? 'on' : 'warm';
-      return [['●', 'st st-' + state], [label(i), 'name'], [cost(d.power), 'cost'],
+      return [['●', 'st st-' + state], modName(i), [cost(d.power), 'cost'],
         { label: i.on ? 'off' : 'on', cmd: `${i.on ? 'off' : 'on'} ${label(i)}` }, { label: 'remove', cmd: `remove ${label(i)}` }];
     });
     return rows.length ? rows : [[['no modules. install from the inventory.', 'dim']]];
@@ -71,7 +76,9 @@ export class Panels {
         const install: Part = !free ? { label: 'install', note: 'no slot' }
           : d.power > spare ? { label: 'install', cmd: `install ${label(it)}`, note: `stays off: needs ${d.power}` }
           : { label: 'install', cmd: `install ${label(it)}` };
-        return [[label(it), 'name'], [cost(d.power), 'cost'], install, drop];
+        const scrap = scrapOf(it);
+        const recycle: Part = Object.keys(scrap).length ? { label: 'recycle', cmd: `recycle ${label(it)}`, note: undefined } : { label: 'recycle', note: 'it will not break' };
+        return [modName(it), [cost(d.power), 'cost'], install, { label: '?', cmd: `info ${label(it)}` }, recycle, drop];
       }
       if (it.kind === 'card') return [['memory card', 'name'], ok(g, 'read') ? { label: 'read', cmd: 'read card' } : { label: 'read', note: 'needs a card reader' }, drop];
       return [[`${it.res} ×${it.n}`, 'name'], drop];
@@ -83,10 +90,23 @@ export class Panels {
     const p = g.player;
     const rows: Part[][] = [];
     const items = reach(g);
-    for (const e of items) rows.push([[itemName(e.item!), 'name'], { label: 'take', cmd: `take ${itemName(e.item!)}` }]);
+    for (const e of items) {
+      const it = e.item!;
+      rows.push([it.kind === 'mod' ? modName(it) : [itemName(it), 'name'], ...(it.kind === 'mod' ? [{ label: '?', cmd: `info ${label(it)}` }] : []), { label: 'take', cmd: `take ${itemName(it)}` }]);
+    }
     if (items.length > 1) rows.unshift([['', 'name'], { label: 'take all', cmd: 'take' }]);
-    if (g.ents.some((e) => e.kind === 'printer' && dist(e, p) < 1.6))
+    if (g.ents.some((e) => e.kind === 'printer' && !e.data?.shop && dist(e, p) < 1.6))
       rows.push([['printer', 'name'], { label: 'print slot', cmd: 'print slot' }, { label: 'print module', cmd: 'print module' }]);
+    const shop = shopNear(g);
+    if (shop) {
+      rows.push([['reliquary', 'name'], { label: 'reroll', cmd: 'reroll', note: `reroll: ${fmt(PRICES.reroll)}` }]);
+      offers(g, shop).forEach((it, k) => {
+        if (!it || it.kind !== 'mod') return void rows.push([[`${k + 1}. sold`, 'dim']]);
+        const price = priceOf(it);
+        rows.push([modName(it), { label: '?', cmd: `info ${label(it)}` },
+          affords(g, price) ? { label: 'buy', cmd: `buy ${k + 1}`, note: fmt(price) } : { label: 'buy', note: `${fmt(price)}: short` }]);
+      });
+    }
     const [cx, cy] = [Math.floor(p.x), Math.floor(p.y)];
     for (const [d, dx, dy] of [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]] as const) {
       const c = cell(g, cx + dx, cy + dy);
@@ -115,10 +135,11 @@ export class Panels {
       const notes: string[] = [];
       for (const part of r) {
         if (typeof part === 'string' || Array.isArray(part)) {
-          const [text, cls] = typeof part === 'string' ? [part, ''] : part;
+          const [text, cls, tip] = typeof part === 'string' ? [part, '', ''] : part;
           const s = document.createElement('span');
           s.textContent = text;
           if (cls) s.className = cls;
+          if (tip) s.title = tip;
           row.append(s);
         } else {
           const b = document.createElement('button');
