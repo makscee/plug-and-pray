@@ -57,6 +57,8 @@ button:hover { text-decoration: underline; }
   flex: 1; font: inherit; color: var(--fg); background: none; border: 0; outline: 0; padding: 0; caret-color: var(--acc);
 }
 
+/* the eye's facing, above the picture (tuning 10-18) */
+.win .facing { color: var(--dim); font-size: 16px; margin: -2px 0 2px; }
 canvas.eye { display: block; width: 240px; height: 240px; image-rendering: pixelated; background: #000; }
 
 .dead {

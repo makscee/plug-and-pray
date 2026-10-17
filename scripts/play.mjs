@@ -8,20 +8,21 @@ import { spawn } from 'child_process';
 const STEPS = [
   // sound slice: audio on (as the first click does), every cue once; the run below then plays through it
   [0, '(thawAudio.start(), thawAudio.CUES.forEach((c) => thawAudio.cue(c, { secs: 0.5, uid: 999 })), thawAudio.started())'],
-  ['take', 'g.player.inv.some(i => i.mod === "pinhole-eye")'],
-  ['install pinhole', 'g.player.installed.length === 1'],
-  [1.5, 'document.querySelector("canvas.eye") !== null'],
-  ['crawl e'], [2.5], ['crawl n'], [2.5, 'g.player.x === 9.5 && g.player.y === 7.5'],
-  ['take', 'g.player.inv.some(i => i.mod === "stepper-relay")'],
-  ['install stepper'], [1],
+  // accessible start (10-18): you wake with the dawn eye, the stepper and the map spool on; a halo at your feet
+  ['take', 'g.player.inv.some(i => i.mod === "halo") && g.player.installed.length === 3'],
+  [1.5, 'document.querySelector("canvas.eye") && document.querySelector(".facing").textContent === "facing north" && document.querySelector("canvas.map") && document.querySelector("[data-cmd=\'go n 1\']")'],
+  ['face e'], [0.1, 'document.querySelector("[data-cmd=\'go e 1\']") !== null'],
   ['go e 3'], [2, 'g.player.x >= 11.5 && g.player.path.length === 0'],
-  ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 2/4"))'],
+  ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 3/6"))'],
+  // unstuck: out of a wall at once; otherwise home to where you woke after 3 s
+  [0, '(Object.assign(g.player, { x: 1.5, y: 1.5, path: [] }), true)'], ['unstuck', 'JSON.stringify(g.log).includes("wrench") && !(g.player.x === 1.5 && g.player.y === 1.5)'],
+  ['unstuck'], [3.2, 'g.player.x === 8.5 && g.player.y === 8.5'],
   // tuning (#1328): the legs' first hint names the card reader; listen gives cells and a compass word
   ['listen', 'JSON.stringify(g.log).includes("a card reader ticks") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],
   // sight (#1321): a lamp, a scanner, a heat eye and an edge eye (conjure works only on test runs)
   ['conjure halo'], ['install halo'], [1, 'g.player.installed.some(i => i.mod === "halo" && i.on)'],
   ['remove halo'], ['conjure heat choir'], ['install heat choir'], [1.5, 'document.querySelector("canvas.scan") !== null'],
-  ['remove heat choir'], ['remove pinhole'], ['conjure ember iris'], ['install ember iris'], [2.5, 'document.querySelectorAll("canvas.eye").length === 1'],
+  ['remove heat choir'], ['remove dawn'], ['conjure ember iris'], ['install ember iris'], [2.5, 'document.querySelectorAll("canvas.eye").length === 1'],
   ['remove ember iris'], ['conjure lattice eye'], ['install lattice eye'], [1.5, 'document.querySelectorAll("canvas.eye").length === 1'],
   // world: the reader and a card lie a chunk south; this hands them over (the check is the setup)
   [0, '(g.player.slots = 5, g.player.inv.push({ kind: "mod", mod: "card-reader" }, { kind: "mod", mod: "map-spool" }, { kind: "card", card: "log-surveyor" }), true)'],
@@ -51,7 +52,7 @@ const STEPS = [
   [3, 'document.querySelector(".win.melting") !== null'],
   [6, 'document.querySelector(".thaw-card")?.textContent.includes("modules found")'],
   [0, '(document.querySelector(".thaw-card button").click(), true)'],
-  [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
+  [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 3 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);

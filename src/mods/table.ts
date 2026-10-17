@@ -24,6 +24,7 @@ mods([
   { id: 'slot-board', name: 'slot board', family: 'power', power: 0, warm: 0, tier: 1, params: { slots: 1 }, text: 'a spare socket. install it: one more slot.' },
   { id: 'ledger', name: 'ledger', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'ledger' }, text: 'a clerk\'s memory: everything you carry, in rows.' },
   { id: 'clock-of-hours', name: 'clock of hours', family: 'mind', power: 2, warm: 1.5, tier: 1, params: { what: 'clock', range: 8, ahead: 1 }, text: 'it ticks a second ahead of the world.' },
+  { id: 'dawn-eye', name: 'dawn eye', family: 'camera', power: 1, warm: 0.5, tier: 0, params: { res: 96, colors: 0, fps: 8, fov: 75, range: 9, filter: 'color' }, text: 'the eye you woke with. plain, honest, a little dim.' },
   { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 1, warm: 1, tier: 0, params: { res: 24, colors: 4, fps: 1, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
   { id: 'vidicon-tube', name: 'vidicon tube', family: 'camera', power: 2, warm: 1.5, tier: 0, params: { res: 64, colors: 4, fps: 4, fov: 70, range: 9, lag: 0.4, filter: 'color' }, text: 'a glass tube that drags its ghosts behind it.' },
   { id: 'saints-lens', name: "saint's lens", family: 'camera', power: 4, warm: 3, tier: 2, params: { res: 200, colors: 0, fps: 15, fov: 80, range: 14, filter: 'color' }, text: 'ground from a saint, they say. it sees as he did.' },

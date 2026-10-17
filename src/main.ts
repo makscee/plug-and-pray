@@ -5,6 +5,7 @@ import './fight/ui';
 import { newGame, say, tick } from './core/game';
 import { Screen } from './ui';
 import { start } from './audio';
+import { startKit } from './tune/start';
 import './body/input';
 import './audio/hook';
 import './end';
@@ -20,11 +21,13 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && (location.protocol =
 const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e9);
 
 function boot(g: Game): void {
+  startKit(g);
   say(
     g,
-    'core ok. slots 0/3. power 0/4.',
-    ['no sight. no gait. you can only crawl: ', ...['n', 'e', 's', 'w'].flatMap((d) => [{ text: d, cmd: `crawl ${d}` }, ' '])],
-    'you hear: a slow drip, close. something heavy breathing, far.',
+    'core ok. you wake with an eye, legs and a map. slots 3/6. power 3/6.',
+    'the eye shows what is ahead; the map shows you (the arrow) and where you have been.',
+    ['walk with the buttons under the eye, or type ', { text: 'go e 3', cmd: 'go e 3' }, '. lost or stuck? ', { text: 'unstuck', cmd: 'unstuck' }],
+    ['something lies at your feet: ', { text: 'take', cmd: 'take' }, ', then install it from ', { text: 'inv', cmd: 'inv' }, '.'],
     [{ text: 'take', cmd: 'take' }, '  ', { text: 'inv', cmd: 'inv' }, '  ', { text: 'listen', cmd: 'listen' }, '  ', { text: 'help', cmd: 'help' }],
   );
 }
