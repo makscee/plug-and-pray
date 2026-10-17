@@ -8,7 +8,8 @@
 //
 // Where the keys sit: DSP in the tail of ARM/log, IMG in the tail of WX/exposure.log, NAV in the
 // crate's manifest, LDR and HAB in NAV/waypoints, RLY and T-2 with distance and bearing from the
-// habitat in HAB/home/ilya/card and HAB/cam/module.
+// habitat in HAB/home/ilya/card and HAB/cam/module. Two tools put cam in the bar: T-2's good camera
+// and HAB/cam's cracked one, for a player who never reaches the sibling (DESIGN 8).
 
 import { initialState, type World } from '../model/world';
 import { Builder } from './build';
@@ -318,6 +319,7 @@ export function world(): World {
         'the good camera rode out on T-2:',
         'T-2 3.9 km bearing 250  the crater',
       ],
+      'cam*': 'cam: the cracked exterior camera.',
     },
   });
 

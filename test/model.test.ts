@@ -140,8 +140,14 @@ describe('places and driving', () => {
     run(w, 'install', 'NAV/drive');
     w.state.bar.push('snap');
     const wp = run(w, 'read', 'NAV/waypoints');
-    const r = resolve(w, null, find(wp, 'HAB 3.0 km bearing 040'))!;
+    // the first click puts an unknown place on the map; the map line's token then drives
+    const m = resolve(w, null, find(wp, 'HAB 3.0 km bearing 040'))!;
+    expect(m).toEqual(['map', '@HAB']);
+    const on = run(w, m[0], m[1]);
+    expect(w.state.trip).toBeNull();
+    const r = resolve(w, null, find(on, 'HAB'))!;
     expect(r).toEqual(['drive', '@HAB']);
+    expect(resolve(w, null, find(wp, 'HAB 3.0 km bearing 040'))).toEqual(['drive', '@HAB']);
     const d = run(w, r[0], r[1]);
     expect(all(d)).toMatch(/^driving {2}HAB {2}3\.0 km {2}snap/);
     expect(find(d, 'snap').kind).toBe('verb');
