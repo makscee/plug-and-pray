@@ -155,7 +155,12 @@ const cardGeo = new THREE.BoxGeometry(0.18, 0.02, 0.12);
 const printerGeo = new THREE.BoxGeometry(0.6, 0.9, 0.6);
 const itemGeo = new THREE.OctahedronGeometry(0.12);
 
+const shotGeo = new THREE.IcosahedronGeometry(0.1, 0);
+const ORB: Look = { geo: shotGeo, color: 0xffe0a0, glow: 0xffd070, y: 0.4, heat: 1 };
+const NAIL: Look = { geo: shotGeo, color: 0xd0e0ff, glow: 0xa0c0ff, y: 0.35, heat: 0.6 };
+
 function lookOf(e: Entity): Look | null {
+  if (e.data?.shot) return e.data.foe ? ORB : NAIL; // the fight slice's projectiles
   if (e.enemy) return ENEMIES[e.enemy.type]?.hidden ? null : LOOKS[e.enemy.type] ?? LOOKS.mite;
   if (e.kind === 'printer') return { geo: printerGeo, color: 0x5a4a40, glow: 0x803010, y: 0.45, heat: 0.4 };
   const it = e.item;

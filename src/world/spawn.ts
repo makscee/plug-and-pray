@@ -3,7 +3,7 @@
 // the card reader and a first memory card one chunk south, a printer one chunk west.
 
 import { CHUNK, chunkHook, Cell } from '../core/grid';
-import { spawn, spawnEnemy } from '../core/game';
+import { spawn } from '../core/game';
 import { MODS } from '../core/mods';
 import { hash, rng, type Rng } from '../core/rng';
 import { RES, type Chunk, type Game, type Item } from '../core/types';
@@ -74,13 +74,7 @@ export function fill(g: Game, c: Chunk): void {
     const [x, y] = cellIn(r, c, g.seed);
     spawn(g, { kind: 'item', x, y, item: r.chance(0.55) ? lootMod(r, far) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 3) } });
   }
-  if (far >= 1.5 && r.chance(0.7)) {
-    const n = r.int(1, 3);
-    for (let k = 0; k < n; k++) {
-      const [x, y] = cellIn(r, c, g.seed);
-      spawnEnemy(g, 'mite', x, y);
-    }
-  }
+  // enemies: the fight slice's own chunk hook (src/fight/spawn.ts)
 }
 
 chunkHook(fill);

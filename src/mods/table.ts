@@ -6,7 +6,7 @@
 //   lamp     radius (cells), color (hex string), flicker (0..1)
 //   gait     go (typed cell moves), keys (arrow keys cell to cell), free (WASD + mouse), dig
 //   weapon   damage, cooldown (s), range (cells), aim: auto|aimed
-//   body     hp (+max), regen (hp/s), armour (damage off each hit)
+//   body     hp (+max), regen (hp/s), armour (damage off each hit), ward (returns the next hit), recharge (s)
 //   mind     what (ledger|map|reader|compass|clock)
 //   power    power (+cap)
 //   tool     drain (yield multiplier), cooldown (s), noise (cells it wakes)
@@ -44,4 +44,13 @@ mods([
   { id: 'drowned-compass', name: 'drowned compass', family: 'mind', power: 1, warm: 1, tier: 1, params: { what: 'compass' }, text: 'it pulls toward what the cards promised.' },
   { id: 'ninth-eye', name: 'the ninth eye', family: 'camera', power: 3, warm: 2, tier: 3, params: { res: 160, colors: 0, fps: 10, fov: 100, range: 16, filter: 'color' }, text: 'eight were made for the god. this one stayed.' },
   { id: 'thaw-engine', name: 'thaw engine', family: 'unique', power: 0, warm: 0, tier: 3, params: {}, text: 'a cold heart the size of a fist. it wants a breast.' },
+  // fight: weapons and body
+  { id: 'nail-psalm', name: 'nail psalm', family: 'weapon', power: 1, warm: 1, tier: 0, params: { damage: 2, cooldown: 0.8, range: 8, aim: 'aimed' }, text: 'a verse that ends in a nail. shoot.' },
+  { id: 'ember-spit', name: 'ember spit', family: 'weapon', power: 1, warm: 0.5, tier: 1, params: { damage: 1, cooldown: 0.35, range: 6, aim: 'aimed' }, text: 'it coughs sparks as fast as you ask.' },
+  { id: 'bone-lance', name: 'bone lance', family: 'weapon', power: 2, warm: 2, tier: 1, params: { damage: 5, cooldown: 2.2, range: 5, aim: 'aimed' }, text: 'a rib sharpened by a patient god.' },
+  { id: 'choir-bell', name: 'choir bell', family: 'weapon', power: 2, warm: 1.5, tier: 1, params: { damage: 2, cooldown: 1.6, range: 2.4, aim: 'auto' }, text: 'it rings at anything that comes near.' },
+  { id: 'lead-lung', name: 'lead lung', family: 'body', power: 1, warm: 1, tier: 0, params: { regen: 0.2 }, text: 'heavy breath. you mend three times as fast.' },
+  { id: 'frost-coat', name: 'frost coat', family: 'body', power: 1, warm: 1.5, tier: 1, params: { armour: 0.5 }, text: 'rime that takes the edge off every blow.' },
+  { id: 'mirror-ward', name: 'mirror ward', family: 'body', power: 2, warm: 2, tier: 1, params: { ward: true, recharge: 8 }, text: 'it gives the next blow back. then it rests.' },
+  { id: 'reliquary-ribs', name: 'reliquary ribs', family: 'body', power: 1, warm: 1, tier: 2, params: { hp: 5 }, text: 'a cage of holy bone around your core.' },
 ]);

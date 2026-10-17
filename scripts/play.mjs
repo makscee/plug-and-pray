@@ -24,6 +24,12 @@ const STEPS = [
   ['install card reader'], ['install map spool'], [1.5, 'document.querySelector("canvas.map") !== null'],
   ['read card', 'g.vectors.length === 1 && g.vectors[0].what === "scripture shard"'],
   ['vectors', 'g.log.some(l => JSON.stringify(l).includes("bearing"))'],
+  // fight: an hp bar always; a nail psalm (handed over here) shoots a mite down your facing
+  [0, 'document.querySelector(".hpbar")?.textContent.includes("10/10")'],
+  [0, '(g.player.inv.push({ kind: "mod", mod: "nail-psalm" }), true)'],
+  ['install nail'], [1.2, 'document.querySelector("[data-cmd=shoot]") !== null'],
+  ['face w'], [0, '(g.ents.push({ id: 9999, kind: "enemy", x: g.player.x - 3, y: g.player.y, enemy: { type: "mite", hp: 2, readyAt: 0, data: {} } }), true)'],
+  ['shoot'], [0.4, '!g.ents.some(e => e.id === 9999) && JSON.stringify(g.log).includes("the mite bursts")'],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);
