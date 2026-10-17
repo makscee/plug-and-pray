@@ -3,6 +3,7 @@
 // Driven by frameHooks, so ?still runs step it with thaw.step(s) like the rest of the screen.
 
 import { frameHooks } from '../ui';
+import { exec } from '../core/verbs';
 import type { Game } from '../core/types';
 import { CARD, beat, card, light, melt, summary } from './timeline';
 import './end.css';
@@ -76,4 +77,17 @@ frameHooks.push((g, dt) => {
   });
   if (card(t) && !e.card) showCard(g, e);
   if (e.card) e.card.style.opacity = Math.min(1, (t - CARD) / 1.2).toFixed(3);
+});
+
+// ?scene=end stages the ending for judging: a few modules installed, then the engine; the sequence plays at once
+const staged = new WeakSet<Game>();
+frameHooks.push((g) => {
+  if (staged.has(g) || !/[?&]scene=end\b/.test(globalThis.location?.search ?? '')) return;
+  staged.add(g);
+  Object.assign(g.player, { slots: 5, core: 12 });
+  for (const mod of ['vidicon-tube', 'stepper-relay', 'map-spool', 'thaw-engine']) {
+    g.player.inv.push({ kind: 'mod', mod });
+    exec(g, `install ${mod.replace(/-/g, ' ')}`);
+    for (const i of g.player.installed) i.readyAt = g.t - 1; // warm now, so the eyes have a frame to melt
+  }
 });
