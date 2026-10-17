@@ -5,10 +5,11 @@
 
 import { CHUNK, cell, Cell, veinOf } from '../core/grid';
 import { tickHooks } from '../core/game';
-import { families, family, param } from '../core/mods';
+import { active, families, family, param } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 import { view, VIEWS, type View } from '../ui/views';
 import { nearestOpen } from './vectors';
+import { see } from '../sight/reveal';
 
 const OURS = ['reader', 'map', 'compass'];
 const ours = (inst: Inst) => OURS.includes(param<string>(inst, 'what', ''));
@@ -31,6 +32,11 @@ tickHooks.push((g) => {
   const i = Math.floor(g.player.x);
   const j = Math.floor(g.player.y);
   for (let y = j - 1; y <= j + 1; y++) for (let x = i - 1; x <= i + 1; x++) g.seen.add(`${x},${y}`);
+  // and a spool that is on unrolls what lies in plain sight around you, eyes or none (Maks 10-18:
+  // the map stayed dark as he walked, because it only drew what an eye had rendered)
+  let r = 0;
+  for (const inst of active(g, 'mind')) if (param<string>(inst, 'what', '') === 'map') r = Math.max(r, param<number>(inst, 'reveal', 7));
+  if (r) see(g, r);
 });
 
 /** other slices hook the map window: a click on a cell (world cells), and drawing on top of it */
@@ -39,7 +45,7 @@ export const mapHooks = {
   draw: [] as ((g: Game, ctx: CanvasRenderingContext2D, ox: number, oy: number, px: number) => void)[],
 };
 
-const CSS = { floor: '#3a2f28', wall: '#211a16', vein: '#7a4a2a', ichor: '#a02838', you: '#f0a050', vec: '#e0d0a0', printer: '#70a0a0' };
+const CSS = { floor: '#6a5444', wall: '#2c221d', vein: '#7a4a2a', ichor: '#a02838', you: '#f0a050', vec: '#e0d0a0', printer: '#70a0a0' };
 
 function mapView(el: HTMLElement, inst: Inst, game: Game): View {
   const span = Math.round(param<number>(inst, 'span', 33));

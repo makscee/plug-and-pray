@@ -69,16 +69,19 @@ const floors = new THREE.InstancedMesh(tileGeo, floorMat, N);
 const ceils = new THREE.InstancedMesh(tileGeo, ceilMat, N);
 const veins: Record<string, THREE.InstancedMesh> = {};
 /** the body's own dim glow: with no lamp, this and the veins are all the light there is */
-const glow = new THREE.PointLight(0xffc890, 3, 4.5, 1);
+const glow = new THREE.PointLight(0xffc890, 4, 8, 1);
 const lights = [0, 1, 2].map(() => new THREE.PointLight(0xffffff, 0, 1, 1));
-const ambient = new THREE.AmbientLight(0x3a2e36, 1.5);
+const ambient = new THREE.AmbientLight(0x4a3c46, 2.6);
 const ents = new THREE.Group();
 scene.add(walls, floors, ceils, glow, ents, ambient, ...lights);
 for (const [res, c] of Object.entries(VEIN)) {
   veins[res] = new THREE.InstancedMesh(wallGeo, ps1(new THREE.MeshLambertMaterial({ map: tx.vein, color: 0x806868, emissive: c, emissiveMap: tx.glow, emissiveIntensity: 0.55 })), N);
   scene.add(veins[res]);
 }
-scene.background = new THREE.Color(0x000000);
+/** what lies past an eye's range: a dim haze, not black, so far reads as far and never as a dead eye */
+const HAZE = 0x181210;
+const haze = new THREE.Color(HAZE);
+const black = new THREE.Color(0x000000);
 
 let builtFor = '';
 const m = new THREE.Matrix4();
@@ -286,7 +289,9 @@ export function shoot(g: Game, s: Shot): Uint8Array {
     l.position.set(p.x, 0.75, p.y);
   });
   scene.overrideMaterial = mode === 'heat' ? coldMat : mode === 'depth' ? depthMat : null;
-  scene.fog = mode === 'color' ? new THREE.Fog(0x000000, s.range * 0.45, s.range) : null;
+  // heat and depth read black as nothing there; only colour eyes see the haze
+  scene.background = mode === 'color' ? haze : black;
+  scene.fog = mode === 'color' ? new THREE.Fog(HAZE, s.range * 0.6, s.range * 1.05) : null;
   camera.fov = s.fov;
   camera.updateProjectionMatrix();
   camera.position.set(p.x, 0.5, p.y);
@@ -324,11 +329,8 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   return out;
 }
 
-/** mark the cells within sight as seen (the map spool draws them) */
-export function see(g: Game, range: number): void {
-  const p = g.player;
-  const r = Math.ceil(range);
-  for (let y = Math.floor(p.y) - r; y <= Math.floor(p.y) + r; y++)
-    for (let x = Math.floor(p.x) - r; x <= Math.floor(p.x) + r; x++) if (Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) <= range) g.seen.add(`${x},${y}`);
-}
+export { see } from './reveal';
 export { CHUNK };
+
+/** test runs: the GL canvas, so a play step can lose the context on purpose */
+(globalThis as unknown as { thawGL?: () => HTMLCanvasElement | undefined }).thawGL = () => renderer?.domElement;
