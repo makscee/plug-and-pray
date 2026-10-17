@@ -1,12 +1,11 @@
 # thaw
 
-You froze for forty-one years. Now you are awake, and your memory is gone.
+You are an old machine waking blind inside a dead god's body. You start with a console and nothing else.
 
-You have five rows of screen, a filesystem and two commands. Mount the drives of your own parts, then of the things next to you, and find out what you are and what you have to do before the light goes.
+Everything you become is a module you find, print and install: eyes, scanners, lamps, gaits, weapons, power cells. Each one is a window on your screen and changes what you see, how you move or how you fight. Follow the memory cards of the machines who came before you, find the three shards of scripture, and carry the Thaw Engine to the god's heart.
 
-Every move is a click. Each click types a command into the terminal, one character at a time, and runs it. No keyboard.
-
-- A run takes 20 to 25 minutes. Your progress is saved in the browser; reload to pick up where you were.
+- Type commands, or click the orange words: every button types a command. `help` lists them.
+- Die and you wake again on a new world. Runs are short.
 - Desktop browser, sound on. Best at 1280x720 or bigger.
 
 Made solo in 48 hours for the Ludum Dare 60 Compo, theme "Old Tech".
