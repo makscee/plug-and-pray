@@ -71,6 +71,14 @@ const STEPS = [
   ['remove servo'], ['install gyro'], [2.5],
   [0, 'document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }))'], [0.2], [0.4, 'g.player.y > 9.6'],
   [0, 'document.body.dispatchEvent(new KeyboardEvent("keyup", { key: "w", bubbles: true }))'], [0.2, 'g.player.move === null'],
+  // pilots and waypoints (playtest 3): back in the start chamber with a moth, a log and the map; the room is seen
+  [0, '(Object.assign(g.player, { x: 8.5, y: 8.5, path: [], core: 20, installed: [], slots: 8 }), ["wayfinder-moth","waystone-log","map-spool"].forEach(m => g.player.inv.push({ kind: "mod", mod: m })), true)'],
+  [0, '(Array.from({ length: 49 }, (_, k) => g.seen.add(`${5 + (k % 7)},${5 + Math.floor(k / 7)}`)), g.ents.push({ id: 9998, kind: "printer", x: 6.5, y: 6.5, data: { far: 0, made: 0 } }), true)'],
+  ['install wayfinder moth'], ['install waystone log'], ['install map spool'], [2, 'document.querySelector(".waypoints")?.innerText.includes("printer")'],
+  ['goto 10 10', 'g.player.path.length > 0'], [3, 'Math.floor(g.player.x) === 10 && Math.floor(g.player.y) === 10 && JSON.stringify(g.log).includes("the pilot sets you down")'],
+  ['mark den'], [0.5, 'document.querySelector(".waypoints")?.innerText.includes("den")'],
+  [0, '(() => { const c = document.querySelector("canvas.map"); const r = c.getBoundingClientRect(); c.dispatchEvent(new MouseEvent("click", { clientX: r.left + r.width / 2 - r.width * 4 / 33, clientY: r.top + r.height / 2, bubbles: true })); return JSON.stringify(g.log).includes("goto 6 10"); })()'],
+  [3, 'Math.floor(g.player.x) === 6 && Math.floor(g.player.y) === 10'],
   // finish (#1325): the Thaw Engine ends the run; light, melting windows, the end card, wake again
   [0, '(g.player.slots++, g.player.inv.push({ kind: "mod", mod: "thaw-engine" }), true)'],
   ['install thaw engine'], [0.2, 'g.ended === "thaw" && document.querySelector(".thaw-end .thaw-heart") !== null'],
@@ -78,6 +86,15 @@ const STEPS = [
   [6, 'document.querySelector(".thaw-card")?.textContent.includes("modules found")'],
   [0, '(document.querySelector(".thaw-card button").click(), true)'],
   [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && window.thaw.g.player.inv.length === 4 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
+  // descriptions, reliquary (shop), recycling (playtest 3)
+  ['info pinhole', 'JSON.stringify(g.log).includes("eye · 24 px")'],
+  ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("eye · 24 px")'],
+  [0, '(g.ents.push({ id: 9998, kind: "printer", x: g.player.x + 0.6, y: g.player.y, data: { far: 0, shop: true } }), ["bone","glass","copper"].forEach(r => g.player.inv.push({ kind: "res", res: r, n: 20 })), g.player.inv.push({ kind: "res", res: "ichor", n: 5 }), true)'],
+  [0.2, 'document.querySelector(".panel-near [data-cmd=\'buy 1\']") !== null && JSON.stringify(g.log).includes("reliquary")'],
+  ['buy 1', 'g.ents.find(e => e.id === 9998).data.offers[0] === null && g.player.inv.filter(i => i.kind === "mod").length === 4'],
+  ['reroll', 'g.ents.find(e => e.id === 9998).data.offers.every(Boolean)'],
+  ['recycle stepper', '!g.player.inv.some(i => i.mod === "stepper-relay") && JSON.stringify(g.log).includes("you grind stepper relay down")'],
+  [0.2, 'document.querySelector(".panel-inv [data-cmd^=\'recycle\']") !== null'],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);

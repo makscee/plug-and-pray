@@ -64,4 +64,11 @@ mods([
   { id: 'frost-coat', name: 'frost coat', family: 'body', power: 1, warm: 1.5, tier: 1, params: { armour: 0.5 }, text: 'rime that takes the edge off every blow.' },
   { id: 'mirror-ward', name: 'mirror ward', family: 'body', power: 2, warm: 2, tier: 1, params: { ward: true, recharge: 8 }, text: 'it gives the next blow back. then it rests.' },
   { id: 'reliquary-ribs', name: 'reliquary ribs', family: 'body', power: 1, warm: 1, tier: 2, params: { hp: 5 }, text: 'a cage of holy bone around your core.' },
+  // pilots and waypoint logs (playtest 3): pilot gaits walk a seen path to a point (plan: longest path, pace,
+  // avoid: around what they see); logs note points of interest (keep: how many, auto: which kinds, range: cells)
+  { id: 'wayfinder-moth', name: 'wayfinder moth', family: 'gait', power: 1, warm: 1, tier: 0, params: { pilot: true, plan: 40, pace: 2.5 }, text: 'a moth that remembers every lamp. click the map: it leads you there.' },
+  { id: 'psalm-of-roads', name: 'psalm of roads', family: 'gait', power: 2, warm: 1.5, tier: 1, params: { pilot: true, plan: 120, pace: 3.2, avoid: true }, text: 'a hymn for long roads. it walks you far, around what it sees.' },
+  { id: 'sleepwalker', name: 'sleepwalker', family: 'gait', power: 0, warm: 2, tier: 0, params: { pilot: true, plan: 20, pace: 1.6 }, text: 'it walks for you while you dream. slowly, not far.' },
+  { id: 'waystone-log', name: 'waystone log', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'log', keep: 8, range: 8, auto: ['start', 'printer', 'reader', 'card', 'vector'] }, text: 'a pilgrim\'s tally of the places that matter.' },
+  { id: 'pilgrims-rosary', name: "pilgrim's rosary", family: 'mind', power: 1, warm: 1, tier: 1, params: { what: 'log', keep: 16, range: 12, auto: ['start', 'printer', 'reader', 'card', 'vector', 'mods', 'veins'] }, text: 'a bead for every thing you passed. it forgets nothing it can hold.' },
 ]);

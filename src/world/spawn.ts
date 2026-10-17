@@ -1,6 +1,6 @@
 // What a new chunk holds: loot by distance, enemies, printers. The start chamber is fixed:
 // you wake holding an eye, legs, a map and the spark finger (src/tune/start.ts); a halo at your feet,
-// the dawn eye one chunk east, the card reader and a first memory card one chunk south, a printer one chunk west.
+// the dawn eye one chunk east, the card reader and a first memory card one chunk south, a printer one chunk west, a reliquary (shop) one chunk north.
 
 import { CHUNK, chunkHook, Cell } from '../core/grid';
 import { spawn } from '../core/game';
@@ -59,6 +59,12 @@ export function fill(g: Game, c: Chunk): void {
   if (printer) {
     const [x, y] = cellIn(r, c, g.seed);
     spawn(g, { kind: 'printer', x, y, data: { far, made: 0 } });
+  }
+  // a reliquary (shop printer) one chunk north, then now and then further out; its own rng keeps the rest of the chunk as it was
+  const rs = rng(hash(g.seed, 57, c.cx, c.cy));
+  if ((c.cx === 0 && c.cy === -1) || (far >= 2 && rs.chance(0.1))) {
+    const [x, y] = cellIn(rs, c, g.seed);
+    spawn(g, { kind: 'printer', x, y, data: { far, shop: true } });
   }
   if (far >= 1.5 && r.chance(0.18)) {
     const [x, y] = cellIn(r, c, g.seed);
