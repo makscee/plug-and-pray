@@ -25,6 +25,9 @@ hurtHooks.push((g, n, from) => {
   if (n <= 0) return n;
   const p = g.player;
   const who = from?.enemy ? ENEMIES[from.enemy.type]?.name ?? 'something' : 'something';
-  say(g, `${who} hits you. hp ${Math.max(0, Math.ceil(p.hp - n))}/${p.maxHp}`);
+  say(g, `${who} hits you. hp ${hpText(p.hp - n)}/${p.maxHp}`);
   return n;
 });
+
+/** hp as shown: whole numbers, or halves after armour (9.5) */
+export const hpText = (hp: number): string => String(Math.max(0, Math.ceil(hp * 2) / 2));
