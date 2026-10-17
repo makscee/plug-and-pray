@@ -79,3 +79,13 @@ describe('sight', () => {
     expect(veins).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('eyes between frames', () => {
+  it('a warming eye shows static, never black; an all-zero read is a blank', async () => {
+    const { staticFrame, blank } = await import('../src/sight/index');
+    const px = new Uint8Array(16 * 16 * 4);
+    expect(blank(px)).toBe(true);
+    staticFrame(px, 16, 0.5);
+    expect(blank(px)).toBe(false);
+  });
+});
