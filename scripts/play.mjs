@@ -19,6 +19,11 @@ const STEPS = [
   ['remove halo'], ['conjure heat choir'], ['install heat choir'], [1.5, 'document.querySelector("canvas.scan") !== null'],
   ['remove heat choir'], ['remove pinhole'], ['conjure ember iris'], ['install ember iris'], [2.5, 'document.querySelectorAll("canvas.eye").length === 1'],
   ['remove ember iris'], ['conjure lattice eye'], ['install lattice eye'], [1.5, 'document.querySelectorAll("canvas.eye").length === 1'],
+  // world: the reader and a card lie a chunk south; this hands them over (the check is the setup)
+  [0, '(g.player.slots = 5, g.player.inv.push({ kind: "mod", mod: "card-reader" }, { kind: "mod", mod: "map-spool" }, { kind: "card", card: "log-surveyor" }), true)'],
+  ['install card reader'], ['install map spool'], [1.5, 'document.querySelector("canvas.map") !== null'],
+  ['read card', 'g.vectors.length === 1 && g.vectors[0].what === "scripture shard"'],
+  ['vectors', 'g.log.some(l => JSON.stringify(l).includes("bearing"))'],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);

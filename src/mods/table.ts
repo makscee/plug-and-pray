@@ -9,6 +9,7 @@
 //   body     hp (+max), regen (hp/s), armour (damage off each hit)
 //   mind     what (ledger|map|reader|compass|clock)
 //   power    power (+cap)
+//   tool     drain (yield multiplier), cooldown (s), noise (cells it wakes)
 
 import { mods } from '../core/mods';
 
@@ -34,4 +35,13 @@ mods([
   { id: 'censer', name: 'censer of embers', family: 'lamp', power: 1, warm: 1, tier: 0, params: { radius: 4, color: 'ff9040', flicker: 0.5 }, text: 'smoke and coal on a chain. it gutters, it breathes.' },
   { id: 'cold-star', name: 'cold star', family: 'lamp', power: 2, warm: 2, tier: 2, params: { radius: 7, color: 'a8c8ff', flicker: 0.05 }, text: 'a shard of a star, still cold. everything sees it.' },
   { id: 'ember-cell', name: 'ember cell', family: 'power', power: 0, warm: 0, tier: 0, params: { power: 2 }, text: 'a coal that will not go out.' },
+  // world slice: veins, cards, maps, uniques (tier 3 never rolls as loot: vectors place them)
+  { id: 'leech-needle', name: 'leech needle', family: 'tool', power: 1, warm: 1, tier: 0, params: { drain: 1, cooldown: 1.5, noise: 8 }, text: 'a hollow needle. it drinks the walls. loudly.' },
+  { id: 'bone-auger', name: 'bone auger', family: 'tool', power: 2, warm: 1.5, tier: 1, params: { drain: 2, cooldown: 1, noise: 12 }, text: 'it chews veins to the root. everything hears.' },
+  { id: 'card-reader', name: 'card reader', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'reader' }, text: 'a slot for memory cards. it reads what the dead wrote.' },
+  { id: 'map-spool', name: 'map spool', family: 'mind', power: 1, warm: 1, tier: 0, params: { what: 'map', span: 33 }, text: 'a reel of tape that remembers every turn.' },
+  { id: 'survey-spool', name: 'survey spool', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 66 }, text: 'a wider reel, wound by a surveyor long gone.' },
+  { id: 'drowned-compass', name: 'drowned compass', family: 'mind', power: 1, warm: 1, tier: 1, params: { what: 'compass' }, text: 'it pulls toward what the cards promised.' },
+  { id: 'ninth-eye', name: 'the ninth eye', family: 'camera', power: 3, warm: 2, tier: 3, params: { res: 160, colors: 0, fps: 10, fov: 100, range: 16, filter: 'color' }, text: 'eight were made for the god. this one stayed.' },
+  { id: 'thaw-engine', name: 'thaw engine', family: 'unique', power: 0, warm: 0, tier: 3, params: {}, text: 'a cold heart the size of a fist. it wants a breast.' },
 ]);

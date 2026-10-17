@@ -6,7 +6,7 @@
 
 import type { Game, Inst, Line, Roll } from './types';
 
-export type Family = 'camera' | 'scanner' | 'lamp' | 'gait' | 'weapon' | 'body' | 'mind' | 'power' | 'unique';
+export type Family = 'camera' | 'scanner' | 'lamp' | 'gait' | 'weapon' | 'body' | 'mind' | 'power' | 'unique' | 'tool';
 export type Param = number | string | boolean | string[];
 
 export interface ModDef {

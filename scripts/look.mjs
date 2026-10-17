@@ -11,6 +11,7 @@ await p.waitForTimeout(800);
 const cmds = JSON.parse(process.argv[3] || '[]');
 for (const c of cmds) {
   if (typeof c === 'number') await p.evaluate(s => window.step(s), c);
+  else if (c.startsWith('js:')) await p.evaluate(c.slice(3)); // stage a scene: 'js:thaw.g.player.inv.push(...)'
   else await p.evaluate(c => window.thaw.send(c), c);
   await p.waitForTimeout(50);
 }
