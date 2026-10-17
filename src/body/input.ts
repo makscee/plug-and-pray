@@ -2,6 +2,7 @@
 // Esc gives them back to movement and Enter takes them to the console again.
 // Arrow keys: servo gait steps. WASD: gyro heart walks. Mouse: with the gyro heart, a click on a
 // camera's eye (or the empty desk) locks the pointer and the mouse turns you; Esc lets it go.
+// Without a lock, dragging on the eye turns you too.
 
 import { gyroMove, gyroTurn, hasGyro, servoStep } from './index';
 import { VERBS } from '../core/verbs';
@@ -74,11 +75,13 @@ addEventListener('click', (e) => {
   if (!g || !(t.matches('canvas.eye') || t.id === 'desk')) return;
   if (!hasGyro(g)) return;
   (document.activeElement as HTMLElement | null)?.blur();
-  t.requestPointerLock?.();
+  // some browsers (and a lock released under a second ago) refuse: dragging on the eye still turns you
+  (t.requestPointerLock?.() as unknown as Promise<void> | undefined)?.catch?.(() => {});
 });
 
 addEventListener('mousemove', (e) => {
-  if (!document.pointerLockElement) return;
+  const dragging = e.buttons === 1 && (e.target as HTMLElement).matches?.('canvas.eye');
+  if (!document.pointerLockElement && !dragging) return;
   const g = thaw()?.g;
   if (g) gyroTurn(g, e.movementX * 0.004);
 });
