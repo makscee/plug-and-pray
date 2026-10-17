@@ -86,10 +86,13 @@ export const FILTERS: Record<string, Filter> = {
   gray(px, res, { colors }) {
     const levels = colors || 16;
     expose(px, res);
+    // a tiny eye can't afford dither: at 24 px the cross-hatch drowns the walls, so it posterizes
+    // flat (walls, floor and the dark of an opening each one grey) and only bigger eyes dither
+    const flat = res < 48 && levels > 2;
     for (let i = 0; i < res * res; i++) {
       const x = i % res, y = (i / res) | 0;
       const l = px[i * 4] * 0.3 + px[i * 4 + 1] * 0.59 + px[i * 4 + 2] * 0.11;
-      px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = q(l, Math.max(2, levels), x, y);
+      px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = flat ? Math.round(Math.round((l / 255) * (levels - 1)) * (255 / (levels - 1))) : q(l, Math.max(2, levels), x, y);
     }
   },
   '1bit'(px, res, o) {
@@ -207,6 +210,24 @@ export function addBlur(px: Uint8Array, res: number, r: number): void {
       }
 }
 
+/** what an eye shows while it warms up or sits off: static, faint when off, filling in as it warms
+ * (Maks 10-18: a fresh eye showing plain black read as broken) */
+export function staticFrame(px: Uint8Array, res: number, level: number, rand = Math.random): void {
+  for (let i = 0; i < res * res; i++) {
+    const v = rand() < 0.5 ? 0 : Math.round((0.35 + rand() * 0.65) * 255 * level);
+    px[i * 4] = v;
+    px[i * 4 + 1] = Math.round(v * 0.85);
+    px[i * 4 + 2] = Math.round(v * 0.7);
+    px[i * 4 + 3] = 255;
+  }
+}
+
+/** a frame with no light in it at all: a failed read, never a real view (the body always glows) */
+export const blank = (px: Uint8Array): boolean => {
+  for (let i = 0; i < px.length; i += 4) if (px[i] | px[i + 1] | px[i + 2]) return false;
+  return true;
+};
+
 view('camera', (el, inst, g) => {
   const res = Math.round(param<number>(inst, 'res', 32));
   const canvas = document.createElement('canvas');
@@ -219,13 +240,20 @@ view('camera', (el, inst, g) => {
   const img = ctx.createImageData(res, res);
   const prev = new Float32Array(res * res * 4);
   let next = 0;
+  let shown = false;
   return {
     update(g) {
-      const f = 'facing ' + ['north', 'east', 'south', 'west'][facing(g.player.dir)];
-      if (label.textContent !== f) label.textContent = f;
       const warm = inst.on && g.t >= inst.readyAt;
+      const f = !inst.on ? 'off' : !warm ? 'warming up…' : 'facing ' + ['north', 'east', 'south', 'west'][facing(g.player.dir)];
+      if (label.textContent !== f) label.textContent = f;
       if (!warm) {
-        if (!inst.on) ctx.clearRect(0, 0, res, res);
+        // static instead of black: faint when off, brighter as the warm-up runs out
+        const d = MODS[inst.mod]?.warm || 1;
+        const level = inst.on ? 0.25 + 0.5 * Math.min(1, Math.max(0, 1 - (inst.readyAt - g.t) / d)) : 0.12;
+        staticFrame(img.data as unknown as Uint8Array, res, level);
+        ctx.putImageData(img, 0, 0);
+        shown = false;
+        next = 0;
         return;
       }
       if (g.t < next) return;
@@ -234,6 +262,9 @@ view('camera', (el, inst, g) => {
       const range = param<number>(inst, 'range', 8);
       const name = param<string>(inst, 'filter', 'color');
       const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color' });
+      // a failed read (a lost GL context, a frame the GPU dropped) comes back all zero: keep the
+      // last good frame rather than flash black; depth eyes may honestly see nothing
+      if (!MODES[name] && blank(px) && shown) return;
       const filter = FILTERS[name] ?? FILTERS.color;
       const noise = param<number>(inst, 'noise', 0);
       if (!MODES[name]) addBlur(px, res, Math.round(param<number>(inst, 'blur', 0)));
@@ -242,6 +273,7 @@ view('camera', (el, inst, g) => {
       addLag(px, prev, param<number>(inst, 'lag', 0), step);
       img.data.set(px);
       ctx.putImageData(img, 0, 0);
+      shown = true;
       see(g, range);
     },
   };

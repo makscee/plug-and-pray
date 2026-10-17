@@ -258,6 +258,15 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   if (!renderer) {
     renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false });
     renderer.setPixelRatio(1);
+    // a lost context (the browser reclaims GPUs under load) would leave every eye black for good:
+    // drop this renderer and its targets, the next shot makes fresh ones
+    renderer.domElement.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      for (const rt of targets.values()) rt.dispose();
+      targets.clear();
+      renderer = null;
+      builtFor = '';
+    });
   }
   const mode = s.mode ?? 'color';
   const p = g.player;

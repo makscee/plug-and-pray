@@ -36,6 +36,12 @@ const STEPS = [
   [0, '(document.querySelector(".win-console .out").scrollTop = 0, true)'],
   ['status', 'document.querySelector(".win-console .out").scrollTop === 0'],
   [0, '(document.querySelector(".win-console .out").scrollTop = 1e9, true)'],
+  // two eyes at once (Maks 10-18: one went dark while the other ran): warming shows static, and
+  // both stay lit frame after frame
+  ['conjure pinhole eye'], ['conjure vidicon tube'], ['install pinhole eye'], ['install vidicon tube'],
+  [0.3, 'document.querySelectorAll(".facing")[1].textContent === "warming up…" && [...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'],
+  [1.6, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'], [0.4, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'], [0.4, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'], [0.4, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'], [0.7, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'],
+  ['remove pinhole eye'], ['remove vidicon tube'],
   // sight (#1321): a lamp, a scanner, a heat eye and an edge eye (conjure works only on test runs)
   ['conjure halo'], ['install halo'], [1, 'g.player.installed.some(i => i.mod === "halo" && i.on)'],
   ['remove halo'], ['conjure heat choir'], ['install heat choir'], [1.5, 'document.querySelector("canvas.scan") !== null'],
