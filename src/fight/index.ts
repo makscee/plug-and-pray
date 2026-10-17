@@ -1,6 +1,6 @@
 // The fight slice: the enemy roster and their behaviours, shots in flight, aimed weapons, hp and
 // the body modules, drops and the console's account of a fight. src/fight/ui.ts is the screen side.
-import { chase, ENEMIES, enemy, hurt, say } from '../core/game';
+import { chase, ENEMIES, enemy, hurt, REACH, say } from '../core/game';
 import { clear } from '../core/grid';
 import type { Entity, Game } from '../core/types';
 import { fire } from './shots';
@@ -35,7 +35,7 @@ function seraph(g: Game, e: Entity): void {
 function walker(g: Game, e: Entity, dt: number): void {
   const p = g.player;
   const en = e.enemy!;
-  if (near(e, p) <= 1.1 && g.t >= en.readyAt && !en.data.windup) {
+  if (near(e, p) <= REACH && g.t >= en.readyAt && !en.data.windup) {
     en.data.windup = g.t + 0.8;
     say(g, 'the ossuary walker lifts its arm.');
     return;
@@ -44,7 +44,7 @@ function walker(g: Game, e: Entity, dt: number): void {
     if (g.t < (en.data.windup as number)) return;
     en.data.windup = 0;
     en.readyAt = g.t + ENEMIES[en.type].cooldown;
-    if (near(e, p) <= 1.3) hurt(g, ENEMIES[en.type].damage, e);
+    if (near(e, p) <= REACH + 0.2) hurt(g, ENEMIES[en.type].damage, e);
     else say(g, 'its arm comes down on nothing.');
     return;
   }

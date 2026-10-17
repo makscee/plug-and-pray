@@ -29,6 +29,8 @@ export function enemy(type: string, d: EnemyDef): void {
 export const tickHooks: ((g: Game, dt: number) => void)[] = [];
 
 export const START_HP = 10;
+/** how close a melee foe (and your touch weapons) must be: a diagonal neighbour counts */
+export const REACH = 1.5;
 
 export function newGame(seed: number): Game {
   const g: Game = {
@@ -134,7 +136,9 @@ export function chase(g: Game, e: Entity, dt: number): void {
     if (Math.abs(dx) > Math.abs(dy)) {
       if (!tryMove(sx, 0)) tryMove(0, sy || step);
     } else if (!tryMove(0, sy)) tryMove(sx || step, 0);
-  } else if (g.t >= e.enemy!.readyAt) {
+  }
+  // within a diagonal step it strikes too (a corner can stop it closing the last bit)
+  if (dist(e, p) <= REACH && g.t >= e.enemy!.readyAt) {
     e.enemy!.readyAt = g.t + d.cooldown;
     hurt(g, d.damage, e);
   }
