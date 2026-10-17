@@ -5,7 +5,7 @@
 // rests. A "careful" player waits for its gear to match the zone a shard lies in; a "rusher" does not.
 import '../../src/mods';
 import { dist, ENEMIES, newGame, tick } from '../../src/core/game';
-import { CHUNK, Cell } from '../../src/core/grid';
+import { CHUNK, Cell, clear } from '../../src/core/grid';
 import { active, def, MODS, param, powerMax, powerUsed } from '../../src/core/mods';
 import { exec } from '../../src/core/verbs';
 import type { Entity, Game, Res, Roll } from '../../src/core/types';
@@ -26,6 +26,9 @@ export interface Snap {
   armour: number;
   res: number;
   mods: number;
+  ready: number;
+  at: string;
+  goal: string;
 }
 export interface Run {
   seed: number;
@@ -127,7 +130,7 @@ function bestLoadout(g: Game, zone: number, wantReader: boolean): Set<object> {
     if (m.family === 'camera') cams++;
     fams.set(m.family, (fams.get(m.family) ?? 0) + 1);
   }
-  for (const s of slotBoards) pick.add(s.ref); // slot boards always: they add a slot and use themselves up
+  if (P.slots < printer.MAX_SLOTS) for (const s of slotBoards) pick.add(s.ref); // slot boards: they add a slot and use themselves up
   return pick;
 }
 
@@ -145,11 +148,14 @@ export function play(seed: number, o: Opts): Run {
   const P = g.player;
   const run: Run = { seed, style: o.style, ended: 'time', t: 0, marks: {}, snaps: [], steps: [], bought: [], resPeak: 0, resEnd: 0, kills: 0, homes: 0, recycled: 0, log: [] };
   const seen = new Set<string>();
-  const banned = new Set<object>();
+  // things given up on, for a minute (a corner it could not get round, a lamp it could not reach)
+  const bans = new Map<object, number>();
+  const banned = { has: (o: object) => (bans.get(o) ?? -1) > g.t, add: (o: object) => void bans.set(o, g.t + 60) };
   const visits = new Map<string, number>();
   let goalRef: object | null = null;
   let lastPow = powerMax(g);
   let lastSlots = P.slots;
+  let lastFlesh = 0;
   let nextSnap = 0;
   let restUntilFull = false;
   const mark = (what: string) => {
@@ -163,6 +169,10 @@ export function play(seed: number, o: Opts): Run {
 
   /** one decision: a command (then a short wait) or a wait */
   let why = '';
+  const stall = { at: 0, x: 8.5, y: 8.5, n: 0 };
+  let lastGoalRef: object | null = null;
+  const hunts = new Map<object, { since: number; hp: number }>();
+  let avoid: ((x: number, y: number) => boolean) | null = null;
   let cur: { ref: object; until: number } | null = null;
   let explore: { x: number; y: number; until: number } | null = null;
   let fightSig = '';
@@ -177,7 +187,7 @@ export function play(seed: number, o: Opts): Run {
     const hpFrac = P.hp / P.maxHp;
     // nearly dead with something on you: fold home
     const outOfDepth = !ready(zoneHere());
-    if (hpFrac < (outOfDepth ? 0.5 : 0.3) && close.length) {
+    if (hpFrac < (outOfDepth ? 0.55 : 0.4) && close.length) {
       if (!(P as any)._homing || g.t > (P as any)._homing) {
         (P as any)._homing = g.t + 3.2;
         run.homes++;
@@ -194,11 +204,12 @@ export function play(seed: number, o: Opts): Run {
       }
     }
     // a seraph has you in its line: step out
-    const lamps = foes.filter((e) => e.enemy!.type === 'seraph' || e.enemy!.type === 'furnace-saint');
-    const inLine = (x: number, y: number) => lamps.some((e) => (Math.abs(e.x - x - 0.5) < 0.6 || Math.abs(e.y - y - 0.5) < 0.6) && dist(e, { x: x + 0.5, y: y + 0.5 }) > 1.5);
-    if (lamps.length && inLine(px, py) && !close.length) {
+    const lamps = foes.filter((e) => ['seraph', 'pyre', 'saint'].includes(e.enemy!.type));
+    const inLine = (x: number, y: number) => lamps.some((e) => (Math.abs(e.x - x - 0.5) < 0.6 || Math.abs(e.y - y - 0.5) < 0.6) && dist(e, { x: x + 0.5, y: y + 0.5 }) > 1.5 && dist(e, { x: x + 0.5, y: y + 0.5 }) <= ENEMIES[e.enemy!.type].sense && clear(g, e.x, e.y, x + 0.5, y + 0.5));
+    const lampReady = lamps.some((e) => g.t >= e.enemy!.readyAt - 0.6);
+    if (lamps.length && lampReady && inLine(px, py) && !lamps.every((e) => banned.has(e))) {
       for (const [d, ox, oy] of [['n', 0, -1], ['s', 0, 1], ['e', 1, 0], ['w', -1, 0]] as const)
-        if (cellAt(g, px + ox, py + oy) === Cell.floor && !inLine(px + ox, py + oy)) return `go ${d} 1`;
+        if (cellAt(g, px + ox, py + oy) === Cell.floor && !inLine(px + ox, py + oy)) { why = 'out of line'; return `go ${d} 1`; }
     }
     // aimed weapons: shoot a foe standing in a straight line
     const aimed = active(g, 'weapon').filter((i) => param(i, 'aim', 'auto') === 'aimed' && g.t >= ((i.data.readyAt as number) ?? 0));
@@ -207,7 +218,7 @@ export function play(seed: number, o: Opts): Run {
         const dx = e.x - P.x;
         const dy = e.y - P.y;
         if (dist(e, P) > Math.max(...aimed.map((i) => param<number>(i, 'range', 6)))) continue;
-        if (Math.abs(dx) < 0.45 || Math.abs(dy) < 0.45) {
+        if ((Math.abs(dx) < 0.45 || Math.abs(dy) < 0.45) && clear(g, P.x, P.y, e.x, e.y)) {
           const d = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n';
           const want = { n: 0, e: Math.PI / 2, s: Math.PI, w: -Math.PI / 2 }[d];
           if (Math.abs(Math.atan2(Math.sin(P.dir - want), Math.cos(P.dir - want))) > 0.2) return `face ${d}`;
@@ -238,9 +249,33 @@ export function play(seed: number, o: Opts): Run {
     }
     if (P.path.length) { why = 'path ' + P.path.length + ' ' + JSON.stringify(P.path[0]) + ' at ' + P.x.toFixed(2) + ',' + P.y.toFixed(2) + ' pace ' + P.pace; return 0.3; }
     // rest: after a fold home, to full; otherwise to 70% when nothing is near
+    const canMend = !(zones.needsLamp(zoneHere()) && !active(g, 'lamp').length) || active(g, 'body').some((i) => param<number>(i, 'regen', 0) > 0);
+    if (!canMend && hpFrac < 0.6 && !foes.some((e) => dist(e, P) < 6) && !(P as any)._homing) {
+      (P as any)._homing = g.t + 3.2;
+      why = 'cold: home to mend';
+      return 'unstuck';
+    }
     if (restUntilFull && hpFrac < 0.95 && !foes.length) return 2;
     restUntilFull = false;
     if (hpFrac < 0.6 && !foes.some((e) => dist(e, P) < 6)) return 2;
+    // stalled (pacing, a corner, a goal it cannot reach): give up the goal; twice running, fold home
+    if (g.t >= stall.at + 30) {
+      const moved = Math.hypot(P.x - stall.x, P.y - stall.y);
+      if (moved < 4 && hpFrac > 0.9) {
+        stall.n++;
+        if (cur) banned.add(cur.ref);
+        if (lastGoalRef) banned.add(lastGoalRef);
+        explore = null;
+        seen.clear();
+        if (stall.n >= 2) {
+          stall.n = 0;
+          Object.assign(stall, { at: g.t, x: P.x, y: P.y });
+          why = 'stalled';
+          return 'unstuck';
+        }
+      } else stall.n = 0;
+      Object.assign(stall, { at: g.t, x: P.x, y: P.y });
+    }
     // take what is in reach
     if (g.ents.some((e) => e.kind === 'item' && dist(e, P) < 1.6)) return 'take';
     // install / remove toward the best loadout
@@ -257,7 +292,7 @@ export function play(seed: number, o: Opts): Run {
     for (const i of P.installed) if (!i.on && MODS[i.mod].power + powerUsed(g) <= powerMax(g)) return 'on ' + labelOf(i);
     if (active(g, 'mind').some((i) => param(i, 'what', '') === 'reader') && P.inv.some((i) => i.kind === 'card')) return 'read card';
     // grind what the loadout leaves out (keep spare power modules: they come in when power runs short)
-    const spare = P.inv.find((i) => i.kind === 'mod' && !pick.has(i) && MODS[i.mod].family !== 'unique' && MODS[i.mod].family !== 'power' && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader') && !(MODS[i.mod].family === 'lamp' && !P.inv.concat(P.installed as any).some((x: any) => x !== i && MODS[x.mod]?.family === 'lamp')));
+    const spare = P.inv.find((i) => i.kind === 'mod' && !pick.has(i) && MODS[i.mod].family !== 'unique' && (MODS[i.mod].family !== 'power' || (param(i, 'slots', 0) > 0 && P.slots >= printer.MAX_SLOTS)) && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader') && !(MODS[i.mod].family === 'lamp' && ![...P.inv, ...P.installed].some((x) => x !== i && 'mod' in x && MODS[x.mod].family === 'lamp')));
     if (spare && 'mod' in spare) {
       run.recycled++;
       return 'recycle ' + labelOf(spare);
@@ -265,8 +300,33 @@ export function play(seed: number, o: Opts): Run {
     // buy at a machine in reach
     const buy = buyHere();
     if (buy) return buy;
+    // a lamp that saw you: close in on a diagonal (out of its lines) and bite it
+    const lamp = lamps.find((e) => !banned.has(e) && e.enemy!.data.noticed && dist(e, P) < 8 && (e.enemy!.type !== 'saint' || ready(3)));
+    if (lamp) {
+      const h = hunts.get(lamp) ?? { since: g.t, hp: lamp.enemy!.hp };
+      if (h.hp !== lamp.enemy!.hp) Object.assign(h, { since: g.t, hp: lamp.enemy!.hp });
+      hunts.set(lamp, h);
+      if (g.t - h.since > 8) banned.add(lamp); // it will not come to a corner: leave it
+      const fx = Math.floor(lamp.x);
+      const fy = Math.floor(lamp.y);
+      const diag = ([[1, 1], [1, -1], [-1, 1], [-1, -1]] as const).map(([ox, oy]) => [fx + ox, fy + oy] as [number, number]).filter(([x, y]) => cellAt(g, x, y) === Cell.floor).sort((a, b) => Math.hypot(a[0] - px, a[1] - py) - Math.hypot(b[0] - px, b[1] - py))[0];
+      if (diag && !(diag[0] === px && diag[1] === py)) {
+        avoid = (x, y) => inLine(x, y) && !(x === diag[0] && y === diag[1]);
+        const c = walkTo({ x: diag[0] + 0.5, y: diag[1] + 0.5, zone: zoneHere() });
+        avoid = null;
+        if (c !== 'listen') { why = 'hunt lamp ' + lamp.id; return c; }
+        banned.add(lamp); // no way round its lines from here: leave it
+      } else if (diag) return 0.3;
+    }
+    if (false) {
+      {
+      }
+    }
     // where to go
-    return walkTo(goal());
+    const gl = goal();
+    const out = walkTo(gl);
+    why ||= 'goal ' + (gl?.explore !== undefined ? 'explore z' + gl.explore + ' ' + (explore ? explore.x + ',' + explore.y : '') : gl ? Math.round(gl.x) + ',' + Math.round(gl.y) : '-');
+    return out;
   }
 
   const labelOf = (i: { mod: string; roll?: any }) => (i.roll ? i.roll.tag + ' ' : '') + MODS[i.mod].name;
@@ -289,8 +349,10 @@ export function play(seed: number, o: Opts): Run {
 
   /** the zone of the next thing to reach: shard k or the engine */
   function nextTarget(): { x: number; y: number; what: string } | null {
-    const v = g.vectors.filter((v) => !v.found && (v.what === 'scripture shard' || v.what === 'thaw engine')).sort((a, b) => dist(a, P) - dist(b, P))[0];
-    return v ?? null;
+    // the nearest one it is ready for, else the one in the shallowest zone
+    const vs = g.vectors.filter((v) => !v.found && (v.what === 'scripture shard' || v.what === 'thaw engine'));
+    const ok = vs.filter((v) => ready(zones.zoneAt(v.x, v.y))).sort((a, b) => dist(a, P) - dist(b, P));
+    return ok[0] ?? vs.sort((a, b) => zones.zoneAt(a.x, a.y) - zones.zoneAt(b.x, b.y) || dist(a, P) - dist(b, P))[0] ?? null;
   }
   function targetZone(): number {
     const v = nextTarget();
@@ -347,8 +409,10 @@ export function play(seed: number, o: Opts): Run {
     const go = v && ready(zt);
     // the farthest zone the player is willing to wander in now
     const roam = go ? zt : Math.max(0, Math.min(zones.ZONES.length - 1, bestReadyZone()));
-    const items = g.ents.filter((e) => e.kind === 'item' && !banned.has(e) && dist(e, P) < 24 && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()));
-    const machines = g.ents.filter((e) => (e.kind === 'printer' || e.data?.altar) && !banned.has(e) && dist(e, P) < 30 && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()) && machineOffers(e).some((x) => x.ok));
+    // heading for a shard it is ready for, it only stops for what lies close to the way
+    const near0 = go ? 8 : 24;
+    const items = g.ents.filter((e) => e.kind === 'item' && !banned.has(e) && dist(e, P) < near0 && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()));
+    const machines = g.ents.filter((e) => (e.kind === 'printer' || e.data?.altar) && !banned.has(e) && dist(e, P) < (go ? 12 : 30) && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()) && machineOffers(e).some((x) => x.ok));
     // keep going for what it chose a moment ago (two near things must not pull it back and forth)
     if (cur && g.t < cur.until && !banned.has(cur.ref) && g.ents.includes(cur.ref as Entity) && (items.includes(cur.ref as Entity) || machines.includes(cur.ref as Entity)))
       return { x: (cur.ref as Entity).x, y: (cur.ref as Entity).y, ref: cur.ref, zone: roam };
@@ -377,6 +441,7 @@ export function play(seed: number, o: Opts): Run {
       visits.clear();
     }
     goalRef = t.ref ?? null;
+    lastGoalRef = goalRef ?? lastGoalRef;
     // BFS over generated floor
     const d = new Map([[here, 0]]);
     const prev = new Map<string, [number, number]>();
@@ -387,7 +452,7 @@ export function play(seed: number, o: Opts): Run {
         const nx = x + ox;
         const ny = y + oy;
         const k = key(nx, ny);
-        if (d.has(k) || cellAt(g, nx, ny) !== Cell.floor) continue;
+        if (d.has(k) || cellAt(g, nx, ny) !== Cell.floor || avoid?.(nx, ny)) continue;
         if (zones.zoneAt(nx + 0.5, ny + 0.5) > allowed && zones.zoneAt(x + 0.5, y + 0.5) <= allowed) continue; // a careful player keeps out of zones it is not ready for
         d.set(k, d.get(key(x, y))! + 1);
         prev.set(k, [x, y]);
@@ -427,6 +492,7 @@ export function play(seed: number, o: Opts): Run {
     }
     if (!target || (target[0] === px && target[1] === py)) {
       if (t.ref) banned.add(t.ref);
+      why = 'no target ' + JSON.stringify({ ...t, ref: !!t.ref }) + ' q' + q.length;
       return 'listen';
     }
     const path: [number, number][] = [];
@@ -445,7 +511,7 @@ export function play(seed: number, o: Opts): Run {
   const snap = () => {
     const r = resAll(g);
     run.resPeak = Math.max(run.resPeak, r);
-    run.snaps.push({ t: Math.round(g.t), zone: zoneHere(), hp: Math.round(P.hp), maxHp: P.maxHp, power: powerMax(g), slots: P.slots, dps: +dpsOf(active(g, 'weapon')).toFixed(2), armour: active(g, 'body').reduce((s, i) => s + param<number>(i, 'armour', 0), 0), res: r, mods: P.installed.length + P.inv.filter((i) => i.kind === 'mod').length });
+    run.snaps.push({ t: Math.round(g.t), zone: zoneHere(), hp: Math.round(P.hp), maxHp: P.maxHp, power: powerMax(g), slots: P.slots, dps: +dpsOf(active(g, 'weapon')).toFixed(2), armour: active(g, 'body').reduce((s, i) => s + param<number>(i, 'armour', 0), 0), res: r, mods: P.installed.length + P.inv.filter((i) => i.kind === 'mod').length, ready: Math.round(zones.readiness(g)), at: Math.floor(P.x) + ',' + Math.floor(P.y), goal: (() => { const v = nextTarget(); return v ? `${v.what} ${Math.round(v.x)},${Math.round(v.y)} z${zones.zoneAt(v.x, v.y)}` : '-'; })() });
   };
 
   let last = '';
@@ -456,14 +522,19 @@ export function play(seed: number, o: Opts): Run {
       nextSnap += 60;
     }
     for (const i of [...P.inv, ...P.installed]) if ('mod' in i && i.mod === 'thaw-engine') mark('engine found');
-    g.cards.forEach((c, k) => c.startsWith('shard') && mark('shard ' + c));
+    g.cards.forEach((c) => (c.startsWith('shard') ? mark('shard ' + c) : mark('card ' + c)));
+    if (P.installed.some((i) => i.mod === 'card-reader')) mark('reader');
+    for (const v of g.vectors) mark('vector ' + v.what);
+    for (const k of zones.ZONES.slice(1).map((z) => z.need)) if (zones.readiness(g) >= k) mark('ready ' + k);
     const pw = powerMax(g);
     if (pw > lastPow) run.steps.push({ t: Math.round(g.t), what: `power ${lastPow}→${pw}` });
     if (P.slots > lastSlots) run.steps.push({ t: Math.round(g.t), what: `slots ${lastSlots}→${P.slots}` });
+    if ((P.flesh ?? 0) > lastFlesh) run.steps.push({ t: Math.round(g.t), what: `hp +${P.flesh}` });
+    lastFlesh = P.flesh ?? 0;
     lastPow = Math.max(lastPow, pw);
     lastSlots = P.slots;
     const c = decide();
-    if (o.debug && (process.env.ALL || typeof c === 'string' || run.log.length === 0 || !run.log[run.log.length - 1].endsWith('wait'))) run.log.push(`${g.t.toFixed(1)} ${Math.floor(P.x)},${Math.floor(P.y)} hp${P.hp.toFixed(1)} > ${typeof c === 'number' ? 'wait' : c}${typeof c === 'number' ? ' ' + why + ' wait' : ''}`);
+    if (o.debug && (process.env.ALL || typeof c === 'string' || run.log.length === 0 || !run.log[run.log.length - 1].endsWith('wait'))) run.log.push(`${g.t.toFixed(1)} ${Math.floor(P.x)},${Math.floor(P.y)} hp${P.hp.toFixed(1)} > ${typeof c === 'number' ? 'wait' : c + ' ' + why}${typeof c === 'number' ? ' ' + why + ' wait' : ''}`);
     if (typeof c === 'number') advance(c);
     else {
       send(c);

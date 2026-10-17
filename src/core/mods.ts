@@ -73,7 +73,7 @@ export function active(g: Game, fam: Family): Inst[] {
 
 export function powerMax(g: Game): number {
   let p = g.player.core;
-  for (const i of g.player.installed) if (def(i).family === 'power' && i.on) p += param<number>(i, 'power', 0);
+  for (const i of g.player.installed) if (def(i).family === 'power' && i.on) p += Math.round(param<number>(i, 'power', 0));
   return p;
 }
 export function powerUsed(g: Game): number {

@@ -14,7 +14,7 @@ const sum = (g: Game, key: string) => body(g).reduce((s, i) => s + param<number>
 
 export function tickBody(g: Game, dt: number): void {
   const p = g.player;
-  p.maxHp = START_HP + sum(g, 'hp');
+  p.maxHp = START_HP + (p.flesh ?? 0) + sum(g, 'hp');
   if (p.hp > p.maxHp) p.hp = p.maxHp;
   const z = zoneAt(p.x, p.y);
   // the ossuary's cold: no mending without a lamp on (body modules still mend, at half)

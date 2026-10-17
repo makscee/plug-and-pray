@@ -115,12 +115,18 @@ chunkHook((g: Game, c: Chunk) => {
   }
 });
 
+/** cells around a guarded shard kept free of other foes */
+export const CLEAR = 6;
+
 /** an elite stands over a shard (and the engine): a cell or two off it, at full strength for its zone */
 function guard(g: Game, x: number, y: number, type: string): void {
   for (const [dx, dy] of [[2, 0], [-2, 0], [0, 2], [0, -2], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
     if (!open(g, x + dx, y + dy)) continue;
     const e = spawnEnemy(g, type, x + dx, y + dy);
     e.enemy!.data.elite = true;
+    e.enemy!.data.post = [e.x, e.y];
+    // the elite keeps its ground: no rabble crowds the shard (a fight with it, not a pile-on)
+    g.ents = g.ents.filter((o) => !o.enemy || o === e || Math.hypot(o.x - x, o.y - y) > CLEAR);
     return;
   }
 }

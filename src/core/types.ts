@@ -69,6 +69,8 @@ export interface Player {
   move: [number, number] | null;
   /** game time (s) the player last took damage */
   hurtAt: number;
+  /** max hp bought at altars, on top of START_HP and body modules */
+  flesh?: number;
 }
 
 /** a vector from a memory card: a thing placed at a cell */

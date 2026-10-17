@@ -1,5 +1,5 @@
-// Altars: old machines that take an offering. `offer power` grows the core's power for good (the price
-// climbs with each one), `offer mend` buys a full mend. They are the steady sink for what you gather:
+// Altars: old machines that take an offering. `offer power` grows the core's power for good and `offer
+// flesh` your max hp (the prices climb with each one), `offer mend` buys a full mend. They are the steady sink for what you gather:
 // one near where you woke (chunk 1,1), then now and then farther out.
 import { chunkHook } from '../core/grid';
 import { dist, say, spawn, tickHooks } from '../core/game';
@@ -21,6 +21,14 @@ export function powerCost(g: Game): Cost {
   return c;
 }
 export const MEND: Cost = { bone: 2 };
+/** max hp an altar can add, two at a time */
+export const MAX_FLESH = 12;
+export function fleshCost(g: Game): Cost {
+  const n = (g.player.flesh ?? 0) / 2;
+  const c: Cost = { bone: 4 + 2 * n, copper: 1 + n };
+  if (n >= 2) c.ichor = 1;
+  return c;
+}
 
 export const altarNear = (g: Game): Entity | undefined => g.ents.find((e) => e.data?.altar && dist(e, g.player) < 1.6);
 
@@ -28,6 +36,7 @@ export const altarNear = (g: Game): Entity | undefined => g.ents.find((e) => e.d
 export function offers(g: Game, _e: Entity): [string, Cost][] {
   const out: [string, Cost][] = [];
   if (g.player.core < MAX_CORE) out.push(['offer power', powerCost(g)]);
+  if ((g.player.flesh ?? 0) < MAX_FLESH) out.push(['offer flesh', fleshCost(g)]);
   if (g.player.hp < g.player.maxHp * 0.7) out.push(['offer mend', MEND]);
   return out;
 }
@@ -42,11 +51,12 @@ function pay(g: Game, c: Cost): void {
 
 const menu = (g: Game) => [
   g.player.core < MAX_CORE ? [{ text: 'offer power', cmd: 'offer power' }, `  +1 power for good: ${fmt(powerCost(g))}`] : ['  power: the core is full.'],
+  (g.player.flesh ?? 0) < MAX_FLESH ? [{ text: 'offer flesh', cmd: 'offer flesh' }, `  +2 max hp for good: ${fmt(fleshCost(g))}`] : ['  flesh: as much as it can give.'],
   [{ text: 'offer mend', cmd: 'offer mend' }, `  mend fully: ${fmt(MEND)}`],
 ];
 
 verb('offer', {
-  help: 'at an altar: offer power, offer mend',
+  help: 'at an altar: offer power, offer flesh, offer mend',
   when: (g) => !!altarNear(g),
   run(g, [what]) {
     const e = altarNear(g);
@@ -60,6 +70,16 @@ verb('offer', {
       p.core++;
       g.events.push({ type: 'print', at: [e.x, e.y] });
       return say(g, `the altar drinks it. your core runs warmer: power ${p.core} at the core.`);
+    }
+    if (what === 'flesh') {
+      if ((p.flesh ?? 0) >= MAX_FLESH) return say(g, 'the altar has no more to give you.');
+      const c = fleshCost(g);
+      if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.`);
+      pay(g, c);
+      p.flesh = (p.flesh ?? 0) + 2;
+      p.hp += 2;
+      g.events.push({ type: 'print', at: [e.x, e.y] });
+      return say(g, `the altar knits you more of yourself: +2 max hp.`);
     }
     if (what === 'mend') {
       if (!affords(g, MEND)) return say(g, `the altar wants ${fmt(MEND)}.`);

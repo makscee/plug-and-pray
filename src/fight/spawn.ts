@@ -11,13 +11,16 @@ import { ZONES, zoneAt, zoneFar } from '../world/zones';
 /** cells closer than this to where you wake hold no enemy (mites sense 6) */
 const CALM = 7.5;
 
-function floorCell(r: Rng, c: Chunk): [number, number] | null {
+function floorCell(r: Rng, c: Chunk, elites: Entity[] = []): [number, number] | null {
   const cells: number[] = [];
   for (let k = 0; k < c.cells.length; k++) {
     const x = k % CHUNK;
     const y = (k / CHUNK) | 0;
     const calm = Math.hypot(c.cx * CHUNK + x + 0.5 - 8.5, c.cy * CHUNK + y + 0.5 - 8.5) < CALM;
-    if (c.cells[k] === Cell.floor && x > 1 && y > 1 && x < CHUNK - 2 && y < CHUNK - 2 && !calm) cells.push(k);
+    const wx = c.cx * CHUNK + x + 0.5;
+    const wy = c.cy * CHUNK + y + 0.5;
+    const guarded = elites.some((e) => Math.hypot(e.x - wx, e.y - wy) < 6);
+    if (c.cells[k] === Cell.floor && x > 1 && y > 1 && x < CHUNK - 2 && y < CHUNK - 2 && !calm && !guarded) cells.push(k);
   }
   if (!cells.length) return null;
   const k = r.pick(cells);
@@ -31,9 +34,9 @@ export function table(far: number): [string, number, number][] {
   if (far === 0) return [['mite', 1, 2]]; // the start chunk's conduits
   const z = zoneFar(far);
   if (z === 0) return [['mite', 0.85, 2], ['mite', 0.35, 2], ['seraph', 0.25, 1]];
-  if (z === 1) return [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.4, 1], ['mimic', 0.1, 1]];
-  if (z === 2) return [['mite', 0.6, 4], ['walker', 0.55, 1], ['seraph', 0.35, 1], ['hum', 0.35, 1], ['mimic', 0.15, 1]];
-  return [['mite', 0.5, 5], ['walker', 0.5, 1], ['pyre', 0.45, 1], ['hum', 0.4, 2], ['mimic', 0.15, 1]];
+  if (z === 1) return [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
+  if (z === 2) return [['mite', 0.6, 3], ['walker', 0.55, 1], ['seraph', 0.35, 1], ['hum', 0.35, 1], ['mimic', 0.15, 1]];
+  return [['mite', 0.5, 4], ['walker', 0.5, 1], ['pyre', 0.45, 1], ['hum', 0.4, 2], ['mimic', 0.15, 1]];
 }
 
 /** a foe made for its zone: hp scaled here, its damage by `FOE.damage` in the hurt hook */
@@ -50,7 +53,7 @@ export function fillFoes(g: Game, c: Chunk): void {
   const far = Math.hypot(c.cx, c.cy);
   for (const [type, p, n] of table(far)) {
     if (!r.chance(p)) continue;
-    const at = floorCell(r, c);
+    const at = floorCell(r, c, g.ents.filter((e) => e.enemy?.data.elite));
     if (!at) continue;
     for (let k = 0; k < n; k++) {
       // a group stands together: a few tenths apart in its cell
