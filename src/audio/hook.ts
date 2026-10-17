@@ -2,7 +2,7 @@
 // main.ts imports this file once; start() on the first key or click is main's.
 
 import { frameHooks } from '../ui';
-import { CUES, cue, depth, soundboard, start, started } from '.';
+import { CUES, cue, depth, measure, soundboard, start, started } from '.';
 import { deep, ear, listen } from './listen';
 
 const e = ear();
@@ -21,4 +21,4 @@ if (typeof location !== 'undefined' && new URLSearchParams(location.search).has(
 }
 
 // for the play-through: start audio and fire every cue without a real gesture
-if (typeof window !== 'undefined') (window as unknown as { thawAudio: unknown }).thawAudio = { start, started, cue, CUES };
+if (typeof window !== 'undefined') (window as unknown as { thawAudio: unknown }).thawAudio = { start, started, cue, CUES, measure };

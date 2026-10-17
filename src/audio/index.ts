@@ -28,7 +28,7 @@ const LEVEL = 0.5;
 /** the drone's own level under the master */
 const DRONE = 0.11;
 
-let ctx: AudioContext | null = null;
+let ctx: BaseAudioContext | null = null;
 let out: GainNode;
 let noise: AudioBuffer;
 type Drone = { g: GainNode; pitch: OscillatorNode[]; base: number[]; srcs: AudioScheduledSourceNode[] };
@@ -41,20 +41,46 @@ const whines = new Map<number, { g: GainNode; o: OscillatorNode[] }>();
 /** called on the first key or click: browsers start audio only after a gesture */
 export function start(): void {
   if (ctx) {
-    if (ctx.state === 'suspended') void ctx.resume();
+    if (ctx.state === 'suspended') void (ctx as AudioContext).resume();
     return;
   }
   const AC = typeof window !== 'undefined' ? window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext : undefined;
   if (!AC) return;
-  ctx = new AC();
-  out = ctx.createGain();
-  out.gain.value = LEVEL;
-  out.connect(ctx.destination);
-  noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-  const d = noise.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  wire(new AC());
   drone = body();
   depth(depthWanted);
+}
+
+function wire(c: BaseAudioContext): void {
+  ctx = c;
+  out = c.createGain();
+  out.gain.value = LEVEL;
+  out.connect(c.destination);
+  noise = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
+  const d = noise.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+}
+
+/** loudness of a cue (or 'drone', 12 s of it) rendered offline, in dBFS: for tuning the mix */
+export async function measure(name: string): Promise<{ peak: number; rms: number }> {
+  const live = { ctx, out, noise, drone };
+  const secs = name === 'drone' ? 12 : 3;
+  const off = new OfflineAudioContext(1, 44100 * secs, 44100);
+  wire(off);
+  if (name === 'drone') body();
+  else cue(name, { secs: 1.5 });
+  ({ ctx, out, noise, drone } = live);
+  const d = (await off.startRendering()).getChannelData(0);
+  let peak = 0;
+  let sum = 0;
+  for (const v of d) {
+    peak = Math.max(peak, Math.abs(v));
+    sum += v * v;
+  }
+  const db = (x: number) => Math.round(20 * Math.log10(x + 1e-9));
+  // rms over the cue's own length, not the silence after it
+  const loud = d.filter((v) => Math.abs(v) > 1e-4).length || 1;
+  return { peak: db(peak), rms: db(Math.sqrt(sum / loud)) };
 }
 
 export function started(): boolean {
@@ -89,12 +115,12 @@ export function cue(name: Cue | string, opt: { secs?: number; uid?: number } = {
   const t = ctx.currentTime;
   switch (name) {
     case 'step':
-      tick(t, 0.5, 2400);
-      thump(t, 0.35, 120, 0.05);
-      tick(t + 0.07, 0.3, 1700);
+      tick(t, 0.3, 2400);
+      thump(t, 0.18, 120, 0.05);
+      tick(t + 0.07, 0.2, 1700);
       return;
     case 'drag':
-      return scrape(t, 0.45, 0.22);
+      return scrape(t, 0.45, 0.35);
     case 'take':
       tick(t, 0.4, 3000);
       return tone(t + 0.02, 'triangle', 520, 780, 0.12, 0.03);
@@ -107,23 +133,23 @@ export function cue(name: Cue | string, opt: { secs?: number; uid?: number } = {
     case 'warm':
       return whine(t, Math.max(0.2, opt.secs ?? 1), opt.uid);
     case 'ready':
-      return tone(t, 'sine', 880, 880, 0.09, 0.022, 2000);
+      return tone(t, 'sine', 880, 880, 0.09, 0.03, 2000);
     case 'off':
       if (opt.uid !== undefined) cut(opt.uid);
       return tone(t, 'sine', 420, 55, 0.6, 0.035, 900);
     case 'hit':
-      burst(t, 0.6, 3500, 0.06);
+      burst(t, 0.4, 3500, 0.06);
       return tone(t, 'square', 1400, 300, 0.09, 0.025, 4000);
     case 'hurt':
-      thump(t, 0.7, 90, 0.18);
-      burst(t, 0.5, 600, 0.12);
+      thump(t, 0.45, 90, 0.18);
+      burst(t, 0.35, 600, 0.12);
       return tone(t, 'sawtooth', 110, 70, 0.22, 0.04, 700);
     case 'kill':
       burst(t, 0.6, 1200, 0.2);
       return tone(t + 0.03, 'triangle', 300, 60, 0.5, 0.05, 1200);
     case 'die':
       for (const uid of [...whines.keys()]) cut(uid);
-      thump(t, 0.8, 70, 0.4);
+      thump(t, 0.5, 70, 0.4);
       return tone(t, 'sawtooth', 220, 30, 2.5, 0.05, 500);
     case 'printer':
       for (let k = 0; k < 14; k++) tick(t + k * 0.055 + (k % 4 === 3 ? 0.03 : 0), 0.35 + (k % 2) * 0.15, 1800 + (k % 3) * 500);
@@ -131,12 +157,12 @@ export function cue(name: Cue | string, opt: { secs?: number; uid?: number } = {
     case 'card':
       for (let k = 0; k < 6; k++) {
         const f = [1320, 990, 1760, 1175, 1480, 880][k];
-        tone(t + k * 0.06, 'square', f, f, 0.045, 0.012, 3000);
+        tone(t + k * 0.06, 'square', f, f, 0.045, 0.04, 3000);
       }
       return;
     case 'heart':
-      thump(t, 0.9, 65, 0.25);
-      return thump(t + 0.28, 0.6, 58, 0.22);
+      thump(t, 0.7, 65, 0.25);
+      return thump(t + 0.28, 0.45, 58, 0.22);
   }
 }
 
