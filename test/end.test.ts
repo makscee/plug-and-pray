@@ -31,6 +31,9 @@ describe('the Thaw Engine ending', () => {
     Object.assign(g.stats, { far: 212, mods: ['a', 'b', 'c'], kills: 7 });
     g.t = 1384.4;
     expect(clock(65)).toBe('1:05');
+    Object.assign(g.stats, { far: 1, mods: ['a'] });
+    expect(summary(g)).toMatch(/^1 cell out · 1 module found/);
+    Object.assign(g.stats, { far: 212, mods: ['a', 'b', 'c'] });
     expect(summary(g)).toBe('212 cells out · 3 modules found · 7 put down · 23:04');
   });
 });

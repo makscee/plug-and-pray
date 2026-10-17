@@ -42,5 +42,6 @@ export function clock(s: number): string {
 /** the end card's run line */
 export function summary(g: Game): string {
   const s = g.stats;
-  return `${s.far} cells out · ${s.mods.length} modules found · ${s.kills} put down · ${clock(g.t)}`;
+  const n = (k: number, one: string) => `${k} ${one}${k === 1 ? '' : 's'}`;
+  return `${n(s.far, 'cell')} out · ${n(s.mods.length, 'module')} found · ${s.kills} put down · ${clock(g.t)}`;
 }
