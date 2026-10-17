@@ -14,6 +14,7 @@ const BASE = process.env.PLAY_URL ?? `http://localhost:${PORT}/`;
 const URL = `${BASE}?new&fast`;
 
 /** [kind, text, expect]: 'verb' clicks the bar, 'tok' the last token with that text, 'see' only waits,
+ * 'node' the last token naming that node id,
  * 'eval' runs a function in the page (text), 'click' clicks a CSS selector */
 export const STEPS = [
   ['see', null, 'shell ready'],
@@ -72,31 +73,59 @@ export const STEPS = [
   ['see', null, 'arrived'],
   ['verb', 'snap', null],
   ['tok', 'n', '96 px'],
+  // the habitat (#1320: the real route, clicks only): mount it, the outbox, the key, the pods, a home file
   ['verb', 'dev', 'habitat'],
-  ['tok', 'here', 'driving'],
-  ['see', null, 'on the bus: WX'],
-  ['tok', 'forest', 'T  /'],
+  ['node', 'HAB', 'pods/'],
+  ['tok', 'radio/', 'outbox'],
+  ['tok', 'outbox', '12.4S 103.7E'],
+  ['verb', 'dev', 'habitat'],
+  ['node', 'HAB', 'keys/'],
+  ['tok', 'keys/', 'uplink*'],
+  ['tok', 'uplink*', 'installed'],
+  ['verb', 'dev', 'habitat'],
+  ['node', 'HAB', 'pods/'],
+  ['tok', 'pods/', 'telemetry'],
+  ['tok', 'telemetry', '3 nominal'],
   ['verb', 'dev', 'RADIO'],
   ['tok', 'RADIO', 'send*'],
   ['tok', 'send*', 'installed'],
-  ['verb', 'send', 'no uplink key'],
-  // SHORTCUT until arm (#1312) and the content (#1314) land (drive is in, but RLY is named nowhere yet): put T at the relay with the key, the firmware
-  // and three facts, as the HAB, LDR and RLY steps will. Replace it with those steps.
-  ['eval', () => {
-    const s = window.thaw.w.state;
-    s.mounted.push('HAB', 'LDR');
-    s.installed.push('HAB/keys/uplink', 'LDR/relay.fw');
-    s.position = '@RLY';
-    s.armed.push('?mast');
-    s.facts.push('!coords', '!pods', '!kaja');
-  }, null],
-  // at the relay: the mast in frame, the camera open, send from inside it
+  ['verb', 'send', 'no relay firmware'],
+  ['verb', 'dev', 'habitat'],
+  ['node', 'HAB', 'home/'],
+  ['tok', 'home/', 'kaja/'],
+  ['tok', 'kaja/', 'card'],
+  ['tok', 'card', 'Kaja Lind'],
+  // the good camera: the sibling in its crater, named in the habitat's cam/
+  ['verb', 'dev', 'habitat'],
+  ['node', 'HAB', 'cam/'],
+  ['tok', 'cam/', 'module'],
+  ['tok', 'module', 'T-2 3.9 km bearing 250'],
+  ['tok', 'T-2 3.9 km bearing 250', 'driving'],
+  ['see', null, 'arrived'],
   ['verb', 'snap', null],
-  ['tok', 'e', 'in view: mast'],
-  ['eval', () => {
-    window.thaw.w.state.bar.push('cam');
-    window.thaw.term.drawBar();
-  }, null],
+  ['tok', 'w', 'in view'],
+  ['click', '.win-frame .tok[data-node="?sibling"]', 'on the bus: T-2'],
+  ['node', 'T-2', 'cam*'],
+  ['tok', 'cam*', 'installed'],
+  // the lander, from the NAV waypoints: arm it, the firmware
+  ['verb', 'drive', 'LDR'],
+  ['node', '@LDR', 'driving'],
+  ['see', null, 'arrived'],
+  ['verb', 'snap', null],
+  ['tok', 's', 'in view'],
+  ['click', '.win-frame .tok[data-node="?lander"]', 'on the bus: LDR'],
+  ['node', 'LDR', 'relay.fw*'],
+  ['tok', 'relay.fw*', 'installed'],
+  // RLY's line in the habitat's files, found again from the forest
+  ['click', '.win-map .tok[data-tok="forest"]', 'T  /'],
+  ['click', '.win-map .tok[data-node="HAB/home/ilya"]', 'card'],
+  ['node', 'HAB/home/ilya/card', 'RLY 3.1 km bearing 138'],
+  ['tok', 'RLY 3.1 km bearing 138', 'driving'],
+  ['see', null, 'arrived'],
+  // at the relay: the mast in frame, armed, the camera open, send from inside it
+  ['verb', 'snap', null],
+  ['tok', 'e', 'in view'],
+  ['click', '.win-frame .tok[data-node="?mast"]', 'on the bus: RLY'],
   ['verb', 'cam', 'cam open'],
   ['verb', 'send', 'packet  0/64 bytes'],
   ['tok', 'habitat at 12.4S 103.7E', '18/64'],
@@ -122,6 +151,8 @@ async function main() {
   await page.goto(URL);
   const idle = () => page.waitForFunction(() => document.body.dataset.busy === '0', null, { timeout: 15000 });
   let n = 0;
+  let clicks = 0;
+  let sol = null;
   for (const [kind, text, expect] of STEPS) {
     n++;
     const where = `step ${n} ${kind} ${typeof text === 'function' ? '' : text ?? ''}`;
@@ -130,6 +161,9 @@ async function main() {
       if (kind === 'verb') await page.locator(`.bar [data-verb="${text}"]`).click({ timeout: 3000 });
       if (kind === 'tok') await page.locator(`.tok:not(.dim):not(.btn)[data-tok="${text}"]`).last().click({ timeout: 3000 });
       if (kind === 'eval') await page.evaluate(text);
+      if (['verb', 'tok', 'node', 'click'].includes(kind)) clicks++;
+      if (text === 'transmit') sol = await page.evaluate(() => window.thaw.w.state.sol);
+      if (kind === 'node') await page.locator(`.tok:not(.dim):not(.btn)[data-node="${text}"]`).last().click({ timeout: 3000 });
       if (kind === 'click') await page.locator(text).click({ timeout: 3000 });
       await idle();
       if (expect) await page.waitForFunction((t) => document.body.innerText.includes(t), expect, { timeout: 3000 });
@@ -145,7 +179,7 @@ async function main() {
   }
   mkdirSync('out', { recursive: true });
   await page.screenshot({ path: 'out/play-end.png' });
-  console.log(`play: ${STEPS.length} steps ok`);
+  console.log(`play: ${STEPS.length} steps ok, ${clicks} clicks, transmit at sol ${sol}`);
   await browser.close();
 }
 

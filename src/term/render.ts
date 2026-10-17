@@ -15,6 +15,7 @@ export function tokenEl(t: Token): TokenEl {
   el.className = `tok k-${t.kind}`;
   el.textContent = t.text;
   el.dataset.tok = t.text;
+  if (t.nodeId) el.dataset.node = t.nodeId;
   el.tok = t;
   return el;
 }
