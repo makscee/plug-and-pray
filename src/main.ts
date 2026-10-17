@@ -5,6 +5,7 @@ import { hook as end } from './end';
 import { follow } from './map/trip';
 import { hookFrame } from './scene/frame';
 import { render, still } from './scene';
+import { ambient, soundboard } from './audio';
 
 const params = new URLSearchParams(location.search);
 if (params.has('new')) reset();
@@ -15,6 +16,11 @@ follow(term);
 hookFrame(term);
 (window as unknown as { thaw: unknown }).thaw = { w, term, scene: { render, still } };
 end(term);
+// sound loops follow the state: wind once a frame was taken, motor while driving
+const sound = () => ambient({ wind: !!w.state.frame && !w.state.frame.still, motor: !!w.state.trip });
+term.after.push(sound);
+sound();
+if (params.has('sounds')) soundboard();
 
 if (w.state.lastOutput) {
   void term.print(w.state.lastOutput, false);
