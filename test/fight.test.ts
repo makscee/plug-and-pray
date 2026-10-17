@@ -125,4 +125,12 @@ describe('fight', () => {
     expect(g.player.hp).toBe(10);
     expect(text(g)).toContain('on nothing');
   });
+
+  it('the first three mites cost the spark finger a few hp, not the run', () => {
+    const g = armed('spark-finger');
+    for (const x of [10.2, 10.5, 10.8]) spawnEnemy(g, 'mite', x, 8.5);
+    run(g, 10);
+    expect(g.ents.filter((e) => e.enemy)).toHaveLength(0);
+    expect(g.player.hp).toBeGreaterThan(5);
+  });
 });

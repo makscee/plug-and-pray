@@ -38,7 +38,8 @@ export function fillFoes(g: Game, c: Chunk): void {
     const at = floorCell(r, c);
     if (!at) continue;
     for (let k = 0; k < n; k++) {
-      const [x, y] = k ? (floorCell(r, c) ?? at) : at;
+      // a group stands together: a few tenths apart in its cell
+      const [x, y] = [at[0] + (k - (n - 1) / 2) * 0.3, at[1]];
       if (type === 'mimic') spawn(g, { kind: 'item', x, y, item: lootMod(r, far), data: { mimic: true } });
       else spawnEnemy(g, type, x, y);
     }
