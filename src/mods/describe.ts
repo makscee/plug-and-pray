@@ -33,6 +33,7 @@ export function does(m: Modish): string {
     case 'lamp':
       return `lamp · lights ${n(p<number>('radius'))} cells · things see you farther`;
     case 'gait':
+      if (p('pilot')) return `pilot · walks you to a spot: click the map or goto, ${n(p<number>('pace'))} cells/s, plans ${n(p<number>('plan'))} cells${p('avoid') ? ', around enemies' : ''}`;
       if (p('go')) return 'legs · walk cells: go <dir> <n>, or the n e s w buttons';
       if (p('keys')) return `legs · arrow keys, ${n(p<number>('pace'))} cells/s`;
       if (p('free')) return `legs · free walking, wasd + mouse, ${n(p<number>('speed'))} cells/s`;
@@ -50,6 +51,7 @@ export function does(m: Modish): string {
     case 'mind': {
       const w = p<string>('what');
       if (w === 'map') return `map · draws what you have seen, ${n(p<number>('span'))} cells across`;
+      if (w === 'log') return `log · keeps ${n(p<number>('keep'))} places that matter, noted within ${n(p<number>('range'))} cells, each with go`;
       if (w === 'reader') return 'reader · reads memory cards: read card';
       if (w === 'ledger') return 'ledger · everything you carry, in rows';
       if (w === 'compass') return 'compass · points to what the cards promised';
