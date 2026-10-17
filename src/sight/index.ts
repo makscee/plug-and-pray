@@ -242,6 +242,7 @@ view('camera', (el, inst, g) => {
   const prev = new Float32Array(res * res * 4);
   let next = 0;
   let shown = false;
+  let held = false;
   return {
     update(g) {
       const warm = inst.on && g.t >= inst.readyAt;
@@ -263,9 +264,14 @@ view('camera', (el, inst, g) => {
       const range = param<number>(inst, 'range', 8);
       const name = param<string>(inst, 'filter', 'color');
       const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color' });
-      // a failed read (a lost GL context, a frame the GPU dropped) comes back all zero: keep the
-      // last good frame rather than flash black; depth eyes may honestly see nothing
-      if (!MODES[name] && blank(px) && shown) return;
+      see(g, range);
+      // a failed read (a lost GL context, a frame the GPU dropped) comes back all zero: hold the
+      // last good frame for one read only, never longer (Maks 10-18: held frames froze an eye)
+      if (!MODES[name] && blank(px) && shown && !held) {
+        held = true;
+        return;
+      }
+      held = false;
       const filter = FILTERS[name] ?? FILTERS.color;
       const noise = param<number>(inst, 'noise', 0);
       if (!MODES[name]) addBlur(px, res, Math.round(param<number>(inst, 'blur', 0)));
@@ -275,7 +281,6 @@ view('camera', (el, inst, g) => {
       img.data.set(px);
       ctx.putImageData(img, 0, 0);
       shown = true;
-      see(g, range);
     },
   };
   void g;
