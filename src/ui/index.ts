@@ -3,6 +3,7 @@
 import { def, families, label, working } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 import { Console } from './console';
+import { Panels } from './panels';
 import { VIEWS, type View } from './views';
 import * as windows from './windows';
 
@@ -12,11 +13,13 @@ export const frameHooks: ((g: Game, dt: number) => void)[] = [];
 export class Screen {
   g: Game;
   con: Console;
+  panels: Panels;
   views = new Map<number, View>();
 
   constructor(g: Game) {
     this.g = g;
     this.con = new Console(g);
+    this.panels = new Panels(g, (c) => this.con.send(c));
   }
 
   /** every frame: windows follow the installed modules, views redraw, the console prints */
@@ -24,7 +27,7 @@ export class Screen {
     const g = this.g;
     const want = new Set(g.player.installed.map((i) => 'm' + i.uid));
     for (const id of windows.ids()) {
-      if (id === 'console' || want.has(id)) continue;
+      if (!/^m\d+$/.test(id) || want.has(id)) continue; // module windows only
       const uid = Number(id.slice(1));
       this.views.get(uid)?.dispose?.();
       this.views.delete(uid);
@@ -32,6 +35,7 @@ export class Screen {
     }
     for (const inst of g.player.installed) this.sync(inst, dt);
     this.con.draw();
+    this.panels.frame();
     for (const f of frameHooks) f(g, dt);
   }
 
