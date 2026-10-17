@@ -88,3 +88,31 @@ canvas.eye { display: block; width: 240px; height: 240px; image-rendering: pixel
 .ledger-row.dim { color: var(--dim); }
 .ledger-sets { margin-top: 6px; color: var(--dim); }
 canvas.clock { display: block; width: 132px; height: 132px; }
+
+/* the panels down the right edge: modules (slots and power on top), inventory, nearby */
+.win.panel { width: 260px; }
+.win.panel .dot { display: none; }
+.win.panel .body { max-height: 220px; overflow-y: auto; }
+.win.panel-modules .body { max-height: 320px; }
+.win.panel .row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+.win.panel .row .name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.win.panel .row .st { font-size: 14px; }
+.win.panel .row .cost { color: var(--dim); }
+.win.panel .row .dim, .win.panel .row .note { color: var(--dim); }
+.win.panel .row .note { flex-basis: 100%; padding-left: 8px; font-size: 16px; }
+.win.panel .st-on { color: var(--acc); }
+.win.panel .st-warm { color: var(--fg); }
+.win.panel .st-off { color: var(--dim); }
+.win.panel button:disabled { color: var(--dim); cursor: default; text-decoration: none; }
+.win.panel .res { padding-bottom: 4px; margin-bottom: 4px; border-bottom: 1px solid var(--line); font-size: 22px; }
+.res-row { display: flex; align-items: center; gap: 10px; }
+.res-row > span:first-child { width: 120px; flex: none; white-space: nowrap; }
+.res-row .pips { flex-wrap: wrap; max-width: 116px; }
+.pips { display: inline-flex; gap: 3px; vertical-align: middle; }
+.pips b { width: 10px; height: 10px; border: 1px solid var(--acc); }
+.pips b.used { background: var(--acc); }
+.pips.full b { border-color: var(--hurt); }
+.pips.full b.used { background: var(--hurt); }
+.pips b.over { border-style: dashed; }
+.hpbar .sep { margin: 0 8px; color: var(--dim); }
+.hpbar .pips b { width: 8px; height: 8px; }
