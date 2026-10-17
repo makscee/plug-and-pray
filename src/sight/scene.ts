@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { CHUNK, Cell, cell, veinOf } from '../core/grid';
+import { ENEMIES } from '../core/game';
 import type { Game } from '../core/types';
 
 /** cells drawn around you in each direction */
@@ -70,6 +71,9 @@ function build(g: Game, px: number, py: number): void {
 const itemGeo = new THREE.OctahedronGeometry(0.12);
 const foeGeo = new THREE.IcosahedronGeometry(0.22, 0);
 const itemMat = new THREE.MeshLambertMaterial({ color: 0x806040, emissive: 0xc08040, emissiveIntensity: 0.6 });
+const shotGeo = new THREE.IcosahedronGeometry(0.1, 0);
+const orbMat = new THREE.MeshBasicMaterial({ color: 0xffe0a0 });
+const nailMat = new THREE.MeshBasicMaterial({ color: 0xd0e0ff });
 const foeMat = new THREE.MeshLambertMaterial({ color: 0x8a8070, emissive: 0x401818, emissiveIntensity: 0.5 });
 
 /** entities near you as simple shapes; the slices give enemies their own look */
@@ -79,9 +83,14 @@ function place(g: Game): void {
   for (const e of g.ents) {
     if (Math.abs(e.x - p.x) > R || Math.abs(e.y - p.y) > R) continue;
     if (e.kind === 'enemy') {
+      if (ENEMIES[e.enemy!.type]?.hidden) continue; // the hum: no camera shows it
       const o = new THREE.Mesh(foeGeo, foeMat);
       o.position.set(e.x, 0.3 + Math.sin(g.t * 4 + e.id) * 0.04, e.y);
       o.rotation.y = g.t * 2 + e.id;
+      ents.add(o);
+    } else if (e.data?.shot) {
+      const o = new THREE.Mesh(shotGeo, e.data.foe ? orbMat : nailMat);
+      o.position.set(e.x, 0.35, e.y);
       ents.add(o);
     } else if (e.kind === 'item') {
       const o = new THREE.Mesh(itemGeo, itemMat);

@@ -1,6 +1,7 @@
 import './style.css';
 import './mods';
 import './sight';
+import './fight/ui';
 import { newGame, say, tick } from './core/game';
 import { Screen } from './ui';
 import { start } from './audio';
