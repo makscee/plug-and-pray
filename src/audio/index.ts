@@ -1,106 +1,168 @@
-// Sound (DESIGN 14): everything synthesized in Web Audio, no files, started on the first click.
-// One-shot cues (ticks, clacks, beeps, the chord) plus three loops: the fan hum from the first
-// click, wind from the first snap on, a low motor while a drive is under way. Quiet by default.
+// Sound (DESIGN 9): everything synthesized in Web Audio, no files, started on the first key or click.
+// One-shot cues for what the body does (steps, hits, modules clacking in, warm-up whines) over one
+// loop: the low drone of the god's body, which drifts slowly and sinks as you go deeper.
+// Quiet by default, and no loud noise beds (Maks 10-17: a white-noise wind came in harsh).
+// What plays when is decided in listen.ts; hook.ts wires it to the game.
 
-export type Cue =
-  | 'click' // a click
-  | 'key' // a typed character
-  | 'mount' // two-stage relay clack
-  | 'power' // a part comes on
-  | 'install' // a tool joins the bar
-  | 'grow' // the screen grows
-  | 'hum' // the fan hum, from boot
-  | 'wind' // from the first snap on
-  | 'motor' // during a drive
-  | 'chord' // cam opens
-  | 'beep' // the acknowledgment arrives
-  | 'snap' // a frame is taken: starts the wind
-  | 'arm' // the arm reaches
-  | 'cam'; // cam opens: the chord
+export const CUES = [
+  'step', // the stepper relay clicks a leg forward
+  'drag', // crawling: the body scrapes along
+  'take', // something picked up
+  'install', // a module clacks into its slot
+  'remove', // and back out
+  'warm', // a module warming up: a rising whine (secs = the warm-up)
+  'ready', // warm: it works now
+  'off', // power off: the whine sinks away
+  'hit', // you strike
+  'hurt', // you are struck
+  'kill', // something put down
+  'die', // you stop
+  'printer', // a printer chatters
+  'card', // a memory card is read
+  'heart', // one beat of the god's heart (the end)
+] as const;
+export type Cue = (typeof CUES)[number];
 
 /** master level: the whole mix stays under the game's feel */
 const LEVEL = 0.5;
+/** the drone's own level under the master */
+const DRONE = 0.11;
 
-let ctx: AudioContext | null = null;
+let ctx: BaseAudioContext | null = null;
 let out: GainNode;
 let noise: AudioBuffer;
-/** what the loops should be doing; applied as soon as audio starts */
-const want = { wind: false, motor: false };
-type Loop = { g: GainNode; srcs: AudioScheduledSourceNode[] };
-const loops: Partial<Record<'hum' | 'wind' | 'motor', Loop>> = {};
+type Drone = { g: GainNode; pitch: OscillatorNode[]; base: number[]; srcs: AudioScheduledSourceNode[] };
+let drone: Drone | null = null;
+/** how deep the drone sits, 0 (the start) to 1 (far below); applied once audio starts */
+let depthWanted = 0;
+/** a module's warm-up whine, by uid, so power off can cut it */
+const whines = new Map<number, { g: GainNode; o: OscillatorNode[] }>();
 
-/** called on the first click: browsers start audio only after a gesture */
+/** called on the first key or click: browsers start audio only after a gesture */
 export function start(): void {
   if (ctx) {
-    if (ctx.state === 'suspended') void ctx.resume();
+    if (ctx.state === 'suspended') void (ctx as AudioContext).resume();
     return;
   }
   const AC = typeof window !== 'undefined' ? window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext : undefined;
   if (!AC) return;
-  ctx = new AC();
-  out = ctx.createGain();
+  wire(new AC());
+  drone = body();
+  depth(depthWanted);
+}
+
+function wire(c: BaseAudioContext): void {
+  ctx = c;
+  out = c.createGain();
   out.gain.value = LEVEL;
-  out.connect(ctx.destination);
-  noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  out.connect(c.destination);
+  noise = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
   const d = noise.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  hum();
-  apply();
 }
 
-/** keep the loops in step with the game: wind once a frame was taken, motor while driving */
-export function ambient(s: { wind?: boolean; motor?: boolean }): void {
-  if (s.wind) want.wind = true; // the wind never stops once it started
-  if (s.motor !== undefined) want.motor = s.motor;
-  apply();
+/** loudness of a cue (or 'drone', 12 s of it) rendered offline, in dBFS: for tuning the mix */
+export async function measure(name: string): Promise<{ peak: number; rms: number }> {
+  const live = { ctx, out, noise, drone };
+  const secs = name === 'drone' ? 12 : 3;
+  const off = new OfflineAudioContext(1, 44100 * secs, 44100);
+  wire(off);
+  if (name === 'drone') body();
+  else cue(name, { secs: 1.5 });
+  ({ ctx, out, noise, drone } = live);
+  const d = (await off.startRendering()).getChannelData(0);
+  let peak = 0;
+  let sum = 0;
+  for (const v of d) {
+    peak = Math.max(peak, Math.abs(v));
+    sum += v * v;
+  }
+  const db = (x: number) => Math.round(20 * Math.log10(x + 1e-9));
+  // rms over the cue's own length, not the silence after it
+  const loud = d.filter((v) => Math.abs(v) > 1e-4).length || 1;
+  return { peak: db(peak), rms: db(Math.sqrt(sum / loud)) };
 }
 
-export function cue(name: Cue | string): void {
+export function started(): boolean {
+  return !!ctx;
+}
+
+/** the drone sinks as you go deeper (0..1); it glides there over half a minute */
+export function depth(d: number): void {
+  depthWanted = Math.max(0, Math.min(1, d));
+  if (!ctx || !drone) return;
+  const k = Math.pow(2, -depthWanted * 0.6); // down to about a major sixth lower
+  drone.pitch.forEach((o, i) => o.frequency.setTargetAtTime(drone!.base[i] * k, ctx!.currentTime, 12));
+}
+
+/** the drone on or off (the soundboard toggles it) */
+export function droneOn(on: boolean): void {
   if (!ctx) return;
-  const t = ctx.currentTime;
-  switch (name) {
-    case 'click':
-      return tick(t, 1, 3200);
-    case 'key':
-      return tick(t, 0.3, 4200 + Math.random() * 1200);
-    case 'mount':
-      clack(t);
-      return clack(t + 0.11, 0.7);
-    case 'power':
-      return tone(t, 'sine', 180, 360, 0.25, 0.06);
-    case 'install':
-      tone(t, 'square', 660, 660, 0.05, 0.025);
-      return tone(t + 0.07, 'square', 990, 990, 0.06, 0.025);
-    case 'grow':
-      return tone(t, 'triangle', 220, 440, 0.45, 0.04);
-    case 'snap':
-      tick(t, 0.6, 2000);
-      tick(t + 0.05, 0.4, 2600);
-      return ambient({ wind: true });
-    case 'wind':
-      return ambient({ wind: true });
-    case 'arm':
-      return tone(t, 'sawtooth', 140, 220, 0.35, 0.02, 600);
-    case 'motor':
-      return ambient({ motor: true });
-    case 'cam':
-    case 'chord':
-      return chord(t);
-    case 'beep':
-      tone(t, 'square', 1046, 1046, 0.08, 0.03, 2500);
-      return tone(t + 0.13, 'square', 1046, 1046, 0.08, 0.03, 2500);
+  if (on && !drone) {
+    drone = body();
+    depth(depthWanted);
+  } else if (!on && drone) {
+    const d = drone;
+    drone = null;
+    fade(d.g, 0, 1.5);
+    for (const o of d.srcs) o.stop(ctx.currentTime + 1.6);
   }
 }
 
-function apply(): void {
+/** play a cue; `uid` ties a warm-up whine to its module, `secs` is how long it warms */
+export function cue(name: Cue | string, opt: { secs?: number; uid?: number } = {}): void {
   if (!ctx) return;
-  if (want.wind && !loops.wind) loops.wind = wind();
-  if (want.motor && !loops.motor) loops.motor = motor();
-  if (!want.motor && loops.motor) {
-    const m = loops.motor;
-    delete loops.motor;
-    fade(m.g, 0, 0.8);
-    for (const s of m.srcs) s.stop(ctx.currentTime + 0.9);
+  const t = ctx.currentTime;
+  switch (name) {
+    case 'step':
+      tick(t, 0.3, 2400);
+      thump(t, 0.18, 120, 0.05);
+      tick(t + 0.07, 0.2, 1700);
+      return;
+    case 'drag':
+      return scrape(t, 0.45, 0.35);
+    case 'take':
+      tick(t, 0.4, 3000);
+      return tone(t + 0.02, 'triangle', 520, 780, 0.12, 0.03);
+    case 'install':
+      clack(t);
+      return clack(t + 0.11, 0.7);
+    case 'remove':
+      clack(t, 0.7);
+      return clack(t + 0.09, 0.45, 0.8);
+    case 'warm':
+      return whine(t, Math.max(0.2, opt.secs ?? 1), opt.uid);
+    case 'ready':
+      return tone(t, 'sine', 880, 880, 0.09, 0.03, 2000);
+    case 'off':
+      if (opt.uid !== undefined) cut(opt.uid);
+      return tone(t, 'sine', 420, 55, 0.6, 0.035, 900);
+    case 'hit':
+      burst(t, 0.4, 3500, 0.06);
+      return tone(t, 'square', 1400, 300, 0.09, 0.025, 4000);
+    case 'hurt':
+      thump(t, 0.45, 90, 0.18);
+      burst(t, 0.35, 600, 0.12);
+      return tone(t, 'sawtooth', 110, 70, 0.22, 0.04, 700);
+    case 'kill':
+      burst(t, 0.6, 1200, 0.2);
+      return tone(t + 0.03, 'triangle', 300, 60, 0.5, 0.05, 1200);
+    case 'die':
+      for (const uid of [...whines.keys()]) cut(uid);
+      thump(t, 0.5, 70, 0.4);
+      return tone(t, 'sawtooth', 220, 30, 2.5, 0.05, 500);
+    case 'printer':
+      for (let k = 0; k < 14; k++) tick(t + k * 0.055 + (k % 4 === 3 ? 0.03 : 0), 0.35 + (k % 2) * 0.15, 1800 + (k % 3) * 500);
+      return thump(t + 0.85, 0.3, 160, 0.05);
+    case 'card':
+      for (let k = 0; k < 6; k++) {
+        const f = [1320, 990, 1760, 1175, 1480, 880][k];
+        tone(t + k * 0.06, 'square', f, f, 0.045, 0.04, 3000);
+      }
+      return;
+    case 'heart':
+      thump(t, 0.7, 65, 0.25);
+      return thump(t + 0.28, 0.45, 58, 0.22);
   }
 }
 
@@ -115,7 +177,6 @@ function noiseSrc(loop = false): AudioBufferSourceNode {
   const s = ctx!.createBufferSource();
   s.buffer = noise;
   s.loop = loop;
-  if (loop) s.loopStart = Math.random();
   return s;
 }
 
@@ -127,30 +188,59 @@ function filter(type: BiquadFilterType, freq: number, q = 1): BiquadFilterNode {
   return f;
 }
 
-/** a short burst of high noise: the key switch */
+function env(t: number, vol: number, secs: number, attack = 0.002): GainNode {
+  const g = ctx!.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + secs);
+  g.connect(out);
+  return g;
+}
+
+/** a very short burst of band-passed noise: a relay contact */
 function tick(t: number, vol: number, freq: number): void {
   const s = noiseSrc();
   s.playbackRate.value = 0.9 + Math.random() * 0.2;
-  const f = filter('bandpass', freq, 1);
-  const g = ctx!.createGain();
-  g.gain.setValueAtTime(vol, t);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.025);
-  s.connect(f).connect(g).connect(out);
+  s.connect(filter('bandpass', freq, 1.2)).connect(env(t, vol, 0.025, 0.001));
   s.start(t, Math.random(), 0.04);
 }
 
-/** one stage of the relay: a hard click over a low thump */
-function clack(t: number, vol = 1): void {
-  tick(t, 1.2 * vol, 1500);
+/** a noise burst of `secs`, band-passed at `freq` */
+function burst(t: number, vol: number, freq: number, secs: number): void {
+  const s = noiseSrc();
+  s.connect(filter('bandpass', freq, 0.8)).connect(env(t, vol, secs, 0.003));
+  s.start(t, Math.random(), secs + 0.05);
+}
+
+/** a low knock: a sine falling from `f` */
+function thump(t: number, vol: number, f: number, secs: number): void {
   const o = ctx!.createOscillator();
-  o.frequency.setValueAtTime(140, t);
-  o.frequency.exponentialRampToValueAtTime(50, t + 0.06);
-  const g = ctx!.createGain();
-  g.gain.setValueAtTime(0.4 * vol, t);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-  o.connect(g).connect(out);
+  o.frequency.setValueAtTime(f, t);
+  o.frequency.exponentialRampToValueAtTime(f * 0.4, t + secs);
+  o.connect(env(t, vol, secs, 0.003));
   o.start(t);
-  o.stop(t + 0.1);
+  o.stop(t + secs + 0.05);
+}
+
+/** one stage of a relay: a hard click over a low thump */
+function clack(t: number, vol = 1, pitch = 1): void {
+  tick(t, 1.1 * vol, 1500 * pitch);
+  thump(t, 0.4 * vol, 140 * pitch, 0.08);
+}
+
+/** crawling: dull noise that swells and drags, its band sliding down */
+function scrape(t: number, secs: number, vol: number): void {
+  const s = noiseSrc();
+  const f = filter('bandpass', 900, 2);
+  f.frequency.setValueAtTime(900 + Math.random() * 300, t);
+  f.frequency.exponentialRampToValueAtTime(380, t + secs);
+  const g = ctx!.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + secs * 0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + secs);
+  g.connect(out);
+  s.connect(f).connect(filter('lowpass', 1400)).connect(g);
+  s.start(t, Math.random(), secs + 0.05);
 }
 
 function tone(t: number, type: OscillatorType, f0: number, f1: number, secs: number, vol: number, lowpass = 3000): void {
@@ -168,81 +258,75 @@ function tone(t: number, type: OscillatorType, f0: number, f1: number, secs: num
   o.stop(t + secs + 0.05);
 }
 
-/** one slow chord, an open minor ninth that swells and fades */
-function chord(t: number): void {
-  for (const f of [110, 164.8, 261.6, 246.9]) {
+/** a warm-up: a thin whine climbing over `secs`, a faint flutter on it, gone when warm */
+function whine(t: number, secs: number, uid?: number): void {
+  if (uid !== undefined) cut(uid);
+  const g = ctx!.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.018, t + Math.min(0.3, secs / 2));
+  g.gain.setValueAtTime(0.018, t + secs * 0.85);
+  g.gain.linearRampToValueAtTime(0, t + secs + 0.15);
+  g.connect(out);
+  const os: OscillatorNode[] = [];
+  for (const [type, m] of [['sine', 1], ['triangle', 1.5]] as const) {
     const o = ctx!.createOscillator();
-    o.type = 'triangle';
-    o.frequency.value = f;
-    o.detune.value = Math.random() * 8 - 4;
-    const g = ctx!.createGain();
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.035, t + 1.8);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 7);
-    o.connect(filter('lowpass', 1200)).connect(g).connect(out);
+    o.type = type;
+    o.frequency.setValueAtTime(260 * m, t);
+    o.frequency.exponentialRampToValueAtTime(1100 * m, t + secs);
+    o.connect(filter('lowpass', 2500)).connect(g);
     o.start(t);
-    o.stop(t + 7.1);
+    o.stop(t + secs + 0.2);
+    os.push(o);
+  }
+  const fl = lfo(11, 12, os[0].frequency);
+  fl.start(t);
+  fl.stop(t + secs + 0.2);
+  os.push(fl);
+  if (uid !== undefined) {
+    whines.set(uid, { g, o: os });
+    os[0].onended = () => whines.get(uid)?.g === g && whines.delete(uid);
   }
 }
 
-/** a looped layer that fades in to `vol`; its sources start now */
-function layer(vol: number, secs: number): Loop {
+/** stop a module's warm-up whine at once (switched off mid-warm) */
+function cut(uid: number): void {
+  const w = whines.get(uid);
+  if (!w) return;
+  whines.delete(uid);
+  fade(w.g, 0, 0.08);
+  for (const o of w.o) o.stop(ctx!.currentTime + 0.1);
+}
+
+/** the god's body: two low saws a fifth apart, beating slowly, under a lowpass that breathes */
+function body(): Drone {
   const g = ctx!.createGain();
   g.gain.value = 0;
   g.connect(out);
-  fade(g, vol, secs);
-  return { g, srcs: [] };
-}
-
-function run(l: Loop, ...srcs: AudioScheduledSourceNode[]): void {
-  for (const s of srcs) s.start();
-  l.srcs.push(...srcs);
-}
-
-/** the fan: low rumbling noise and a faint mains whine, under everything */
-function hum(): void {
-  const l = layer(0.3, 3);
-  const s = noiseSrc(true);
-  s.connect(filter('lowpass', 400, 0.7)).connect(l.g);
-  run(l, s);
-  for (const [f, v] of [[120, 0.06], [240, 0.04]] as const) {
+  fade(g, DRONE, 6);
+  const lp = filter('lowpass', 170, 3);
+  lp.connect(g);
+  const base = [41.2, 61.7, 41.2 * 2.01];
+  const pitch: OscillatorNode[] = [];
+  base.forEach((f, i) => {
     const o = ctx!.createOscillator();
+    o.type = i === 2 ? 'triangle' : 'sawtooth';
     o.frequency.value = f;
     const og = ctx!.createGain();
-    og.gain.value = v;
-    o.connect(og).connect(l.g);
-    run(l, o);
-  }
-  loops.hum = l;
-}
-
-/** wind: band-passed noise whose pitch and strength drift on slow LFOs */
-function wind(): Loop {
-  // quiet and dark: a breath under the hum, never a hiss (Maks 10-17: it came in as loud white noise)
-  const l = layer(0.07, 6);
-  const s = noiseSrc(true);
-  const f = filter('bandpass', 280, 1.4);
-  const soft = filter('lowpass', 600, 0.7);
-  const gust = ctx!.createGain();
-  gust.gain.value = 0.6;
-  s.connect(f).connect(soft).connect(gust).connect(l.g);
-  run(l, s, lfo(0.07, 90, f.frequency), lfo(0.13, 0.25, gust.gain));
-  return l;
-}
-
-/** the motor: a low growl with a wobble, plus road noise */
-function motor(): Loop {
-  const l = layer(0.08, 0.6);
-  const o = ctx!.createOscillator();
-  o.type = 'sawtooth';
-  o.frequency.value = 48;
-  o.connect(filter('lowpass', 500, 2)).connect(l.g);
+    og.gain.value = [0.5, 0.3, 0.25][i];
+    o.connect(og).connect(lp);
+    o.start();
+    pitch.push(o);
+  });
+  // slow changes: the filter breathes, the fifth drifts against the root, the level swells
+  const lfos = [lfo(0.031, 70, lp.frequency), lfo(0.017, 0.6, pitch[1].frequency), lfo(0.047, DRONE * 0.35, g.gain)];
+  for (const o of lfos) o.start();
+  // a faint rumble under it, far below a hiss
   const s = noiseSrc(true);
   const rg = ctx!.createGain();
-  rg.gain.value = 0.4;
-  s.connect(filter('lowpass', 500)).connect(rg).connect(l.g);
-  run(l, o, lfo(3.1, 3, o.frequency), s);
-  return l;
+  rg.gain.value = 0.25;
+  s.connect(filter('lowpass', 90, 0.7)).connect(rg).connect(g);
+  s.start();
+  return { g, pitch, base, srcs: [...pitch, ...lfos, s] };
 }
 
 /** a slow oscillator wobbling `param` by ±depth; the caller starts it */
@@ -255,13 +339,15 @@ function lfo(rate: number, depth: number, param: AudioParam): OscillatorNode {
   return o;
 }
 
-/** `?sounds`: a row of buttons that plays each cue and toggles the loops, to judge the mix */
+/** `?sounds`: a row of buttons that plays every cue, plus the drone and its depth, to judge the mix */
 export function soundboard(): void {
   const el = document.createElement('div');
-  el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;display:flex;flex-wrap:wrap;gap:6px;max-width:90vw';
+  el.className = 'soundboard';
+  el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;display:flex;flex-wrap:wrap;gap:6px;max-width:90vw;align-items:center';
   const btn = (label: string, fn: () => void) => {
     const b = document.createElement('button');
     b.textContent = label;
+    b.dataset.cue = label;
     b.style.cssText = 'font:inherit;background:#111;color:#9f9;border:1px solid #393;padding:2px 8px;cursor:pointer';
     b.onclick = (e) => {
       e.stopPropagation();
@@ -270,8 +356,17 @@ export function soundboard(): void {
     };
     el.append(b);
   };
-  for (const c of ['click', 'key', 'mount', 'power', 'install', 'grow', 'snap', 'arm', 'chord', 'beep']) btn(c, () => cue(c));
-  btn('wind', () => ambient({ wind: true }));
-  btn('motor on/off', () => ambient({ motor: !want.motor }));
+  for (const c of CUES) btn(c, () => cue(c, { secs: 1.5 }));
+  let on = true;
+  btn('drone on/off', () => droneOn((on = !on)));
+  const r = document.createElement('input');
+  r.type = 'range';
+  r.min = '0';
+  r.max = '1';
+  r.step = '0.05';
+  r.value = '0';
+  r.title = 'drone depth';
+  r.oninput = () => depth(Number(r.value));
+  el.append(r);
   document.body.append(el);
 }
