@@ -8,6 +8,8 @@ import { spawn } from 'child_process';
 const STEPS = [
   // sound slice: audio on (as the first click does), every cue once; the run below then plays through it
   [0, '(thawAudio.start(), thawAudio.CUES.forEach((c) => thawAudio.cue(c, { secs: 0.5, uid: 999 })), thawAudio.started())'],
+  // console (Maks's playtest): the actions bar lists what you can do now; crawl and take at boot
+  [0, '[...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd.startsWith("crawl ")) && [...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd === "take")'],
   ['take', 'g.player.inv.some(i => i.mod === "pinhole-eye")'],
   ['install pinhole', 'g.player.installed.length === 1'],
   [1.5, 'document.querySelector("canvas.eye") !== null'],
@@ -18,6 +20,10 @@ const STEPS = [
   ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 2/4"))'],
   // tuning (#1328): the legs' first hint names the card reader; listen gives cells and a compass word
   ['listen', 'JSON.stringify(g.log).includes("a card reader ticks") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],
+  // console: scrolled up, new lines leave the reader where they are
+  [0, '(document.querySelector(".win-console .out").scrollTop = 0, true)'],
+  ['status', 'document.querySelector(".win-console .out").scrollTop === 0'],
+  [0, '(document.querySelector(".win-console .out").scrollTop = 1e9, true)'],
   // sight (#1321): a lamp, a scanner, a heat eye and an edge eye (conjure works only on test runs)
   ['conjure halo'], ['install halo'], [1, 'g.player.installed.some(i => i.mod === "halo" && i.on)'],
   ['remove halo'], ['conjure heat choir'], ['install heat choir'], [1.5, 'document.querySelector("canvas.scan") !== null'],
