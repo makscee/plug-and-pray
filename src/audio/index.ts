@@ -218,13 +218,15 @@ function hum(): void {
 
 /** wind: band-passed noise whose pitch and strength drift on slow LFOs */
 function wind(): Loop {
-  const l = layer(0.5, 4);
+  // quiet and dark: a breath under the hum, never a hiss (Maks 10-17: it came in as loud white noise)
+  const l = layer(0.07, 6);
   const s = noiseSrc(true);
-  const f = filter('bandpass', 500, 0.8);
+  const f = filter('bandpass', 280, 1.4);
+  const soft = filter('lowpass', 600, 0.7);
   const gust = ctx!.createGain();
-  gust.gain.value = 0.7;
-  s.connect(f).connect(gust).connect(l.g);
-  run(l, s, lfo(0.07, 220, f.frequency), lfo(0.13, 0.3, gust.gain));
+  gust.gain.value = 0.6;
+  s.connect(f).connect(soft).connect(gust).connect(l.g);
+  run(l, s, lfo(0.07, 90, f.frequency), lfo(0.13, 0.25, gust.gain));
   return l;
 }
 
