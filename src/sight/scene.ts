@@ -232,7 +232,7 @@ const coldMat = new THREE.ShaderMaterial({
   fragmentShader: `
     varying float vDist;
     // the target stores sRGB: undo it, so the bytes read back are the warmth itself
-    void main() { float v = pow(clamp(1.0 - vDist / 5.0, 0.0, 1.0) * 0.22, 2.2); gl_FragColor = vec4(v, v, v, 1.0); }`,
+    void main() { float v = pow(clamp(1.0 - vDist / 5.0, 0.0, 1.0) * 0.35, 2.2); gl_FragColor = vec4(v, v, v, 1.0); }`,
 });
 
 /** nearness 0..1 of pixel i in a depth shot (0: nothing there, or past the range) */
