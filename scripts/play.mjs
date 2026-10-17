@@ -5,13 +5,13 @@
 
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
 // a random port: workers on one machine run play at the same time
 const PORT = Number(process.env.PLAY_PORT) || 4100 + Math.floor(Math.random() * 800);
 // PLAY_URL=https://makscee.github.io/thaw/ npm run play checks a deployed build instead of dist/
 const BASE = process.env.PLAY_URL ?? `http://localhost:${PORT}/`;
-const URL = `${BASE}?new&fast`;
 
 /** [kind, text, expect]: 'verb' clicks the bar, 'tok' the last token with that text, 'see' only waits,
  * 'node' the last token naming that node id,
@@ -135,10 +135,11 @@ export const STEPS = [
   ['click', '.end-again', 'shell ready'],
 ];
 
-const server = process.env.PLAY_URL ? null : spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
-process.on('exit', () => server?.kill());
-
-async function main() {
+/** play STEPS once. `fast: false` plays at the real speed (typing, scans, 10 s drives) and stretches the
+ * waits to match; `shot(n, page)` runs after step n (1-based) passes, before the next one. */
+export async function play({ fast = true, shot } = {}) {
+  const server = process.env.PLAY_URL ? null : spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
+  process.on('exit', () => server?.kill());
   if (server)
     await new Promise((ok, fail) => {
       server.stdout.on('data', (d) => String(d).includes(String(PORT)) && ok());
@@ -148,8 +149,9 @@ async function main() {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(URL);
-  const idle = () => page.waitForFunction(() => document.body.dataset.busy === '0', null, { timeout: 15000 });
+  await page.goto(`${BASE}?new${fast ? '&fast' : ''}`);
+  const slow = fast ? 1 : 5;
+  const idle = () => page.waitForFunction(() => document.body.dataset.busy === '0', null, { timeout: 15000 * slow });
   let n = 0;
   let clicks = 0;
   let sol = null;
@@ -158,22 +160,24 @@ async function main() {
     const where = `step ${n} ${kind} ${typeof text === 'function' ? '' : text ?? ''}`;
     try {
       await idle();
-      if (kind === 'verb') await page.locator(`.bar [data-verb="${text}"]`).click({ timeout: 3000 });
-      if (kind === 'tok') await page.locator(`.tok:not(.dim):not(.btn)[data-tok="${text}"]`).last().click({ timeout: 3000 });
+      if (kind === 'verb') await page.locator(`.bar [data-verb="${text}"]`).click({ timeout: 3000 * slow });
+      if (kind === 'tok') await page.locator(`.tok:not(.dim):not(.btn)[data-tok="${text}"]`).last().click({ timeout: 3000 * slow });
       if (kind === 'eval') await page.evaluate(text);
       if (['verb', 'tok', 'node', 'click'].includes(kind)) clicks++;
       if (text === 'transmit') sol = await page.evaluate(() => window.thaw.w.state.sol);
-      if (kind === 'node') await page.locator(`.tok:not(.dim):not(.btn)[data-node="${text}"]`).last().click({ timeout: 3000 });
-      if (kind === 'click') await page.locator(text).click({ timeout: 3000 });
+      if (kind === 'node') await page.locator(`.tok:not(.dim):not(.btn)[data-node="${text}"]`).last().click({ timeout: 3000 * slow });
+      if (kind === 'click') await page.locator(text).click({ timeout: 3000 * slow });
       await idle();
-      if (expect) await page.waitForFunction((t) => document.body.innerText.includes(t), expect, { timeout: 3000 });
+      if (expect) await page.waitForFunction((t) => document.body.innerText.includes(t), expect, { timeout: 3000 * slow });
       if (errors.length) throw new Error(errors.join('\n'));
+      await shot?.(n, page);
     } catch (e) {
       mkdirSync('out', { recursive: true });
       await page.screenshot({ path: 'out/play-fail.png' });
       console.error(`play: dead end at ${where}${expect ? `, expected "${expect}"` : ''}\n${String(e).split('\n')[0]}`);
       console.error('screen:\n' + (await page.locator('#desk').innerText()));
       await browser.close();
+      server?.kill();
       process.exit(1);
     }
   }
@@ -181,9 +185,11 @@ async function main() {
   await page.screenshot({ path: 'out/play-end.png' });
   console.log(`play: ${STEPS.length} steps ok, ${clicks} clicks, transmit at sol ${sol}`);
   await browser.close();
+  server?.kill();
 }
 
-main().then(() => process.exit(0), (e) => {
+// npm run play; scripts/package.mjs imports play() instead
+if (import.meta.url === pathToFileURL(process.argv[1]).href) play().then(() => process.exit(0), (e) => {
   console.error(e);
   process.exit(1);
 });
