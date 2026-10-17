@@ -54,7 +54,7 @@ describe('fight', () => {
     run(g, 0.1);
     expect(shots(g)).toHaveLength(1);
     run(g, 2);
-    expect(g.player.hp).toBe(8);
+    expect(g.player.hp).toBe(8.5);
     const h = armed();
     spawnEnemy(h, 'seraph', 5.5, 8.5);
     run(h, 0.1);
@@ -70,19 +70,19 @@ describe('fight', () => {
     run(g, 3.9);
     expect(g.player.hp).toBe(5);
     run(g, 10.1);
-    expect(g.player.hp).toBeCloseTo(6, 1);
+    expect(g.player.hp).toBeCloseTo(7, 1);
     const h = armed('lead-lung');
     h.player.hp = 5;
     h.player.hurtAt = h.t;
     run(h, 14);
-    expect(h.player.hp).toBeCloseTo(8, 1);
+    expect(h.player.hp).toBeCloseTo(9, 1);
   });
 
   it('the frost coat softens a hit; the mirror ward returns one and recharges', () => {
     const g = armed('frost-coat');
     spawnEnemy(g, 'walker', 9.5, 8.5);
     run(g, 1.2);
-    expect(g.player.hp).toBe(7.5);
+    expect(g.player.hp).toBe(8.5);
     const h = armed('mirror-ward');
     const m = spawnEnemy(h, 'mite', 9.5, 8.5);
     m.enemy!.hp = 5;

@@ -5,7 +5,7 @@ import { active, family, param } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 
 /** hp per second with no body module, once you have gone QUIET seconds without damage */
-export const REGEN = 0.1;
+export const REGEN = 0.2; // tuning #1328: was 0.1; a hurt new player waited over a minute
 export const QUIET = 4;
 
 const body = (g: Game): Inst[] => active(g, 'body');

@@ -23,10 +23,10 @@ export function table(far: number): [string, number, number][] {
   const t: [string, number, number][] = [];
   if (far < 1.5) return t;
   t.push(['mite', far < 3 ? 0.6 : 0.45, 3]);
-  t.push(['mimic', 0.15, 1]);
-  if (far >= 2) t.push(['seraph', 0.3, 1]);
-  if (far >= 2.8) t.push(['walker', 0.3, 1]);
-  if (far >= 3.5) t.push(['hum', 0.25, 1]);
+  t.push(['mimic', far < 3 ? 0.08 : 0.15, 1]); // tuning #1328: was 0.15 everywhere
+  if (far >= 2.5) t.push(['seraph', 0.3, 1]); // tuning #1328: was 2 (seraphs killed runs at the first shard)
+  if (far >= 3.5) t.push(['walker', 0.25, 1]); // tuning #1328: was 2.8, 0.3
+  if (far >= 4) t.push(['hum', 0.25, 1]); // tuning #1328: was 3.5
   return t;
 }
 

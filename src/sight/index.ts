@@ -25,10 +25,41 @@ const q = (v: number, levels: number, x: number, y: number) => {
   return Math.max(0, Math.min(255, Math.round(v / s + BAYER[(y & 3) * 4 + (x & 3)]) * s));
 };
 
+/** a cheap eye's auto-gain: the frame's bright end (the 92nd percentile of luminance) is lifted
+ * to `to`, at most `max` times; a dark chamber reads dim but whole instead of black (tuning #1328) */
+export function expose(px: Uint8Array, res: number, to = 210, max = 6): void {
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < res * res; i++) hist[Math.round(px[i * 4] * 0.3 + px[i * 4 + 1] * 0.59 + px[i * 4 + 2] * 0.11)]++;
+  let n = 0, top = 255;
+  for (let v = 255; v >= 0; v--) if ((n += hist[v]) > res * res * 0.08) { top = v; break; }
+  const gain = Math.min(max, to / Math.max(1, top));
+  if (gain <= 1) return;
+  for (let i = 0; i < res * res * 4; i++) if ((i & 3) !== 3) px[i] = Math.min(255, px[i] * gain);
+}
+
+/** the few colours a cheap colour eye has: picked in this order from the dusk palette, so 4 colours
+ * are shadow, cream, rust, slate (Maks 10-17: amber, rust, slate, cream) */
+const DUSK = [0x0a0807, 0xe2b47c, 0x84492a, 0x6a6c78, 0x2e2e36, 0xc4823e, 0x52301c, 0xf0e4c8].map((c) => [(c >> 16) & 255, (c >> 8) & 255, c & 255]);
+
 export type Filter = (px: Uint8Array, res: number, opts: { colors: number; noise: number; t: number; range?: number }) => void;
 export const FILTERS: Record<string, Filter> = {
   color(px, res, { colors }) {
     if (!colors) return;
+    expose(px, res);
+    if (colors <= DUSK.length) {
+      // nearest palette colour after a Bayer nudge: flat areas stay one colour, edges cross-hatch
+      const pal = DUSK.slice(0, Math.max(2, colors));
+      for (let i = 0; i < res * res; i++) {
+        const t = BAYER[((i / res) & 3) * 4 + (i % res & 3)] * 56;
+        let best = 0, bd = Infinity;
+        for (let k = 0; k < pal.length; k++) {
+          const d = 3 * (px[i * 4] + t - pal[k][0]) ** 2 + 4 * (px[i * 4 + 1] + t - pal[k][1]) ** 2 + 2 * (px[i * 4 + 2] + t - pal[k][2]) ** 2;
+          if (d < bd) { bd = d; best = k; }
+        }
+        for (let c = 0; c < 3; c++) px[i * 4 + c] = pal[best][c];
+      }
+      return;
+    }
     const levels = Math.max(2, Math.round(Math.cbrt(colors)) + 1);
     for (let i = 0; i < res * res; i++) {
       const x = i % res, y = (i / res) | 0;
@@ -37,10 +68,10 @@ export const FILTERS: Record<string, Filter> = {
   },
   gray(px, res, { colors }) {
     const levels = colors || 16;
+    expose(px, res);
     for (let i = 0; i < res * res; i++) {
       const x = i % res, y = (i / res) | 0;
-      // brightened: the dark world needs it on a cheap eye
-      const l = Math.min(255, (px[i * 4] * 0.3 + px[i * 4 + 1] * 0.59 + px[i * 4 + 2] * 0.11) * 1.3);
+      const l = px[i * 4] * 0.3 + px[i * 4 + 1] * 0.59 + px[i * 4 + 2] * 0.11;
       px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = q(l, Math.max(2, levels), x, y);
     }
   },

@@ -2,7 +2,7 @@
 // available only while a module of it is on (`when`). Buttons anywhere type these same commands.
 
 import { dist, itemName, reach, say, spawn } from './game';
-import { def, label, MODS, powerMax, powerUsed, switchOff, switchOn } from './mods';
+import { active, def, label, MODS, param, powerMax, powerUsed, switchOff, switchOn } from './mods';
 import type { Game, Inst, Item, Line } from './types';
 
 export interface VerbDef {
@@ -168,13 +168,20 @@ verb('listen', {
     const p = g.player;
     const near = g.ents.filter((e) => dist(e, p) < 10).sort((a, b) => dist(a, p) - dist(b, p));
     if (!near.length) return say(g, 'only the slow drip of something warm.');
+    // compass words and cells, and a button for the next move (tuning #1328: "to the right" of a
+    // facing you cannot see told a blind player nothing; crawl and go take compass words)
+    const goes = active(g, 'gait').some((i) => param(i, 'go', false));
     for (const e of near.slice(0, 4)) {
+      const [dx, dy] = [e.x - p.x, e.y - p.y];
       const r = dist(e, p);
-      const how = r < 2 ? 'right by you' : r < 5 ? 'near' : 'far';
-      const ang = Math.atan2(e.x - p.x, -(e.y - p.y));
-      const side = ['ahead', 'to the right', 'behind', 'to the left'][Math.round((((ang - p.dir) / (Math.PI / 2)) % 4) + 4) % 4];
+      const how = r < 1.6 ? 'within reach' : `${Math.round(r)} cells`;
+      const ang = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
+      const side = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(ang / 45) % 8];
       const what = e.enemy ? 'something moving' : e.kind === 'printer' ? 'a machine humming' : 'something lying still';
-      say(g, `${what}, ${how}, ${side}.`);
+      const ax = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n';
+      const n = Math.max(1, Math.round(Math.max(Math.abs(dx), Math.abs(dy))));
+      const cmd = r < 1.6 && e.kind === 'item' ? 'take' : goes ? `go ${ax} ${n}` : `crawl ${ax}`;
+      say(g, [`${what}, ${how}${r < 1.6 ? '' : ', ' + side}.  `, { text: cmd, cmd }]);
     }
   },
 });

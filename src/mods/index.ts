@@ -6,3 +6,4 @@ import './power';
 import '../fight';
 import '../world';
 import '../body';
+import '../tune/hints';
