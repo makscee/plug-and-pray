@@ -9,6 +9,7 @@ import { VERBS } from '../core/verbs';
 import { frameHooks } from '../ui';
 import type { Game } from '../core/types';
 import './views';
+import { clean } from '../tune/start';
 
 const ARROWS: Record<string, string> = { ArrowUp: 'n', ArrowRight: 'e', ArrowDown: 's', ArrowLeft: 'w' };
 const WASD = ['w', 'a', 's', 'd'];
@@ -93,6 +94,7 @@ let staged = new URLSearchParams(location.search).get('scene') !== 'body';
 frameHooks.push((g) => {
   if (staged) return;
   staged = true;
+  clean(g);
   const p = g.player;
   g.ents = g.ents.filter((e) => e.kind !== 'item' || Math.hypot(e.x - p.x, e.y - p.y) > 8);
   p.slots = 6;

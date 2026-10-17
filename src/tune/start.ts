@@ -20,6 +20,12 @@ export function startKit(g: Game): void {
   }
 }
 
+/** ?scene= stagings start clean: the starting kit is put away so each scene fits its own caps */
+export function clean(g: Game): void {
+  g.player.installed = [];
+  g.player.inv = [];
+}
+
 const HOME: [number, number] = [8.5, 8.5];
 const homing = new WeakMap<Game, number>();
 

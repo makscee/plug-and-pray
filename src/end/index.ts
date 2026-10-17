@@ -7,6 +7,7 @@ import { exec } from '../core/verbs';
 import type { Game } from '../core/types';
 import { CARD, beat, card, light, melt, summary } from './timeline';
 import './end.css';
+import { clean } from '../tune/start';
 
 interface End {
   t: number;
@@ -85,6 +86,7 @@ let staged = false;
 frameHooks.push((g) => {
   if (staged || !/[?&]scene=end\b/.test(globalThis.location?.search ?? '')) return;
   staged = true;
+  clean(g);
   Object.assign(g.player, { slots: 5, core: 12 });
   for (const mod of ['vidicon-tube', 'stepper-relay', 'map-spool', 'thaw-engine']) {
     g.player.inv.push({ kind: 'mod', mod });

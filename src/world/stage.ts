@@ -7,11 +7,13 @@ import { exec } from '../core/verbs';
 import type { Game } from '../core/types';
 import { middle, rooms } from './gen';
 import { engineAt, plan } from './vectors';
+import { clean } from '../tune/start';
 
 const scene = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('scene');
 const staged = new WeakSet<Game>();
 
 function kit(g: Game, mods: string[]): void {
+  clean(g);
   const p = g.player;
   p.slots = Math.max(p.slots, mods.length + 1);
   p.core = 12;
