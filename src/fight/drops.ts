@@ -6,7 +6,7 @@ import type { Item, Res } from '../core/types';
 
 /** per enemy: resource, how many, chance of a module */
 export const DROPS: Record<string, [Res, number, number]> = {
-  mite: ['bone', 1, 0.05],
+  mite: ['bone', 1, 0.12], // playtest 10-18: early fights pay (was 0.05)
   seraph: ['glass', 2, 0.25],
   walker: ['bone', 3, 0.35],
   hum: ['ichor', 1, 0.4],

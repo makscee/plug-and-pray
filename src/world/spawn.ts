@@ -1,6 +1,6 @@
 // What a new chunk holds: loot by distance, enemies, printers. The start chamber is fixed:
-// you wake with an eye, legs and a map (src/tune/start.ts); a halo at your feet, a spark finger across the chamber, the spark finger one chunk east,
-// the card reader and a first memory card one chunk south, a printer one chunk west.
+// you wake holding an eye, legs, a map and the spark finger (src/tune/start.ts); a halo at your feet,
+// the dawn eye one chunk east, the card reader and a first memory card one chunk south, a printer one chunk west.
 
 import { CHUNK, chunkHook, Cell } from '../core/grid';
 import { spawn } from '../core/game';
@@ -41,15 +41,14 @@ export function fill(g: Game, c: Chunk): void {
   if (c.cx === 0 && c.cy === 0) {
     const [ex, ey] = at(8, 8);
     spawn(g, { kind: 'item', x: ex, y: ey, item: { kind: 'mod', mod: 'halo' } });
-    const [sx, sy] = at(10, 6);
-    spawn(g, { kind: 'item', x: sx, y: sy, item: { kind: 'mod', mod: 'spark-finger' } });
     return;
   }
   const r = rng(hash(g.seed, 11, c.cx, c.cy));
   const far = Math.hypot(c.cx, c.cy);
   if (c.cx === 1 && c.cy === 0) {
+    // the first upgrade: a clear colour eye one chunk east (the run starts with the pinhole)
     const [x, y] = cellIn(r, c, g.seed);
-    spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'spark-finger' } });
+    spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'dawn-eye' } });
   }
   if (c.cx === 0 && c.cy === 1) {
     const [x, y] = cellIn(r, c, g.seed);

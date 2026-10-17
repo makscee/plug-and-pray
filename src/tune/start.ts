@@ -1,26 +1,22 @@
-// Accessible start (Maks's playtest 10-18: "really hard to start, camera is impossible to understand"):
-// a run wakes with a plain eye, the stepper relay and the map spool already in and on, slots and power
-// to spare. `unstuck` gets you out of any corner: the nearest open cell, or home to the start chamber.
+// Accessible start (Maks's playtests 10-18): a run wakes holding a pinhole eye, the stepper relay, the
+// map spool and the spark finger in its inventory; you install them yourself ("make modules in inventory
+// initially and I have to click to install"), with slots and power for all four and two to spare. `unstuck` gets you out of any corner: the nearest open cell, or home to the start chamber.
 
 import { say, tickHooks } from '../core/game';
 import { open } from '../core/grid';
-import { switchOn } from '../core/mods';
-import type { Game, Inst } from '../core/types';
+import type { Game } from '../core/types';
 import { verb } from '../core/verbs';
 
-export const KIT = ['dawn-eye', 'stepper-relay', 'map-spool'];
+export const KIT = ['pinhole-eye', 'stepper-relay', 'map-spool', 'spark-finger'];
 
-/** install the starting kit, already warm */
+/** the starting kit, in the inventory: the player installs it */
 export function startKit(g: Game): void {
   const p = g.player;
   p.slots = 6;
   p.core = 6;
   for (const mod of KIT) {
-    const inst: Inst = { uid: g.nextId++, mod, on: false, readyAt: 0, data: {} };
-    p.installed.push(inst);
+    p.inv.push({ kind: 'mod', mod });
     g.stats.mods.push(mod);
-    switchOn(g, inst);
-    inst.readyAt = 0;
   }
 }
 

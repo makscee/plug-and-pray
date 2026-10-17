@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import '../src/mods';
-import { newGame, tick } from '../src/core/game';
+import { newGame, spawn, tick } from '../src/core/game';
 import { addItem, exec } from '../src/core/verbs';
 import { expose, FILTERS } from '../src/sight';
 
@@ -28,6 +28,7 @@ describe('tuning (#1328)', () => {
 
   it('listen gives compass words, cells and a button; the legs hint at the card reader once', () => {
     const g = newGame(1);
+    spawn(g, { kind: 'item', x: 12.5, y: 8.5, item: { kind: 'mod', mod: 'ember-cell' } }); // the start chamber holds only the halo now
     exec(g, 'listen');
     const heard = JSON.stringify(g.log.slice(-1));
     expect(heard).toMatch(/\d+ cells, (n|ne|e|se|s|sw|w|nw)\./);
