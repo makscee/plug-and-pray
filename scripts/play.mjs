@@ -73,7 +73,7 @@ export const STEPS = [
   ['node', '@HAB', 'driving'],
   ['see', null, 'arrived'],
   ['verb', 'snap', null],
-  ['tok', 'n', '96 px'],
+  ['tok', 'n', '160 px'],
   // the habitat (#1320: the real route, clicks only): mount it, the outbox, the key, the pods, a home file
   ['verb', 'dev', 'habitat'],
   ['node', 'HAB', 'pods/'],

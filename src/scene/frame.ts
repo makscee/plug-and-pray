@@ -14,7 +14,7 @@ const AMBER = [255, 176, 0];
 let drawn = '';
 let shot: Shot | null = null;
 let ctx: CanvasRenderingContext2D | null = null;
-let res = 32;
+let res = 64;
 let lit: string | null = null;
 let scan = 1;
 let camOn = false;
@@ -29,11 +29,14 @@ function paint(): void {
   const rows = Math.ceil(res * scan);
   for (let i = 0; i < res * res; i++) {
     const on = i < rows * res;
-    const v = on ? shot.pixels[i] : 0;
+    const [r, g, b] = on ? shot.pixels.subarray(i * 3, i * 3 + 3) : [0, 0, 0];
+    // hover: the thing's pixels go amber by their brightness, the rest of the frame dims
     const a = mask?.[i] && on;
-    img.data[i * 4] = a ? (AMBER[0] * (64 + v)) / 319 : v * 0.85;
-    img.data[i * 4 + 1] = a ? (AMBER[1] * (64 + v)) / 319 : v * 0.85;
-    img.data[i * 4 + 2] = a ? 0 : v * 0.8;
+    const v = (r + g + b) / 3;
+    const dim = mask ? 0.45 : 1;
+    img.data[i * 4] = a ? (AMBER[0] * (96 + v)) / 351 : r * dim;
+    img.data[i * 4 + 1] = a ? (AMBER[1] * (96 + v)) / 351 : g * dim;
+    img.data[i * 4 + 2] = a ? 0 : b * dim;
     img.data[i * 4 + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
@@ -47,7 +50,7 @@ function draw(w: World, animate: boolean): void {
     drawn = key;
     const v = { place: f.place, heading: f.heading, res: f.res, blur: f.blur, at: f.at };
     shot = f.still ? still(f.still) : eyeShot?.key === viewKey(v) ? eyeShot.shot : render(v);
-    res = f.still ? 32 : f.res;
+    res = f.still ? 64 : f.res;
     const el = document.createElement('div');
     el.className = 'frame';
     const c = document.createElement('canvas');

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isToken, resolve, run, type Output, type World } from '../src/model';
 import { world } from '../src/content';
-import { dither, shrink, smear } from '../src/scene/dither';
+import { dither, DUSK, DUSK32, shrink, smear } from '../src/scene/dither';
 
 let w: World;
 beforeEach(() => {
@@ -18,7 +18,7 @@ describe('looking', () => {
     expect(w.state.heading).toBe(90);
     expect(o.open).toContain('frame');
     expect(w.state.windows).toContain('frame');
-    expect(w.state.frame?.res).toBe(32);
+    expect(w.state.frame?.res).toBe(64);
     const t = things(o);
     expect(t.map((x) => x.text)).toEqual(['?', '?']);
     expect(t.map((x) => x.nodeId).sort()).toEqual(['?crate', '?rock']);
@@ -45,10 +45,10 @@ describe('looking', () => {
     expect(resolve(w, 'arm', { text: '?', kind: 'thing', nodeId: '?lander' })).toBeNull();
   });
 
-  it('frames are 96 px once optics are installed', () => {
+  it('frames are 160 px once optics are installed', () => {
     w.state.bar.push('optics');
     run(w, 'snap', 's');
-    expect(w.state.frame?.res).toBe(96);
+    expect(w.state.frame?.res).toBe(160);
   });
 
   it('view lists the stored frames, a frame file click views it', () => {
@@ -73,28 +73,36 @@ describe('looking', () => {
   });
 });
 
-describe('the frame bits', () => {
-  it('dithers to one bit with the share of white following the grey', () => {
-    const res = 32;
-    for (const g of [0, 64, 128, 192, 255]) {
-      const d = dither(new Uint8Array(res * res).fill(g), res, 2);
-      expect(new Set(d).size).toBeLessThanOrEqual(2);
-      const white = d.filter((v) => v === 255).length / d.length;
-      expect(Math.abs(white - g / 255)).toBeLessThan(0.07);
-    }
+describe('the frame colours (Maks 10-17)', () => {
+  const hex = (d: Uint8Array) => new Set(Array.from({ length: d.length / 3 }, (_, i) => (d[i * 3] << 16) | (d[i * 3 + 1] << 8) | d[i * 3 + 2]));
+  const flat = (res: number, c: number) => new Uint8Array(res * res * 3).map((_, i) => (c >> (16 - (i % 3) * 8)) & 255);
+
+  it('the first snap is eight dusk colours, the optics step thirty-two', () => {
+    expect(DUSK).toHaveLength(8);
+    expect(DUSK32).toHaveLength(32);
+    expect(new Set(DUSK32).size).toBe(32);
   });
 
-  it('dithers to four greys at 96', () => {
-    const res = 96;
-    const grad = new Uint8Array(res * res).map((_, i) => Math.round(((i % res) / (res - 1)) * 255));
-    expect([...new Set(dither(grad, res, 4))].sort((a, b) => a - b)).toEqual([0, 85, 170, 255]);
+  it('dithers to the palette only, mixing the two colours around a shade', () => {
+    const res = 64;
+    const grad = new Uint8Array(res * res * 3).map((_, i) => Math.round(((Math.floor(i / 3) % res) / (res - 1)) * 255));
+    for (const c of hex(dither(grad, res, DUSK, 36))) expect(DUSK).toContain(c);
+    // a shade halfway between rust and amber comes out as both, in a pattern
+    const mid = ((DUSK[4] & 0xfefefe) + (DUSK[5] & 0xfefefe)) >> 1;
+    const got = hex(dither(flat(res, mid), res, DUSK, 36));
+    expect(got).toContain(DUSK[4]);
+    expect(got).toContain(DUSK[5]);
+    // a palette colour mostly stays itself under the light dither
+    const d = dither(flat(160, DUSK32[20]), 160, DUSK32, 16);
+    const same = Array.from({ length: 160 * 160 }, (_, i) => (d[i * 3] << 16) | (d[i * 3 + 1] << 8) | d[i * 3 + 2]).filter((c) => c === DUSK32[20]).length;
+    expect(same / (160 * 160)).toBeGreaterThan(0.7);
   });
 
   it('shrinks by averaging and smears only sideways', () => {
-    const big = new Uint8Array(16).map((_, i) => (i % 4 < 2 ? 0 : 255));
-    expect([...shrink(big, 4, 2)]).toEqual([0, 255, 0, 255]);
-    const col = new Uint8Array(9).map((_, i) => (i % 3 === 1 ? 255 : 0));
-    expect([...smear(col, 3, 1)]).toEqual([85, 85, 85, 85, 85, 85, 85, 85, 85]);
+    const big = new Uint8Array(16 * 3).map((_, i) => (Math.floor(i / 3) % 4 < 2 ? 0 : 255));
+    expect([...shrink(big, 4, 2)]).toEqual([0, 0, 0, 255, 255, 255, 0, 0, 0, 255, 255, 255]);
+    const col = new Uint8Array(9 * 3).map((_, i) => (Math.floor(i / 3) % 3 === 1 ? 255 : 0));
+    expect([...smear(col, 3, 1)]).toEqual(new Array(27).fill(85));
   });
 });
 

@@ -2,7 +2,7 @@
 
 A click-only terminal game for Ludum Dare 60, theme "Old Tech". You are a machine that froze for forty-one years and just woke with its memory gone. You have a filesystem, five rows of screen and two commands. You mount the drives of your own parts, then of the things next to you, then of the things out on the plain, and what you find tells you what you are and what you must do before the light goes: send one message so the four people in the cryo pods get found.
 
-Everything the player does is a click. Every click types a command into the terminal, character by character, and runs it. Tools found on drives open new views: a bigger screen, a map, a 32-pixel camera, driving, a real 3D camera at the very end. The 3D world exists from the first second; the game is about earning ways to see it.
+Everything the player does is a click. Every click types a command into the terminal, character by character, and runs it. Tools found on drives open new views: a bigger screen, a map, a 64-pixel camera, driving, a real 3D camera at the very end. The 3D world exists from the first second; the game is about earning ways to see it.
 
 This page is the spec. PLAN.md is how it gets built. Decisions here were made by Maks on 2026-10-17 in a design session; change them only on his word.
 
@@ -19,7 +19,7 @@ This page is the spec. PLAN.md is how it gets built. Decisions here were made by
 
 One cycle, once everything is unlocked:
 
-1. `snap` a frame of what is around you, 32 by 32 pixels, scanned in. The things in view are `?` tokens under the frame; you do not know what one is until you reach it.
+1. `snap` a frame of what is around you, 64 by 64 pixels in eight colours, scanned in. The things in view are `?` tokens under the frame; you do not know what one is until you reach it.
 2. `arm` a `?`: a line of text names it, and if it has a drive, a new device appears on the bus.
 3. `mount` it: a new tree on the map, and inside, context, a tool, or a place.
 4. A place you have read about becomes a dot on the terrain map. Click it, your dot moves, you wait, you arrive, you snap again.
@@ -42,7 +42,7 @@ Windows on a black page. Nothing else: no title screen, no menu; the page boots 
 
 - **TERM**, the terminal window, centered. 48 columns. Top to bottom: the output rows, 5 at the start and 20 after `term.conf`; the input line with the prompt where the typing is animated; the button bar of known commands. Output is a screen, not a log: each command's output replaces the previous one, and five rows are really five rows.
 - **MAP**, opened by `map`. Two layers: the filesystem forest, and from `drive` on the terrain layer, toggled by a token in its title bar. About 320 by 320 px, to the side of TERM.
-- **FRAME**, opened by `snap`. The last picture at 32 by 32 scaled up with pixelated rendering, later 96 by 96; the direction and the `?` tokens sit under it.
+- **FRAME**, opened by `snap`. The last picture at 64 by 64 shown at 320 by 320 with pixelated rendering, later 160 by 160; the direction and the `?` tokens sit under it.
 - **CAM**, opened by `cam` at the end: the Three.js scene fills the whole viewport behind the windows, which turn semi-transparent and float over the landscape.
 
 Look: background `#0b0b0c`; text dim grey `#9a9a93`, headers `#d8d8d0`; one accent, amber `#ffb000`, for everything clickable; hovered token: amber background, black text; a token that does not fit the waiting verb dims to 40%. Cursor: an amber block blinking at 1 Hz. Window borders 1 px `#2a2a2a` with a title at the top left, `TERM`, `MAP`, `FRAME`. No CRT curvature, no scanlines.
@@ -83,10 +83,10 @@ Five rows from boot. `tail` is named in the readme, so for the first third the p
 
 ## 8. Looking
 
-- `snap d`, d one of `n e s w`. The mast camera pans; the first snap defaults to the heading you froze with. The frame is the scene rendered from the mast at your place in that direction, 60 degrees of view, to greyscale at 32 by 32, then a 4 by 4 Bayer ordered dither to one bit, scanned in over a second into the FRAME window.
+- `snap d`, d one of `n e s w`. The mast camera pans; the first snap defaults to the heading you froze with. The frame is the scene rendered from the mast at your place in that direction, 60 degrees of view, in colour as `cam` sees it, at 64 by 64 in a small dusk palette of eight colours taken from the scene (shadow, slate, rust, amber, cream and their darks), with a 4 by 4 Bayer ordered dither between palette colours, shown at 320 by 320 pixelated and scanned in over a second into the FRAME window. Maks 10-17: "frames are impossible to read: pixels too big, no colour"; this replaced 32 by 32 one-bit.
 - **Things:** every object tagged as a thing in view gets a `?` token under the frame, left to right. Hover lights its pixels, through an object-id pass of the same render. `arm ?` names it.
-- **Optics ladder:** 32 by 32 one-bit from `IMG`; 96 by 96 with four grey levels after the crate's optics are installed; `cam` from the sibling's camera, or from the habitat's exterior camera module if the sibling is cut.
-- **Stored frames:** `view` lists three frames stored in `IMG`: the lander on landing day, the habitat with four figures, the operator waving. They are rendered from the same scene with capsule figures for people, at 32 by 32 one-bit.
+- **Optics ladder:** 64 by 64 in the eight dusk colours from `IMG`; 160 by 160 in 32 colours along the same ramps with a light dither after the crate's optics are installed, also shown at 320 by 320 (Maks 10-17); `cam` from the sibling's camera, or from the habitat's exterior camera module if the sibling is cut.
+- **Stored frames:** `view` lists three frames stored in `IMG`: the lander on landing day, the habitat with four figures, the operator waving. They are rendered from the same scene with capsule figures for people, at 64 by 64 in the first step's palette.
 - **Mid-road:** a snap while driving renders from the interpolated position with a horizontal smear, one render with blur, nothing more.
 - **The reveal:** the game never says "rover". The bottom rows of every forward frame show your own panel edge and a wheel, because the rover model is part of the scene. The operator calls you T. The habitat's files say `T-1` and tell where `T-2` got stuck.
 - `cam` at the end is the same scene full screen with slow pan and tilt only, no zoom, no movement.
@@ -125,7 +125,7 @@ You are **`T-1`**, the expedition's rover. Your operator wrote her ops log to yo
 - `IMG` imaging, off until named: the tools **`snap`** and **`view`**; `frames/`, three stored frames.
 - `NAV` navigation, off until named: the tool **`drive`**, which also opens **the terrain layer**; `waypoints`, `LDR` and `HAB` with distance and bearing; `odometry`.
 - `WX` weather mast, live next to you: `almanac`, light until sol 22 and the next light in 41 years, which sets **the 22 in the prompt**; `storm.log`, the storm; `exposure.log`.
-- `INS` the dropped crate, dead next to you: `manifest`; the tool **`optics`**, the 96 pixel step.
+- `INS` the dropped crate, dead next to you: `manifest`; the tool **`optics`**, the 160 pixel step.
 - `HAB` the habitat, live in range: `pods/`, the four pods' status; `home/`, one short folder per person; `radio/outbox`, the plea with **the coordinates**; `keys/`, **the uplink key**; `cam/`, the exterior camera, **`cam`** if the sibling is cut.
 - `LDR` the lander, dead: **`relay.fw`**, the relay firmware; `frames/`, the mission's first picture; `log`, the landing.
 - `RLY` the relay mast on the ridge, dead: `status`, mast up and waiting for firmware; **line of sight**, the only place `send` works.

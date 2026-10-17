@@ -19,7 +19,7 @@ Most essential and fastest first. Read backwards it is the cut order: when time 
 5. `send`, the packet, the four endings, the end card.
 6. `cam`.
 7. Sound.
-8. The 96 pixel optics step.
+8. The 160 pixel optics step.
 9. The three stored frames and `view`.
 10. The sibling `T-2`.
 11. The mid-road blur.
@@ -38,7 +38,7 @@ Slices run in parallel only because the spine ships these before they are releas
 - `src/model/world.ts`: `Node` with `id`, `kind` (`folder | file | tool | device | subsystem | place | thing | fact`), `name`, `parent`, and per kind `lines`, `tool`, `device`, `place`, `fact`; `World` as a map of nodes plus `State`: `rows`, `sol`, `light`, `position`, `heading`, `listed`, `mounted`, `powered`, `known`, `bar`, `facts`, `lastOutput`.
 - `src/model/commands.ts`: `run(verb, noun?) => Output`, where `Output` is lines of `string | Token` and `Token` is `{ text, nodeId, kind }`. Default verbs per kind live here. The terminal only renders `Output` and sends clicks back as `(verb, noun)`.
 - `src/windows/index.ts`: `open(name: 'map' | 'frame' | 'cam')`, `update(name, data)`, `close(name)`.
-- `src/scene/index.ts`: `render({ place, heading, res: 32 | 96, blur? }) => { pixels: Uint8Array, things: { id, mask: Uint8Array }[] }` and `cam(place, heading)`. The spine ships a stub that returns noise and no things so the terminal flow runs without the scene.
+- `src/scene/index.ts`: `render({ place, heading, res: 64 | 160, blur? }) => { pixels: Uint8Array /* RGB, res*res*3 */, things: { id, mask: Uint8Array }[] }` and `cam(place, heading)`. The spine ships a stub that returns noise and no things so the terminal flow runs without the scene.
 - `src/map/index.ts`: `forest(state)` and `terrain(state, places, path)`.
 - `src/content/index.ts`: `world(): World`. The spine ships placeholder drives with the real names and one line each, so every slice can play the full flow.
 - `src/audio/index.ts`: `cue(name)` with the cue names from DESIGN.md section 14, no-op in the spine.
@@ -48,7 +48,7 @@ Slices run in parallel only because the spine ships these before they are releas
 Each slice is a card under the mission card, filed `--planned`; the seat releases a wave by moving its cards to Ready once the spine is on `main` and plays each PR before merging it. Every slice's note ends with How to try and a Pages link.
 
 1. **Spine** (the seat itself, `vf take`): priority item 1 and the interfaces. How to try: play from boot to the 20-row screen and the forest map with the placeholder drives on Pages.
-2. **Scene and sight**: the Three.js plain and objects from DESIGN.md sections 8 and 12 (the rover with its deck in frame, mast, crate, habitat with fallen mast, lander, ridge mast, sibling in a crater, rocks), `render` at 32 one-bit and 96 four-grey with the object-id pass, `snap` with directions and scan-in, `?` things and hover, `arm`, `view` with the three stored frames, the mid-road blur, and `cam` full screen with pan and tilt. The stored frames, the 96 step and the blur are the last things in the slice and drop first.
+2. **Scene and sight**: the Three.js plain and objects from DESIGN.md sections 8 and 12 (the rover with its deck in frame, mast, crate, habitat with fallen mast, lander, ridge mast, sibling in a crater, rocks), `render` at 64 in eight dusk colours and 160 in 32 (Maks 10-17) with the object-id pass, `snap` with directions and scan-in, `?` things and hover, `arm`, `view` with the three stored frames, the mid-road blur, and `cam` full screen with pan and tilt. The stored frames, the 160 step and the blur are the last things in the slice and drop first.
 3. **Terrain and drive**: the terrain layer with fog, path and labeled dots, places from text lines and `NAV` waypoints, `drive` with the sliding dot, the driving line, arrival, the bus refresh by place, sol costs.
 4. **Content**: every drive, file, place and fact in `src/content/` from DESIGN.md sections 12 and 13, the boot lines, the readme, the ops log, the home folders, the plea, the almanac, with the names placed as section 12 says. Delivered as data only; `npm run play` must still pass.
 5. **Send and the end**: the locked `send` messages, the packet form, the facts and sizes, the four endings and their acknowledgments, the end sequence, the end card and `again`, the late line past sol 22.
