@@ -116,3 +116,9 @@ canvas.clock { display: block; width: 132px; height: 132px; }
 .pips b.over { border-style: dashed; }
 .hpbar .sep { margin: 0 8px; color: var(--dim); }
 .hpbar .pips b { width: 8px; height: 8px; }
+
+.waypoints { min-width: 240px; max-height: 200px; overflow-y: auto; }
+.waypoints .wp { display: flex; gap: 8px; }
+.waypoints .wp span:first-child { flex: 1; }
+.waypoints .wp .at { color: var(--dim); }
+canvas.map { cursor: crosshair; }
