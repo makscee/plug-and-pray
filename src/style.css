@@ -63,3 +63,12 @@ canvas.eye { display: block; width: 240px; height: 240px; image-rendering: pixel
   position: fixed; inset: 0; display: grid; place-items: center; background: #000c; z-index: 9999; text-align: center;
 }
 .dead p { margin: 0 0 16px; }
+
+/* body slice: the ledger and the clock of hours */
+.ledger { min-width: 240px; max-width: 300px; }
+.ledger-head { color: var(--dim); margin-bottom: 4px; }
+.ledger-row { display: flex; gap: 10px; }
+.ledger-row span { flex: 1; }
+.ledger-row.dim { color: var(--dim); }
+.ledger-sets { margin-top: 6px; color: var(--dim); }
+canvas.clock { display: block; width: 132px; height: 132px; }
