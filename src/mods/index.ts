@@ -7,3 +7,4 @@ import '../fight';
 import '../world';
 import '../body';
 import '../tune/hints';
+import './pilot';

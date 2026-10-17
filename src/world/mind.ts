@@ -33,9 +33,15 @@ tickHooks.push((g) => {
   for (let y = j - 1; y <= j + 1; y++) for (let x = i - 1; x <= i + 1; x++) g.seen.add(`${x},${y}`);
 });
 
+/** other slices hook the map window: a click on a cell (world cells), and drawing on top of it */
+export const mapHooks = {
+  click: [] as ((g: Game, x: number, y: number) => void)[],
+  draw: [] as ((g: Game, ctx: CanvasRenderingContext2D, ox: number, oy: number, px: number) => void)[],
+};
+
 const CSS = { floor: '#3a2f28', wall: '#211a16', vein: '#7a4a2a', ichor: '#a02838', you: '#f0a050', vec: '#e0d0a0', printer: '#70a0a0' };
 
-function mapView(el: HTMLElement, inst: Inst): View {
+function mapView(el: HTMLElement, inst: Inst, game: Game): View {
   const span = Math.round(param<number>(inst, 'span', 33));
   const px = Math.max(3, Math.floor(198 / span));
   const canvas = document.createElement('canvas');
@@ -44,14 +50,21 @@ function mapView(el: HTMLElement, inst: Inst): View {
   el.append(canvas);
   const ctx = canvas.getContext('2d')!;
   let next = 0;
+  let [ox, oy] = [0, 0];
+  canvas.addEventListener('click', (ev) => {
+    const r = canvas.getBoundingClientRect();
+    const x = ox + Math.floor(((ev.clientX - r.left) / r.width) * span);
+    const y = oy + Math.floor(((ev.clientY - r.top) / r.height) * span);
+    for (const f of mapHooks.click) f(game, x, y);
+  });
   return {
     update(g: Game) {
       if (!(inst.on && g.t >= inst.readyAt)) return;
       if (g.t < next) return;
       next = g.t + 0.25;
       const p = g.player;
-      const ox = Math.floor(p.x) - (span >> 1);
-      const oy = Math.floor(p.y) - (span >> 1);
+      ox = Math.floor(p.x) - (span >> 1);
+      oy = Math.floor(p.y) - (span >> 1);
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       for (let y = 0; y < span; y++)
@@ -92,6 +105,7 @@ function mapView(el: HTMLElement, inst: Inst): View {
         ctx.lineTo(vx - 4, vy + 4);
         ctx.stroke();
       }
+      for (const f of mapHooks.draw) f(g, ctx, ox, oy, px);
       const yx = (p.x - ox) * px;
       const yy = (p.y - oy) * px;
       // you: an arrowhead pointing the way you face, big enough to read at a glance
@@ -147,7 +161,7 @@ function compassView(el: HTMLElement, inst: Inst): View {
 const prevView = VIEWS.mind;
 view('mind', (el, inst, g) => {
   const w = param<string>(inst, 'what', '');
-  if (w === 'map') return mapView(el, inst);
+  if (w === 'map') return mapView(el, inst, g);
   if (w === 'compass') return compassView(el, inst);
   if (!ours(inst) && prevView) return prevView(el, inst, g);
   const p = document.createElement('p');

@@ -191,7 +191,7 @@ verb('listen', {
 export const allMods = () => Object.keys(MODS);
 
 /** verbs that need a word after them; the actions bar spells those out itself */
-const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'crawl', 'face', 'step', 'print', 'save', 'setup', 'conjure', 'read']);
+const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'crawl', 'face', 'step', 'print', 'save', 'setup', 'conjure', 'read', 'goto']);
 const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].when!(g));
 
 export interface Action { label: string; cmd: string }
