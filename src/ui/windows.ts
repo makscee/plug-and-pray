@@ -62,19 +62,34 @@ export function open(id: string, title: string, at?: [number, number]): Win {
   drag(el, t);
   desk().append(el);
   // once its body is filled, a new module window moves to the first spot that covers no other window
-  if (!at) queueMicrotask(() => {
-    const spot = free(el);
-    if (spot) [el.style.left, el.style.top] = [spot[0] + 'px', spot[1] + 'px'];
-  });
+  // windows grow as their views fill (a description, a canvas), so look again a little later, unless dragged
+  if (!at) {
+    let dragged = false;
+    t.addEventListener('pointerdown', () => (dragged = true));
+    const place = () => {
+      if (dragged || !el.isConnected || !overlaps(el)) return;
+      const spot = free(el);
+      if (spot) [el.style.left, el.style.top] = [spot[0] + 'px', spot[1] + 'px'];
+    };
+    queueMicrotask(place);
+    setTimeout(place, 300);
+    setTimeout(place, 1200);
+  }
   const w = { id, el, title: t, body, foot, dot };
   wins.set(id, w);
   return w;
 }
 
+const rects = (el: HTMLElement) => [...document.querySelectorAll<HTMLElement>('.win')].filter((o) => o !== el).map((o) => o.getBoundingClientRect());
+function overlaps(el: HTMLElement): boolean {
+  const a = el.getBoundingClientRect();
+  return rects(el).some((r) => a.left < r.right && a.right > r.left && a.top < r.bottom && a.bottom > r.top);
+}
+
 /** the first free top-left (row by row from the top left, 16 px steps) where `el` overlaps no window */
 function free(el: HTMLElement): [number, number] | null {
   const { width: w, height: h } = el.getBoundingClientRect();
-  const others = [...document.querySelectorAll<HTMLElement>('.win')].filter((o) => o !== el).map((o) => o.getBoundingClientRect());
+  const others = rects(el);
   for (let y = 24; y + h <= innerHeight - 8; y += 16)
     for (let x = 24; x + w <= innerWidth - 8; x += 16)
       if (!others.some((r) => x < r.right + 8 && x + w + 8 > r.left && y < r.bottom + 8 && y + h + 8 > r.top)) return [x, y];
