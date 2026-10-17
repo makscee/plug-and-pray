@@ -88,9 +88,9 @@ describe('fight', () => {
     m.enemy!.hp = 5;
     run(h, 0.2);
     expect(h.player.hp).toBe(10);
-    expect(m.enemy!.hp).toBe(4);
+    expect(m.enemy!.hp).toBe(4.5);
     run(h, 2);
-    expect(h.player.hp).toBe(9);
+    expect(h.player.hp).toBe(9.5);
   });
 
   it('a mimic wakes when you reach for it, and gives up what it wore', () => {
@@ -104,15 +104,25 @@ describe('fight', () => {
     expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === 'vidicon-tube')).toBe(true);
   });
 
+  it('the chamber you wake in is calm; its conduits and the first ring are not', () => {
+    const g = newGame(1);
+    for (let cy = -1; cy <= 1; cy++) for (let cx = -1; cx <= 1; cx++) chunk(g, cx, cy);
+    const foes = g.ents.filter((e) => e.kind === 'enemy');
+    expect(foes.length).toBeGreaterThanOrEqual(8);
+    expect(foes.every((e) => Math.hypot(e.x - 8.5, e.y - 8.5) >= 7)).toBe(true);
+    expect(foes.some((e) => Math.hypot(e.x - 8.5, e.y - 8.5) < 16)).toBe(true);
+  });
+
   it('the hum is hidden, the rest are not; deeper chunks hold meaner things', () => {
-    expect(table(1).length).toBe(0);
+    expect(table(0).map((t) => t[0])).toEqual(['mite']); // playtest 10-18: fights from the start
+    expect(table(1).map((t) => t[0])).not.toContain('walker');
     expect(table(2).map((t) => t[0])).not.toContain('walker');
     expect(table(4).map((t) => t[0])).toEqual(expect.arrayContaining(['walker', 'hum', 'seraph']));
     const g = newGame(3);
     for (let cy = -4; cy <= 4; cy++) for (let cx = -4; cx <= 4; cx++) chunk(g, cx, cy);
     const types = new Set(g.ents.filter((e) => e.enemy).map((e) => e.enemy!.type));
     expect(types.has('mite')).toBe(true);
-    expect(g.ents.filter((e) => e.enemy && Math.hypot(Math.floor(e.x / CHUNK), Math.floor(e.y / CHUNK)) < 1.5)).toHaveLength(0);
+    expect(g.ents.filter((e) => e.enemy && Math.hypot(e.x - 8.5, e.y - 8.5) < 7)).toHaveLength(0); // calm where you wake
   });
 
   it('a walker winds up: step away and it misses', () => {

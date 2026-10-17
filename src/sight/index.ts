@@ -14,6 +14,7 @@ import { view } from '../ui/views';
 import { near, see, shoot, type Mode } from './scene';
 import './lamp';
 import './scanner';
+import { clean } from '../tune/start';
 
 /** the facing as a compass word, and the turn to its left and right */
 export const WORDS = ['n', 'e', 's', 'w'];
@@ -295,6 +296,7 @@ verb('conjure', {
 /** ?scene=sight: a staged look for judging the slice: six eyes and senses on, three cells from the
  * nearest choir mite, facing it, halo lit, the spark finger on for when they come */
 export function stageSight(g: Game): void {
+  clean(g);
   ensure(g, g.player.x, g.player.y, 3);
   const foe = g.ents.filter((e) => e.enemy).sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))[0];
   const p = g.player;

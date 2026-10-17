@@ -51,7 +51,7 @@ function walker(g: Game, e: Entity, dt: number): void {
   if (near(e, p) > 1.1) chase(g, e, dt);
 }
 
-enemy('mite', { name: 'a choir mite', hp: 1, speed: 2, damage: 1, cooldown: 1.8, sense: 6 });
+enemy('mite', { name: 'a choir mite', hp: 1, speed: 2, damage: 0.5, cooldown: 1.8, sense: 6 }); // playtest 10-18: many more mites early, each bites softer (was 1)
 enemy('seraph', { name: 'a seraph lamp', hp: 3, speed: 0, damage: 1.5, cooldown: 3.5, sense: 8, ai: seraph });
 enemy('walker', { name: 'an ossuary walker', hp: 6, speed: 0.7, damage: 2, cooldown: 2.5, sense: 7, ai: walker });
 enemy('hum', { name: 'the hum', hp: 4, speed: 1.1, damage: 1, cooldown: 2, sense: 5, hidden: true });

@@ -4,6 +4,7 @@ import { powerMax, powerUsed } from '../core/mods';
 import { frameHooks } from '../ui';
 import { pips } from '../ui/panels';
 import { hpText } from './report';
+import { clean } from '../tune/start';
 
 let bar: HTMLElement | null = null;
 let flash: HTMLElement | null = null;
@@ -55,6 +56,7 @@ let staged = new URLSearchParams(location.search).get('scene') !== 'fight';
 frameHooks.push((g) => {
   if (staged) return;
   staged = true;
+  clean(g);
   const p = g.player;
   g.ents = g.ents.filter((e) => e.kind !== 'item' || Math.hypot(e.x - p.x, e.y - p.y) > 8);
   p.slots = 6;

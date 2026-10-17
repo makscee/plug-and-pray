@@ -22,13 +22,12 @@ const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e9);
 
 function boot(g: Game): void {
   startKit(g);
+  const inst = (name: string) => ({ text: `install ${name}`, cmd: `install ${name}` });
   say(
     g,
-    'core ok. you wake with an eye, legs and a map. slots 3/6. power 3/6.',
-    'the eye shows what is ahead; the map shows you (the arrow) and where you have been.',
-    ['walk with the buttons under the eye, or type ', { text: 'go e 3', cmd: 'go e 3' }, '. lost or stuck? ', { text: 'unstuck', cmd: 'unstuck' }],
-    ['something lies at your feet: ', { text: 'take', cmd: 'take' }, ', then install it from ', { text: 'inv', cmd: 'inv' }, '.'],
-    [{ text: 'take', cmd: 'take' }, '  ', { text: 'inv', cmd: 'inv' }, '  ', { text: 'listen', cmd: 'listen' }, '  ', { text: 'help', cmd: 'help' }],
+    'core ok. you hold four modules and wear none. slots 0/6. power 0/6.',
+    ['install them: ', inst('pinhole eye'), '  ', inst('map spool'), '  ', inst('stepper relay'), '  ', inst('spark finger')],
+    ['then walk with the buttons under the eye, or type ', { text: 'go e 3', cmd: 'go e 3' }, '. things move out there; the spark bites what comes close. lost or stuck? ', { text: 'unstuck', cmd: 'unstuck' }],
   );
 }
 

@@ -21,6 +21,6 @@ function toward(g: Game, mod: string, sound: string): Line | null {
 tickHooks.push((g) => {
   if (told.has(g) || !active(g, 'gait').some((i) => param(i, 'go', false))) return;
   told.add(g);
-  const lines = [toward(g, 'spark-finger', 'a spark snaps, on and off'), toward(g, 'card-reader', 'a card reader ticks, waiting for a card')].filter((l): l is Line => !!l);
+  const lines = [toward(g, 'dawn-eye', 'a clear eye glints, waiting for a socket'), toward(g, 'card-reader', 'a card reader ticks, waiting for a card')].filter((l): l is Line => !!l);
   if (lines.length) say(g, 'you hear:', ...lines, ['the walls bend; ', { text: 'listen', cmd: 'listen' }, ' finds the way.']);
 });
