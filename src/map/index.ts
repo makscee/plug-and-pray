@@ -4,6 +4,7 @@ import { km, save, tok, where } from '../model';
 import type { Line, Token, World } from '../model';
 import * as windows from '../windows';
 import { renderLine, tokenEl } from '../term/render';
+import { CHAR, LINE, fit, placeLabels } from './labels';
 
 /** the forest: one tree per machine (your root, then every mounted drive), drawn from what was listed */
 export function forest(w: World): HTMLElement {
@@ -81,9 +82,7 @@ export function terrain(w: World, places: string[], path: [number, number][]): T
     return p ? [p.x, p.y] : [0, 0];
   };
   const [cx, cy] = at(s.trip ? s.trip.from : s.position);
-  const far = Math.max(1, ...places.map((p) => Math.hypot(at(p)[0] - cx, at(p)[1] - cy)));
-  const scale = Math.min(60, Math.max(18, (SIZE / 2 - 40) / far));
-  const px = ([x, y]: [number, number]): [number, number] => [SIZE / 2 + (x - cx) * scale, SIZE / 2 - (y - cy) * scale];
+  const { scale, px } = fit(places.map(at), [cx, cy], SIZE);
   const pts = (p: [number, number][]) => p.map((q) => px(q).map((n) => n.toFixed(1)).join(',')).join(' ');
   const id = `fog${++maskId}`;
 
@@ -125,18 +124,27 @@ export function terrain(w: World, places: string[], path: [number, number][]): T
   Object.assign(kmLabel.style, { left: `${12 + scale}px`, top: `${SIZE - 19}px` });
   el.append(kmLabel);
 
-  for (const p of places) {
-    const [x, y] = px(at(p));
+  const texts = places.map((p) => {
+    const t: Token = { ...tok(w, w.nodes[p]), kind: 'place' };
+    return { t, dist: p !== s.position ? ` ${km(w, s.position, p).toFixed(1)} km` : '' };
+  });
+  const scaleBox = { x: 4, y: SIZE - 20, w: 22 + scale + 4 * CHAR, h: LINE };
+  const boxes = placeLabels(
+    places.map((p, i) => {
+      const [x, y] = px(at(p));
+      return { x, y, w: (texts[i].t.text.length + texts[i].dist.length) * CHAR };
+    }),
+    SIZE,
+    [scaleBox],
+  );
+  places.forEach((_, i) => {
     const label = document.createElement('div');
     label.className = 'tlabel';
-    const t: Token = { ...tok(w, w.nodes[p]), kind: 'place' };
-    label.append(tokenEl(t));
-    if (p !== s.position) label.append(` ${km(w, s.position, p).toFixed(1)} km`);
-    const right = x > SIZE - 90;
-    Object.assign(label.style, right ? { right: `${SIZE - x + 7}px` } : { left: `${x + 7}px` });
-    label.style.top = `${y - 11}px`;
+    label.append(tokenEl(texts[i].t));
+    if (texts[i].dist) label.append(texts[i].dist);
+    Object.assign(label.style, { left: `${boxes[i].x.toFixed(1)}px`, top: `${boxes[i].y.toFixed(1)}px` });
     el.append(label);
-  }
+  });
 
   el.track = (p) => {
     seen.setAttribute('points', pts(p));

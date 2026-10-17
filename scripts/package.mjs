@@ -14,7 +14,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const SHOTS = [
   { file: '1-boot.png', after: ['tok', '5', 'display ok'], before: true, settle: 500 },
   { file: '2-first-frame.png', after: ['tok', 'n', 'in view'], settle: 1500 },
-  { file: '3-terrain-drive.png', after: ['tok', 'HAB 3.0 km bearing 040', 'driving'], settle: 4500 },
+  { file: '3-terrain-drive.png', after: ['node', '@HAB', 'driving'], settle: 4500 },
   { file: '4-packet.png', after: ['tok', '4 pods 3 nominal', '36/64'], settle: 500 },
   { file: '5-cam.png', after: ['verb', 'cam', 'cam open'], settle: 3000 },
 ];
