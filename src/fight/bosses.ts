@@ -7,11 +7,12 @@
 // drops a fine+ module (a unique on floors 1 and 3). `stageBoss` sets up a test fight (?boss=, the sim).
 import { dist, enemy, hurt, killHooks, say, spawn, spawnEnemy, tickHooks } from '../core/game';
 import { Cell, clear, ensure, open, setCell } from '../core/grid';
-import { MODS } from '../core/mods';
+import { label, MODS, slotsUsed } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import type { Entity, Game, Item } from '../core/types';
 import { fire, shots, type ShotData } from './shots';
 import { WARM } from '../mods/sense';
+import { dealUnique } from '../mods/uniques';
 
 // ---- shapes on the floor: what a wind-up will hit (drawn on the map, marked in the eye, read by the sim)
 
@@ -467,12 +468,12 @@ boss({
   ],
 });
 boss({
-  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 80, damage: 1.6, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
+  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 80, damage: 1.4, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
   hint: 'she calls mites and stomps. thin the mites, keep off her stomp, bite her between.',
   turn: ['the mite queen shrieks. the brood comes faster.'],
   phases: [
     [brood({ type: 'mite', n: 3, cap: 4, windup: 1, rest: 1.5 }), slam({ r: 1.7, windup: 1, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.7 cells. step out.' }), volley({ n: 1, spread: 0, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
-    [brood({ type: 'mite', n: 4, cap: 6, windup: 0.8, rest: 1 }), slam({ r: 2, windup: 1, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, move: 'spits acid' })],
+    [brood({ type: 'mite', n: 3, cap: 5, windup: 0.9, rest: 1.2 }), slam({ r: 2, windup: 1, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, move: 'spits acid' })],
   ],
 });
 boss({
@@ -505,7 +506,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-ringer', floor: 1, name: 'the bell-ringer', hp: 85, damage: 4.8, speed: 1.6, walk: 'keep', keep: 4, dodge: true, r: 0.5, at: [0.5],
+  id: 'boss-ringer', floor: 1, name: 'the bell-ringer', hp: 85, damage: 4.3, speed: 1.6, walk: 'keep', keep: 4, dodge: true, r: 0.5, at: [0.5],
   hint: 'it keeps away and rings the floor where you stand. keep moving; it slips your shots, so shoot as it lands.',
   turn: ['the bell-ringer rings faster: three peals follow you.'],
   phases: [
@@ -814,11 +815,9 @@ export const DROP_POOL: string[][] = [
   ['heat-lance', 'reliquary-saw', 'ossuary-plate', 'reliquary-ribs', 'saints-lens'],
   [],
 ];
-/** uniques (v2 rarity, src/mods/uniques.ts) a boss may give up on floors 1 and 3 */
-export const UNIQUE_POOL = ['vitus-chain', 'drowned-bell', 'last-rite', 'vey-mirror', 'kiln-heart', 'saints-last-lens', 'leech-psalm'];
+/** floors whose boss also gives up a unique (from the run's deck, src/mods/uniques.ts) */
 export const UNIQUE_FLOORS = [1, 3];
 
-/** what a boss leaves: a fine (rare from floor 2) module from its floor's pool, and on floors 1 and 3 a unique */
 export function bossDrops(g: Game, floor: number): Item[] {
   const r = rng(hash(g.seed, 505, floor));
   const owned = new Set([...g.player.installed.map((i) => i.mod), ...g.player.inv.flatMap((i) => (i.kind === 'mod' ? [i.mod] : []))]);
@@ -826,15 +825,9 @@ export function bossDrops(g: Game, floor: number): Item[] {
   const out: Item[] = [];
   if (pool.length) {
     const fresh = pool.filter((m) => !owned.has(m));
-    out.push({ kind: 'mod', mod: r.pick(fresh.length ? fresh : pool), rarity: floor >= 2 ? 'rare' : 'fine' } as Item);
+    out.push({ kind: 'mod', mod: r.pick(fresh.length ? fresh : pool), rarity: floor >= 2 ? 'rare' : 'fine' });
   }
-  if (UNIQUE_FLOORS.includes(floor)) {
-    const u = UNIQUE_POOL.filter((m) => MODS[m] && !owned.has(m) && !g.stats.mods.includes(m));
-    if (u.length) {
-      const id = r.pick(u);
-      out.push({ kind: 'mod', mod: id, rarity: 'unique', title: MODS[id].name } as Item);
-    } else if (pool.length) out.push({ kind: 'mod', mod: r.pick(pool), rarity: 'rare' } as Item);
-  }
+  if (UNIQUE_FLOORS.includes(floor)) out.push(dealUnique(g));
   return out;
 }
 
@@ -854,7 +847,7 @@ killHooks.push((g, e) => {
   stunned.delete(g);
   const items = bossDrops(g, def.floor);
   items.forEach((item, k) => spawn(g, { kind: 'item', x: e.x + (k ? 0.4 : -0.2), y: e.y + 0.3, item }));
-  say(g, `✦ ${name} is down.${items.length ? ` it leaves ${items.map((i) => (i.kind === 'mod' ? (('title' in i && i.title) || `${('rarity' in i && i.rarity) || ''} ${MODS[i.mod]?.name ?? i.mod}`.trim()) : '')).join(' and ')}.` : ''}`);
+  say(g, `✦ ${name} is down.${items.length ? ` it leaves ${items.map((i) => (i.kind === 'mod' ? label(i) : '')).join(' and ')}.` : ''}`);
   g.events.push({ type: 'boss-down', at: [e.x, e.y], data: def.id });
   bossHooks.down(g, e);
 });
@@ -888,6 +881,7 @@ export function stageBoss(g: Game, floor: number, variant?: string): Entity {
   p.core = k.core;
   p.flesh = k.flesh;
   for (const mod of k.mods) if (MODS[mod]) p.installed.push({ uid: g.nextId++, mod, on: true, readyAt: g.t - 1, data: {} });
+  p.slots = Math.max(k.slots, slotsUsed(g)); // some modules take two slots (v2 inventory)
   p.maxHp = 10 + k.flesh + p.installed.reduce((s, i) => s + Number(MODS[i.mod]?.params.hp ?? 0), 0);
   p.hp = p.maxHp;
   arena(g, p.x, p.y);

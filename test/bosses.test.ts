@@ -79,8 +79,7 @@ describe('bosses', () => {
     expect(down).toBe(e);
     const drops = g.ents.filter((x) => x.id >= before && x.item?.kind === 'mod').map((x) => x.item as { mod: string; rarity?: string });
     expect(drops.length).toBe(2);
-    // a unique once v2 rarity's uniques are in, else a rare in its place
-    expect(drops.some((d) => d.rarity === 'unique' || d.rarity === 'rare')).toBe(true);
+    expect(drops.some((d) => d.rarity === 'unique')).toBe(true);
     expect(drops.every((d) => d.rarity && d.rarity !== 'common')).toBe(true);
     expect(bossDrops(newGame(3), 0).length).toBe(1);
     bossHooks.down = () => {};

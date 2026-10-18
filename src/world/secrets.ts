@@ -215,7 +215,8 @@ function inView(g: Game, inst: Inst, x: number, y: number, max: number): boolean
   return Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) <= ((param<number>(inst, 'fov', 60) / 2 + 12) * Math.PI) / 180;
 }
 
-const eyeName = (i: Inst) => label(i);
+// a unique's title starts with "the" already (the saint's last lens): the lines below say "the " themselves
+const eyeName = (i: Inst) => label(i).replace(/^the /, '');
 const WORD = ['n', 'e', 's', 'w'];
 const sideOf = (g: Game, s: Secret) => {
   const [dx, dy] = [-s.fx, -s.fy];

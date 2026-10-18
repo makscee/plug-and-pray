@@ -14,7 +14,7 @@ import type { Game, Inst } from '../src/core/types';
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
 /** is b better than a for this key? */
 const better = (key: string, a: number, b: number) => (BETTER[key] === 'down' ? b < a : b > a);
-const NO_ROLL = new Set(['res', 'fps', 'colors', 'flicker', 'slots', 'chill']);
+const NO_ROLL = new Set(['res', 'fps', 'colors', 'flicker', 'slots', 'chill', 'size']);
 
 describe('rolls, attune and the economy (r1 econ)', () => {
   it('every number a module has is either classed better-up/down or never rolls', () => {

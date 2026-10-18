@@ -11,6 +11,20 @@
   --dim: #7a6a5a;
   --acc: #f0a050;
   --hurt: #d04030;
+  /* the visual system (Maks 10-18: "everything blends, no hierarchy"): four text levels, six meanings, three buttons */
+  --win-head: #1d1613;     /* a window's title bar */
+  --line-hi: #5e4a3a;      /* an edge that should be seen */
+  --t-title: #fbeed6;      /* level 1: a window's title */
+  --t-head: #c9a878;       /* level 2: a section header (small, spaced capitals) */
+  --t-body: var(--fg);     /* level 3: what you read */
+  --t-meta: var(--dim);    /* level 4: numbers on the side, flavour */
+  --danger: #ff5a44;       /* hurts you, or you will be hurt */
+  --combat: #ff9580;       /* the fight told: blows, kills */
+  --warn: #ffd04a;         /* refused, missing, careful */
+  --good: #8fd46a;         /* on, ready, mended */
+  --info: #6cc8d4;         /* the codex, guides, bearings */
+  --loot: #e8bf5a;         /* things you gain */
+  --cmd: #fbeed6;          /* your own typed command */
 }
 
 * { box-sizing: border-box; }
@@ -209,3 +223,105 @@ canvas.map { cursor: crosshair; }
 .bossbar .bb-move { color: #ff6a50; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bossbar .bb-move.open { color: #ffd860; }
 body.boss-on .elite-warn { display: none; }
+
+/* ── the visual system (Maks 10-18): hierarchy by level, colour by meaning, buttons by weight ── */
+/* level 1: window titles, on their own bar */
+.win { border-color: var(--line-hi); }
+.win .title { background: var(--win-head); color: var(--t-title); font-size: 21px; letter-spacing: 0.5px; }
+.win.min .title { background: var(--win); color: var(--t-body); }
+/* level 2: section headers inside windows */
+.win-console .acts .echo,
+.win.panel .setups > .dim:first-child,
+.ledger-head { color: var(--t-head); font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+.win.panel .res { color: var(--t-body); }
+/* level 4: meta and flavour */
+.win .facing { color: var(--t-meta); }
+.win .flavour, .win.panel .detail .flavour-line { color: var(--t-meta); }
+.win .does, .win.panel .detail .does { color: var(--t-body); opacity: 0.75; }
+.win.panel .detail .dtop .name { color: var(--t-title); }
+
+/* buttons. secondary (the default): an accent word, dotted underline so it reads as clickable */
+button { border-bottom: 1px dotted #f0a05066; }
+button:hover { color: #ffc27a; text-decoration: none; border-bottom: 1px solid currentColor; }
+button:disabled, button:disabled:hover { color: var(--t-meta); border-bottom-color: transparent; cursor: default; }
+/* primary: filled. the actions bar's and window feet's buttons, the setup that is on, a warning's fix */
+.win-console .acts button, .win .foot button, .btn-primary {
+  border: 1px solid #f0a05055; background: #2a1a0e; padding: 0 5px; line-height: 1.05;
+}
+.win-console .acts button:hover, .win .foot button:hover, .btn-primary:hover { background: #3a2412; border-color: var(--acc); }
+.win-console .acts div { gap: 3px 6px; }
+.win-console .acts div + div { margin-top: 3px; }
+.win-console .acts .echo { align-self: center; }
+.win.panel .setups button.on, .win-console .ln-warn button { color: var(--bg); background: var(--acc); border: 0; padding: 0 5px; }
+.win-console .ln-warn button:hover { background: #ffc27a; }
+.win.panel .cell, .win.panel .cell:hover { border-bottom-style: solid; }
+.win.panel .cell.socket, .win.panel .cell.socket:hover { border-bottom-style: dashed; }
+.win .title button, .win.panel .cell { border-bottom-width: 1px; }
+
+/* console lines: each kind has its colour and a left mark */
+.win-console .out .ln { padding-left: 7px; border-left: 2px solid transparent; }
+.win-console .out .ln-say { color: var(--t-body); }
+.win-console .out .ln-cmd { color: var(--cmd); background: #1f1814; border-left-color: var(--t-meta); margin-top: 5px; }
+.win-console .out .ln-cmd .echo { color: var(--cmd); }
+.win-console .out .ln-combat { color: var(--combat); border-left-color: var(--danger); }
+.win-console .out .ln-loot { color: var(--loot); border-left-color: var(--loot); }
+.win-console .out .ln-warn { color: var(--warn); border-left-color: var(--warn); background: #241c08; }
+.win-console .out .ln-info { color: var(--info); border-left-color: #2f6a72; }
+.win-console .in { color: var(--acc); }
+
+/* the HUD: a strip of its own, labels dim, values bright, the fight line red */
+.hpbar { padding: 2px 10px; background: #0d0a09ee; border: 1px solid var(--line-hi); color: var(--t-title); }
+.hpbar .hud-k { color: var(--t-meta); }
+.hpbar .fight { color: var(--combat); }
+.hpbar.struck .fight { animation: struck 0.3s ease-out; }
+@keyframes struck { from { color: #fff; text-shadow: 0 0 8px #fff; } to { color: var(--combat); text-shadow: none; } }
+.hpbar .hud-tag { display: inline-block; padding: 0 6px; color: #fff; background: var(--danger); letter-spacing: 1px; animation: hudtag 1s steps(2) infinite; }
+@keyframes hudtag { 50% { background: #8a1a10; } }
+.elite-warn { color: var(--danger); border-color: var(--danger); }
+
+/* v2 inventory: drag tiles between and within the grids, two-slot tiles, rarity (src/ui/panels.ts) */
+:root {
+  --rar-common: #6e6660;
+  --rar-common-fg: #b8ada2;
+  --rar-fine: #5fbf6a;
+  --rar-rare: #4f94ff;
+  --rar-unique: #f0c040;
+}
+.win.panel .grid { grid-auto-flow: row dense; }
+.win.panel .cell[data-key] { touch-action: none; }
+.win.panel .cell img { -webkit-user-drag: none; pointer-events: none; }
+/* a module that takes two slots: one wide tile, a pip per slot under the icon */
+.win.panel .cell.wide { justify-self: start; }
+.win.panel .cell .span-pips { position: absolute; left: 0; right: 0; bottom: 2px; display: flex; justify-content: center; gap: 3px; pointer-events: none; }
+.win.panel .cell .span-pips b { width: 4px; height: 4px; background: var(--dim); }
+/* rarity: the tile's border, a glow past common, a slow gold shimmer on a unique */
+.cell.rar-common { border-color: var(--rar-common); }
+.cell.rar-fine { border-color: var(--rar-fine); }
+.cell.rar-rare { border-color: var(--rar-rare); }
+.cell.rar-unique { border-color: var(--rar-unique); }
+.cell.rar-fine::before, .cell.rar-rare::before, .cell.rar-unique::before { content: ''; position: absolute; inset: -1px; pointer-events: none; }
+.cell.rar-fine::before { box-shadow: 0 0 5px -1px var(--rar-fine); }
+.cell.rar-rare::before { box-shadow: 0 0 6px 0 var(--rar-rare); }
+.cell.rar-unique::before { box-shadow: 0 0 7px 0 var(--rar-unique); animation: rar-glow 2.4s ease-in-out infinite; }
+.cell.rar-unique::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 35%, #fff3d080 50%, transparent 65%) no-repeat; background-size: 250% 100%; animation: rar-shimmer 3.2s linear infinite; mix-blend-mode: screen; }
+@keyframes rar-glow { 50% { box-shadow: 0 0 11px 1px var(--rar-unique); } }
+@keyframes rar-shimmer { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+.win.panel .cell.sel.rar-common, .win.panel .cell.sel.rar-fine, .win.panel .cell.sel.rar-rare, .win.panel .cell.sel.rar-unique { outline: 1px solid var(--acc); outline-offset: 1px; }
+.name.rar-common, .win.panel .detail .dtop .name.rar-common { color: var(--rar-common-fg); }
+.name.rar-fine, .rar-line.rar-fine, .win.panel .detail .dtop .name.rar-fine { color: var(--rar-fine); }
+.name.rar-rare, .rar-line.rar-rare, .win.panel .detail .dtop .name.rar-rare { color: var(--rar-rare); }
+.name.rar-unique, .rar-line.rar-unique, .win.panel .detail .dtop .name.rar-unique { color: var(--rar-unique); text-shadow: 0 0 6px #f0c04060; }
+.win.panel .detail .rar-line { font-size: 16px; margin: -2px 0 2px; }
+.rar-line.rar-common { color: var(--rar-common-fg); }
+/* the drag: the lifted tile leaves a hole, its ghost follows the pointer, grids say yes or no */
+.win.panel .cell.lifted { opacity: 0.25; }
+.cell.drag-ghost { position: fixed; z-index: 9800; pointer-events: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--acc); background: #1c140ee8; box-shadow: 0 6px 16px #000c; transform: scale(1.08); }
+.cell.drag-ghost.snap { transition: left 0.16s ease-out, top 0.16s ease-out; }
+.cell.drag-ghost .badge { position: absolute; right: 2px; bottom: 0; font-size: 16px; line-height: 1; color: var(--fg); text-shadow: 1px 1px 0 #000, -1px -1px 0 #000; }
+.cell.drag-ghost .span-pips { position: absolute; left: 0; right: 0; bottom: 2px; display: flex; justify-content: center; gap: 3px; }
+.cell.drag-ghost .span-pips b { width: 4px; height: 4px; background: var(--dim); }
+body.dragging, body.dragging * { cursor: grabbing !important; }
+.win.panel .grid.drop-ok { outline: 1px dashed var(--rar-fine); outline-offset: 2px; }
+.win.panel .grid.drop-no { outline: 1px dashed var(--hurt); outline-offset: 2px; }
+.drag-why { position: fixed; z-index: 9900; width: 260px; padding: 3px 8px; font-size: 16px; color: var(--fg); background: #000e; border: 1px solid var(--hurt); pointer-events: none; animation: drag-why 2.4s ease-out both; }
+@keyframes drag-why { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }

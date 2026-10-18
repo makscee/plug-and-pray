@@ -44,7 +44,7 @@ describe('fight', () => {
   it('shoot is refused without an aimed weapon and cools between shots', () => {
     const g = armed('spark-finger');
     exec(g, 'shoot');
-    expect(text(g)).toContain('nothing installed');
+    expect(text(g)).toContain('nothing aimed is on');
     const h = armed('nail-psalm');
     exec(h, 'shoot');
     exec(h, 'shoot');
@@ -230,7 +230,7 @@ describe('fight r1: seeing the fight', () => {
     run(g, 0.2);
     expect(m.enemy!.data.windup).toBeGreaterThan(g.t);
     expect(g.player.hp).toBe(10);
-    run(g, 0.5);
+    run(g, 0.9); // the rear is 0.3 to 1 s, by the mite's id (v2: the cradle relic takes an id too)
     expect(g.player.hp).toBe(9.5);
     g.player.hp = 0.2;
     const w = spawnEnemy(g, 'warden', 7.5, 8.5);
