@@ -89,8 +89,8 @@ describe('r2 pace', () => {
     expect([p.x, p.y]).toEqual([8.5, 8.5]);
   });
 
-  it('shards 2 and 3 lie nearer: about 3.8 and 5.6 chunks out, still one per zone', () => {
-    expect(SHARD_AT).toEqual([2.5, 3.8, 5.6]);
+  it('shards 2 and 3 lie nearer: about 4.1 and 5.8 chunks out, still one per zone', () => {
+    expect(SHARD_AT).toEqual([2.5, 4.1, 5.8]);
     for (let seed = 1; seed <= 30; seed++) {
       const p = plan(seed);
       expect(p.shards.map(([cx, cy]) => zoneOf(cx, cy))).toEqual([1, 2, 3]);
