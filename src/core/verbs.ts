@@ -2,10 +2,10 @@
 // available only while a module of it is on (`when`). Buttons anywhere type these same commands.
 
 import { does } from '../mods/describe';
-import { dist, itemName, reach, say, spawn } from './game';
+import { dist, itemName, reach, say, spawn, tickHooks } from './game';
 import { DIRS, open } from './grid';
 import { active, def, label, MODS, param, powerMax, powerUsed, switchOff, switchOn } from './mods';
-import type { Entity, Game, Inst, Item, Line, Seg } from './types';
+import type { Entity, Game, Inst, Item, Line, Res, Seg } from './types';
 
 export interface VerbDef {
   help: string;
@@ -143,6 +143,35 @@ verb('take', {
     }
   },
 });
+
+/** resource piles come up as you walk onto their cell (playtest r3: piles lay a cell off the route,
+ *  unseen); one line, counting up while more come within a few seconds ("+2 bone, +1 glass").
+ *  modules stay a choice: `take` */
+const picked = new WeakMap<Game, { line: Line; t: number; got: [Res, number][] }>();
+export function pickUp(g: Game): void {
+  const p = g.player;
+  const [i, j] = [Math.floor(p.x), Math.floor(p.y)];
+  const piles = g.ents.filter((e) => e.kind === 'item' && e.item?.kind === 'res' && !e.data?.mimic && Math.floor(e.x) === i && Math.floor(e.y) === j);
+  if (!piles.length) return;
+  let m = picked.get(g);
+  if (!m || g.t - m.t > 3 || g.log[g.log.length - 1] !== m.line) {
+    m = { line: [''], t: g.t, got: [] };
+    say(g, m.line);
+    picked.set(g, m);
+  }
+  m.t = g.t;
+  for (const e of piles) {
+    const it = e.item as Extract<Item, { kind: 'res' }>;
+    g.ents = g.ents.filter((x) => x !== e);
+    addItem(g, { ...it });
+    g.events.push({ type: 'take', at: [e.x, e.y] });
+    const have = m.got.find(([r]) => r === it.res);
+    if (have) have[1] += it.n;
+    else m.got.push([it.res, it.n]);
+  }
+  m.line[0] = m.got.map(([r, n]) => `+${n} ${r}`).join(', ');
+}
+tickHooks.push(pickUp);
 
 verb('drop', {
   help: 'leave an item here',
