@@ -20,6 +20,7 @@ import { powerMax } from './core/mods';
 import { paused, togglePause } from './ui/pause';
 import './body/input';
 import './audio/hook';
+import './fx/feedback';
 import './end';
 import type { Game } from './core/types';
 import { deathInfo } from './fight/death';

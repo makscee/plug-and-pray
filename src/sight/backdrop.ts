@@ -407,6 +407,15 @@ export function project(g: Game, x: number, y: number, up: number, fov: number, 
   return [W / 2 + (right / fwd) * focal, H / 2 - ((up - 0.5) / fwd) * focal, fwd];
 }
 
+/** a world point on screen now: through the eye (its view) or on the map; null when neither shows it (src/fx/feedback.ts) */
+export function screenAt(g: Game, x: number, y: number, up = 0.5): [number, number] | null {
+  if (!bd || bd.g !== g) return null;
+  if (mode === 'map') return onMap(bd, x, y);
+  const base = mode === 'view' ? plan(g).base : null;
+  const at = base ? project(g, x, y, up, fovAcross(base), innerWidth, innerHeight) : null;
+  return at ? [at[0], at[1]] : null;
+}
+
 /** where a radar's sweep points now (radians, 0 north, clockwise), and how far past a bearing it is (0..1 of a turn) */
 const sweepAt = (g: Game, inst: Inst): number => (((g.t % sweepT(inst)) / sweepT(inst)) * Math.PI * 2);
 const sweepT = (inst: Inst): number => Math.max(0.8, Math.min(4, param<number>(inst, 'every', 2)));

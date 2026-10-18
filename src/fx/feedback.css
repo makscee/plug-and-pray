@@ -1,0 +1,16 @@
+/* feedback effects (src/fx/feedback.ts): over every eye and the map, under the cards and the death screen */
+#fx { position: fixed; inset: 0; pointer-events: none; z-index: 8998; overflow: hidden; }
+#fx > div { position: absolute; pointer-events: none; will-change: transform, opacity; }
+#fx .fx-wash { inset: 0; left: 0 !important; top: 0 !important; }
+#fx .fx-red { background: radial-gradient(ellipse at center, transparent 35%, rgba(220, 30, 20, 0.5) 65%, rgba(255, 20, 10, 0.95)); box-shadow: inset 0 0 60px 20px rgba(255, 30, 20, 0.8); }
+#fx .fx-green { background: radial-gradient(ellipse at center, transparent 50%, rgba(80, 230, 110, 0.5)); }
+#fx .fx-white { background: radial-gradient(ellipse at center, rgba(255, 240, 210, 0.7), rgba(255, 220, 160, 0.2) 70%); }
+#fx .fx-black { background: #000; }
+#fx .fx-hitflash { width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(#fff 0, rgba(255, 255, 255, 0.7) 35%, transparent 70%); mix-blend-mode: screen; }
+#fx .fx-num { font: 26px VT323, monospace; color: #fff; text-shadow: 0 0 3px #000, 1px 1px 0 #000, -1px -1px 0 #000; white-space: nowrap; }
+#fx .fx-bit { width: 11px; height: 11px; border: 1px solid #000; box-shadow: 0 0 6px currentColor; }
+#fx .fx-ring { width: 36px; height: 36px; border: 3px solid #ffd36a; border-radius: 50%; box-shadow: 0 0 10px #ffd36a; }
+#fx .fx-pick { font: 24px VT323, monospace; white-space: nowrap; padding: 0 8px; background: rgba(0, 0, 0, 0.55); border: 1px solid currentColor; box-shadow: 0 0 12px currentColor; text-shadow: 0 0 6px currentColor; }
+#fx .fx-hpghost, #fx .fx-hpheal { transform-origin: left; z-index: 1; }
+#fx .fx-hpghost { background: #ff5040; box-shadow: 0 0 6px #ff5040; }
+#fx .fx-hpheal { background: #7f7; box-shadow: 0 0 6px #7f7; }
