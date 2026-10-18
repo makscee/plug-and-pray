@@ -40,7 +40,10 @@ const STEPS = [
   ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 3/4"))'],
   // unstuck: out of a wall at once; otherwise back to the last quiet spot (v2 flow: where `go e 3` stopped)
   [0, '(Object.assign(g.player, { x: 1.5, y: 1.5, path: [] }), true)'], ['unstuck', 'JSON.stringify(g.log).includes("wrench") && !(g.player.x === 1.5 && g.player.y === 1.5)'],
+  // v5: the cross floors left no foe near the wrench spot, so it turned quiet itself; a mite 9 cells off keeps it unquiet
+  [0, '(g.ents.push({ id: 9998, kind: "enemy", x: g.player.x + 9, y: g.player.y, enemy: { type: "mite", hp: 1, readyAt: 0, data: {} } }), true)'],
   ['unstuck'], [3.2, 'g.player.y === 8.5 && g.player.x >= 10.5'],
+  [0, '(g.ents = g.ents.filter(e => e.id !== 9998), true)'],
   // tuning (#1328): the legs' first hint names the card reader; listen gives cells and a compass word
   [0, '(g.ents.push({ id: 99999, kind: "item", x: 12.5, y: 8.5, item: { kind: "res", res: "bone", n: 1 } }), true)'], // the chamber holds only the halo now
   ['listen', 'JSON.stringify(g.log).includes("a card reader and a card: take both") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],

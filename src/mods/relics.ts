@@ -1,5 +1,5 @@
 // Uniques in the world (v2 rarity, src/mods/uniques.ts): where they lie, and the perks that tick on their own.
-// Three a run at least, by seed: a relic in one of the cradle's corner chunks (its second half), one from each
+// Three a run at least, by seed: a relic in one of the cradle's side arm ends, one from each
 // elite, and now and then one on a reliquary's shelf past the cradle (src/world/printer.ts).
 import { chunkHook, open } from '../core/grid';
 import { dist, hurtHooks, killHooks, say, spawn, strike, tickHooks } from '../core/game';
@@ -8,13 +8,16 @@ import { hash, rng } from '../core/rng';
 import { goThere } from '../core/verbs';
 import type { Chunk, Game, Inst } from '../core/types';
 import { cellIn } from '../world/spawn';
+import { stairsChunk } from '../world/floors';
 import { mapHooks } from '../world/mind';
 import { zoneAt } from '../world/zones';
 import { dealUnique, perk, throughOne } from './uniques';
 
-/** the cradle corner chunk that keeps this seed's relic */
+/** the cradle chunk that keeps this seed's relic: v5 (floors are crosses, no corners) an arm end that is not
+ *  the keeper's, nor the altar's (the one opposite) */
 export function relicChunk(seed: number): [number, number] {
-  return rng(hash(seed, 72)).pick([[1, 1], [1, -1], [-1, 1], [-1, -1]] as [number, number][]);
+  const [sx, sy] = stairsChunk(seed, 0);
+  return rng(hash(seed, 72)).pick(([[2, 0], [-2, 0], [0, 2], [0, -2]] as [number, number][]).filter(([x, y]) => x * sx + y * sy === 0));
 }
 
 chunkHook((g: Game, c: Chunk) => {

@@ -81,8 +81,8 @@ export const KIT: Record<number, string[]> = {
 export const STRIDE = 16;
 /** a floor spans local chunks -HALF..HALF each way */
 export const HALF = 2;
-/** v3: floors up to this one (0-based) drop their corners: a diamond (see `inside`) */
-export const SMALL = 1;
+/** v5 (Maks 10-18 20:00: "make it shorter, like 2 times shorter"): every floor is a cross (see `inside`) */
+export const SMALL = LAST - 1;
 
 /** the floor a chunk column belongs to (rock between floors belongs to the nearest) */
 export const floorOfChunk = (cx: number): number => Math.max(0, Math.min(LAST, Math.round(cx / STRIDE)));
@@ -100,7 +100,9 @@ export function inside(cx: number, cy: number): boolean {
   if (f === LAST) return lx === 0 && ly <= 0 && ly >= -HEART_APPROACH;
   // v3 (Maks 10-18: "exploring should be shorter"): floors 1 and 2 are a diamond of 13 chunks, not 25: the
   // landing, its four neighbours, the four between them and the four edge middles (one is the keeper's)
-  if (f <= SMALL) return Math.abs(lx) + Math.abs(ly) <= HALF;
+  // v5 ("2 times shorter, each zone 5-10 min"): every floor is a cross of 9 chunks: the landing, its four
+  // neighbours and the four arm ends (one is the keeper's), so the way down is two chunks straight out
+  if (f <= SMALL) return (lx === 0 || ly === 0) && Math.abs(lx) + Math.abs(ly) <= HALF;
   return Math.abs(lx) <= HALF && Math.abs(ly) <= HALF;
 }
 

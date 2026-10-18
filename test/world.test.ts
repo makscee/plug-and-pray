@@ -62,8 +62,8 @@ describe('the world', () => {
           expect(edge((x) => x), `north ${cx},${cy}`).toBe(inside(cx, cy - 1));
           expect(edge((x) => (CHUNK - 1) * CHUNK + x), `south ${cx},${cy}`).toBe(inside(cx, cy + 1));
         }
-    expect(many).toBeGreaterThan(30);
-    expect(odd).toBeGreaterThan(12);
+    expect(many).toBeGreaterThan(8); // v5: floors are crosses of 9 chunks
+    expect(odd).toBeGreaterThan(4);
   });
 
   it('the leech needle drains a vein into resources and wakes what is near', () => {

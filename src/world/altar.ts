@@ -246,7 +246,10 @@ chunkHook((g: Game, c: Chunk) => {
   const [sx, sy] = stairsChunk(g.seed, floorOfChunk(c.cx));
   if ((c.cx === sx && c.cy === sy) || isArrival(c.cx, c.cy)) return;
   const r = rng(hash(g.seed, 71, c.cx, c.cy));
-  if (!((c.cx === 1 && c.cy === 1) || (far >= 2 && r.chance(far >= 3.5 ? 0.35 : 0.2)))) return; // r1 econ: deep, more altars to spend at (temper)
+  // v5: the cradle's altar is the arm end opposite the keeper (floors are crosses now, no corner (1, 1)); fewer
+  // chunks a floor, so the deep chance is up (was 0.2 / 0.35) to keep about as many altars to spend at
+  const home = floorOfChunk(c.cx) === 0 && c.cx === -sx && c.cy === -sy;
+  if (!(home || (far >= 2 && r.chance(far >= 3.5 ? 0.6 : 0.4)))) return; // r1 econ: deep, more altars to spend at (temper)
   const [x, y] = spot(g.seed, c.cx, c.cy, 7, c);
   spawn(g, { kind: 'prop', x, y, data: { altar: true } });
 });

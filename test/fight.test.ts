@@ -114,7 +114,7 @@ describe('fight', () => {
     const foes = g.ents.filter((e) => e.kind === 'enemy');
     expect(foes.length).toBeGreaterThanOrEqual(8);
     expect(foes.every((e) => Math.hypot(e.x - 8.5, e.y - 8.5) >= 7)).toBe(true);
-    expect(foes.some((e) => Math.hypot(e.x - 8.5, e.y - 8.5) < 16)).toBe(true);
+    expect(foes.some((e) => Math.hypot(e.x - 8.5, e.y - 8.5) < 20)).toBe(true); // v5: no corner chunks
   });
 
   it('the hum is hidden, the rest are not; deeper chunks hold meaner things', () => {

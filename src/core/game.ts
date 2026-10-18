@@ -210,10 +210,13 @@ export function chase(g: Game, e: Entity, dt: number): void {
   }
 }
 
+/** v5 (Maks 10-18: "2 times shorter"): every gait walks this much faster than its pace says (sims: 60% of a run was walking) */
+export const WALK_MULT = 1.5;
+
 /** walk the gait path or the gyro's free movement */
 function movePlayer(g: Game, dt: number): void {
   const p = g.player;
-  const speed = p.pace;
+  const speed = p.pace * WALK_MULT;
   if (p.path.length) {
     const [tx, ty] = p.path[0];
     const dx = tx - p.x;

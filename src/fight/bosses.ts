@@ -488,7 +488,11 @@ tickHooks.push((g) => {
   }
 });
 
+/** v5 (Maks 10-18: "2 times shorter"): every keeper's hp is this share of the number written below (sims: a
+ *  keeper fight was half a floor's time) */
+export const KEEPER_HP = 0.6;
 function boss(d: BossDef): void {
+  d.hp = Math.round(d.hp * KEEPER_HP);
   BOSSES[d.floor].push(d);
   BOSS[d.id] = d;
   enemy(d.id, { name: d.name, hp: d.hp, speed: d.speed, damage: d.damage, cooldown: 2, sense: 14, ai: bossAi, armour: d.armour });
