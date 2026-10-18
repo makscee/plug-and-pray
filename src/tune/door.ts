@@ -108,7 +108,12 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
       if (untempered) why.push(`temper your ${def(plain).name} at an altar first`);
       else if (weak) why.push('your weapons are weak for it: find or print a stronger one, or a second');
       // what it can take: readiness is damage times toughness, so the toughness falls out of the two
-      if (!(weak || untempered) || ratio / Math.max(0.01, hit) < 0.8) why.push('you could not take its blows long: an altar (+hp) or armour first');
+      // v2r4 ux: armour you already carry is named ("armour first" with a frost coat in the bag)
+      const coat = (m: { mod: string }) => (MODS[m.mod]?.params?.armour as number | undefined ?? 0) > 0;
+      const off = p.installed.find((i) => !i.on && coat(i));
+      const bag = p.inv.find((i) => i.kind === 'mod' && coat(i));
+      const fix = off ? `turn on your ${def(off).name}` : bag && bag.kind === 'mod' ? `install the ${def(bag).name} you carry` : 'an altar (+hp) or armour first';
+      if (!(weak || untempered) || ratio / Math.max(0.01, hit) < 0.8) why.push(`you could not take its blows long: ${fix}`);
     }
   }
   if (p.hp < p.maxHp * 0.7) why.push(`mend first (${Math.ceil(p.hp)}/${p.maxHp} hp)`);
@@ -190,10 +195,18 @@ tickHooks.unshift((g) => {
 });
 
 /** `go in`: through the door you stand at, a few cells into the room, with whatever legs you have */
-doorIn.at = (g) => !!atDoor(g, 2.5);
+// v2r4 ux: from a few cells out it walks you to the door first (it refused, "the door stands open already",
+// from 3 cells), and with the keeper awake it takes you back in through the open door
+const doorNear = (g: Game): Door | null => {
+  const f = floorOf(g);
+  if (f === LAST || bossDown(g, f) || inRoom(g.seed, f, g.player.x, g.player.y)) return null;
+  const d = doorOf(g, f);
+  return d && dist(d, g.player) <= 5 ? d : null;
+};
+doorIn.at = (g) => !!doorNear(g);
 doorIn.run = (g) => {
   const f = floorOf(g);
-  const d = atDoor(g, 2.5);
+  const d = doorNear(g);
   if (!d) return void say(g, bossWoke(g, f) || bossDown(g, f) ? 'the door stands open already.' : "go in where? you are not at a keeper's door.");
   gateOf(g).inOn = f;
   const p = g.player;

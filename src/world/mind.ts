@@ -153,6 +153,10 @@ export interface Fill {
   hz: number;
   /** where you sit down the picture, 0..1 (the middle when left out) */
   at?: number;
+  /** v2r4 ux: the picture's top-left cell, fixed (the big map's whole floor), instead of round you */
+  origin?: () => [number, number];
+  /** clicks walk you only if the map takes them (the screen-filling map always does) */
+  ownClicks?: boolean;
 }
 
 /** a map walks you where you click: one that takes clicks, the screen-filling one, and (v2r2 ux: the first eye
@@ -171,7 +175,7 @@ export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => num
   const canvas = document.createElement('canvas');
   canvas.className = 'map';
   canvas.dataset.detail = String(detail);
-  const walks = () => !!fill || walksOnClick(game, inst);
+  const walks = () => (!!fill && !fill.ownClicks) || walksOnClick(game, inst);
   if (!walks()) canvas.style.cursor = 'default';
   el.append(canvas);
   const ctx = canvas.getContext('2d')!;
@@ -203,6 +207,7 @@ export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => num
       const p = g.player;
       ox = Math.floor(p.x) - (span >> 1);
       oy = Math.floor(p.y) - (fill?.at !== undefined ? Math.round(rows * fill.at) : rows >> 1);
+      if (fill?.origin) [ox, oy] = fill.origin();
       // where this picture's top-left cell is, for what draws over it (the backdrop's radar)
       canvas.dataset.ox = String(ox);
       canvas.dataset.oy = String(oy);

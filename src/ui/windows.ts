@@ -58,7 +58,7 @@ export function open(id: string, title: string, at?: [number, number]): Win {
   const k = cascade++;
   // the right edge belongs to the panels (modules, inventory, nearby)
   const perRow = Math.max(1, Math.floor((innerWidth - 24 - 280) / 280));
-  const [x, y] = at ?? [24 + (k % perRow) * 280, TOP + Math.floor(k / perRow) % 2 * 330];
+  const [x, y] = at ?? [16 + (k % perRow) * 280, TOP + Math.floor(k / perRow) % 2 * 330];
   if (at) cascade--;
   el.style.left = x + 'px';
   el.style.top = y + 'px';
@@ -372,7 +372,12 @@ function layout(all: boolean): void {
 
 /** the console's own spot: bottom centre, low enough that a map fits above it at 1280x720 (style.css
  * shortens its output under 800 px tall) */
-export const consoleAt = (): [number, number] => [Math.max(16, innerWidth / 2 - 240), Math.max(TOP, innerHeight - (innerHeight < 800 ? 262 : 330))];
+export const consoleAt = (): [number, number] => {
+  // v2r4 ux: on the bottom edge at any height (it floated 26-52 px above it at 800), by its own height once drawn
+  const h = document.querySelector<HTMLElement>('.win-console')?.offsetHeight || (innerHeight < 800 ? 256 : 324);
+  // and clear of the panel column (it overlapped the nearby window by 4 px at 1024 wide)
+  return [Math.max(16, Math.min(innerWidth / 2 - 240, innerWidth - COLUMN - 8 - 480)), Math.max(TOP, innerHeight - h - 6)];
+};
 
 /** the console on screen: back to its own spot unless you dragged it, else just inside the edges
  *  (v2r2 ux: its button rows grew it 20 px off the bottom at 1280x800; the console calls it as it grows) */

@@ -48,7 +48,7 @@ export const LAST = FLOORS.length - 1;
 /** v2 variety: what each floor wants from you, said on arrival (its tricks: src/world/gimmicks.ts, src/fight/dodge.ts) */
 export const WANTS: Record<number, string> = {
   0: 'it wants: kite and bite. lead the swarm across floor that cracks; break the thin walls.',
-  1: 'it wants: aim. a ◇ over a foe means it sidesteps your first shot: shoot twice. kill a singing cantor first.',
+  1: 'it wants: aim. a pale spinning gem over a foe means it sidesteps your first shot: shoot twice. kill a singing cantor first.', // (not ◇: that is a find on the map)
   2: 'it wants: light. no mending without it, and your light draws them to you. armour for the walkers.',
   3: 'it wants: a rime hood, and timing: the vents breathe fire on one beat. cross between.',
   4: 'it wants: everything you have.',

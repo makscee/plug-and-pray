@@ -72,10 +72,16 @@ verb('attack', {
   run(g) {
     if (!armed(g)) return warnUnarmed(g);
     if (aimed(g).length) return VERBS.shoot.run(g, []);
+    // v2r4 ux: once a fight, not on every press
+    if (tipped.has(g)) return;
+    tipped.add(g);
     const w = active(g, 'weapon')[0];
     say(g, `your ${label(w)} strikes by itself whatever comes close. stand by it.`);
   },
 });
+/** the auto weapon's tip was said in this fight (it ends when nothing is near) */
+const tipped = new WeakSet<Game>();
+tickHooks.push((g) => void (tipped.has(g) && !foesNear(g, 8) && tipped.delete(g)));
 
 // foes closing on an unarmed body: say it once, then again only after a while
 const warned = new WeakMap<Game, number>();

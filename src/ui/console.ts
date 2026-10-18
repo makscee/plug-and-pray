@@ -124,8 +124,8 @@ export class Console {
         return row;
       }),
     );
-    // more rows grew it: still on the screen
-    if (this.win.el.getBoundingClientRect().bottom > innerHeight) windows.homeConsole();
+    // more rows grew it (or fewer shrank it): still on the bottom edge, unless dragged (v2r4 ux)
+    windows.homeConsole();
   }
 }
 

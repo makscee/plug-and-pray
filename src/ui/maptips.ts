@@ -5,7 +5,7 @@
 // v2: clicks only on a map that takes them (the surveyor's and up); the hover tells only what is known
 // (unseen, seen, seen through a wall, marked), and the illuminated atlas shows a note instead of a title.
 
-import { ENEMIES, itemName, say, tickHooks } from '../core/game';
+import { cells, ENEMIES, itemName, say, tickHooks } from '../core/game';
 import { exec, VERBS, way } from '../core/verbs';
 import { cradleShop, eyeHinted, firstLeg, HINTED } from '../tune/hints';
 import { cell, Cell, veinOf } from '../core/grid';
@@ -15,6 +15,7 @@ import { does } from '../mods/describe';
 import type { Game } from '../core/types';
 import { mapHooks } from '../world/mind';
 import { walks } from '../mods/gait';
+import { consoleAt, TOP } from './windows';
 
 const ACC = '#f0a050';
 /** the hint targets still lying out there: the first eye and the card reader until you hold one (the backdrop's
@@ -33,6 +34,30 @@ export function hintTargets(g: Game): { x: number; y: number; name: string }[] {
   if (shop) out.push({ x: shop.x, y: shop.y, name: 'a reliquary' });
   return out;
 }
+
+/** v2r4 ux: the part of the screen no window, HUD or goal line covers ([left, top, right, bottom]). The full-screen
+ *  map draws its ◆, ◇ and their labels only in here; what lies outside gets one chevron on its edge (backdrop.ts) */
+export function openPart(): [number, number, number, number] {
+  const W = innerWidth;
+  const con = document.querySelector<HTMLElement>('.win-console')?.getBoundingClientRect();
+  let [l, t, r, bt] = [14, TOP + 14, W - 284 - 14, (con && con.height ? con.top : consoleAt()[1]) - 14];
+  for (const el of document.querySelectorAll<HTMLElement>('#desk > .win')) {
+    if (el.classList.contains('min') || el.classList.contains('win-console')) continue;
+    const a = el.getBoundingClientRect();
+    if (!a.width || a.top > bt) continue;
+    if (a.right < W * 0.4) l = Math.max(l, a.right + 14);
+    else if (a.left > W * 0.6) r = Math.min(r, a.left - 14);
+  }
+  return [l, t, r, bt];
+}
+/** a point on map canvas `c` (its own px) on the screen: null when `c` is not the full-screen map */
+export function onScreen(c: HTMLCanvasElement, x: number, y: number): [number, number] | null {
+  if (!c.closest('#backdrop')) return null;
+  const r = c.getBoundingClientRect();
+  return [r.left + (x * r.width) / c.width, r.top + (y * r.height) / c.height];
+}
+/** in the open part, `m` px in from its edges */
+export const inOpen = (o: [number, number, number, number], x: number, y: number, m = 0) => x >= o[0] + m && x <= o[2] - m && y >= o[1] + m && y <= o[3] - m;
 
 const LEGEND = ['legend: arrow you · ◆ where the hints point · hatched: seen through a wall (it may hide things) · ? something a radar marked · chevron: a thin wall to dig through',
   'legend: arrow you · ◆ where the hints point · green ◇ a set piece\'s finds · dots: piles in their ore\'s colour · small square a module · teal printer or reliquary · red enemy · hatched: seen through a wall (it may hide things) · coloured spots: what radars marked (orange vein, gold cache, red life, white stairs, violet guard), a dashed ring where it may be'];
@@ -164,14 +189,20 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
   if (vec && vec.hidden === !!g.vectors.length) vec.hidden = (vec.previousElementSibling as HTMLElement).hidden = !g.vectors.length;
   const [w, h] = [c.width, c.height];
   const named: { x: number; y: number; r: number; name: string; d: number }[] = [];
+  // the full-screen map: only what shows in the open part (the rest has its chevron)
+  const open = c.closest('#backdrop') ? openPart() : null;
   for (const t of hintTargets(g)) {
     let x = (t.x - ox) * px;
     let y = (t.y - oy) * px;
     const inside = !(x < 0 || y < 0 || x >= w || y >= h);
-    if (!inside) {
+    if (open) {
+      const s = onScreen(c, x, y)!;
+      if (!inOpen(open, s[0], s[1], 4)) continue;
+    } else if (!inside) {
       // off the map: on the edge, toward it
       const [dx, dy] = [x - w / 2, y - h / 2];
-      const k = (w / 2 - 6) / Math.max(Math.abs(dx), Math.abs(dy));
+      const m = Math.max(5, px * 0.8) + 3;
+      const k = Math.min((w / 2 - m) / Math.max(1e-6, Math.abs(dx)), (h / 2 - m) / Math.max(1e-6, Math.abs(dy)));
       [x, y] = [w / 2 + dx * k, h / 2 + dy * k];
     }
     const r = Math.max(5, px * 0.8);
@@ -197,10 +228,14 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
   const fs = Math.max(11, Math.min(18, Math.round(px * 1.3)));
   ctx.font = `${fs}px VT323, monospace`;
   ctx.textAlign = 'left';
+  const placed: [number, number, number][] = [];
   for (const n of named.sort((a, b) => a.d - b.d).slice(0, 4)) {
     const tw = ctx.measureText(n.name).width;
     const lx = n.x + n.r + 4 + tw + 4 > w ? n.x - n.r - 6 - tw : n.x + n.r + 4;
-    const ly = Math.max(fs, Math.min(h - 3, n.y + fs * 0.35));
+    let ly = Math.max(fs, Math.min(h - 3, n.y + fs * 0.35));
+    // v2r4 ux: two labels never sit on each other: the later one steps down a line
+    for (let k = 0; k < 6 && placed.some(([x, y, pw]) => Math.abs(y - ly) < fs + 2 && lx < x + pw + 4 && lx + tw + 4 > x); k++) ly += fs + 2;
+    placed.push([lx, ly, tw]);
     ctx.fillStyle = 'rgba(10, 8, 7, 0.85)';
     ctx.fillRect(lx - 2, ly - fs * 0.8, tw + 4, fs);
     ctx.fillStyle = ACC;
@@ -221,7 +256,14 @@ mapHooks.click.push((g, x, y) => {
   const leg = firstLeg(g, x + 0.5, y + 0.5);
   if (!leg) return say(g, 'no open way there that you know of.');
   const goes = walks(g);
-  send(goes ? `go ${leg[0]} ${leg[1]}` : `crawl ${leg[0]}`);
+  if (goes) {
+    // v2r4 ux: one line a walk, not an echo a leg (2-4 `> go` lines pushed the useful text out)
+    const [dx, dy] = [x + 0.5 - p.x, y + 0.5 - p.y];
+    const w = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
+    const t = hintNear(g, x, y);
+    say(g, [{ text: `> walk ${t ? `to ${t.name.replace(/^(a|an|the) /, '')}, ` : ''}${cells(Math.round(Math.hypot(dx, dy)))} ${w}`, cmd: '' }]);
+    exec(g, `go ${leg[0]} ${leg[1]}`, true);
+  } else send(`crawl ${leg[0]}`);
   if (goes) trips.set(g, { x, y, hp: p.hp, at: `${Math.floor(p.x)},${Math.floor(p.y)}`, legs: 1, log: g.log.length });
   if (toldPilot.has(g)) return;
   toldPilot.add(g);
@@ -243,7 +285,7 @@ tickHooks.push((g) => {
   const leg = firstLeg(g, t.x + 0.5, t.y + 0.5) && way.long(g, t.x + 0.5, t.y + 0.5);
   if (hit || typed || here === t.at || here === `${t.x},${t.y}` || ++t.legs > 40 || !leg || !walks(g)) return void trips.delete(g);
   t.at = here;
-  exec(g, `go ${leg[0]} ${leg[1]}`);
+  exec(g, `go ${leg[0]} ${leg[1]}`, true);
   t.log = g.log.length;
 });
 import './map3d';
