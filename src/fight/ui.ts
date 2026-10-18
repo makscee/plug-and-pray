@@ -5,7 +5,8 @@ import type { Game, Inst } from '../core/types';
 import { engaged } from '../sight/foes';
 import { frameHooks } from '../ui';
 import { pips } from '../ui/panels';
-import { hpText } from './report';
+import { blowText, hpText } from './report';
+import { boltWarn, shots, type ShotData } from './shots';
 import { turned } from './warn';
 import { armed, foesNear } from './unarmed';
 import { clean } from '../tune/start';
@@ -38,7 +39,9 @@ frameHooks.push((g) => {
   const p = g.player;
   const text = `${hpText(p.hp)}/${p.maxHp}`;
   const [su, pu, pm] = [slotsUsed(g), powerUsed(g), powerMax(g)];
-  const fight = fightLine(g);
+  // a boss on you takes the fight line: its bar sits in the HUD, under nothing (v2r1: a bar of its own
+  // covered the top windows)
+  const fight = bossLine(g) || fightLine(g);
   // Maks 10-18: no weapon on with foes near is a red tag that stays until you arm
   const bare = !armed(g) && foesNear(g, 8);
   const key = `${text} ${su}/${p.slots} ${pu}/${pm} ${fight} ${bare} ${g.floor}`;
@@ -92,13 +95,15 @@ export function fightLine(g: Game): string {
   const count = more > 0 ? (same ? ` ×${all.length}` : ` +${more}`) : '';
   const name = (ENEMIES[foe.enemy.type]?.name ?? 'something').replace(/^(a|an|the) /, '');
   const r = Math.hypot(foe.x - g.player.x, foe.y - g.player.y);
-  const blow = weaponLine(g, r);
+  // a blow that just landed shows for a moment in place of the next one's wait
+  const blow = blowText(g) || weaponLine(g, r);
   // a big blow coming: the elite's (or a walker's) windup, named; rearing mites counted
   const winding = engaged(g, 8).filter((e) => e.enemy!.data.move && g.t < ((e.enemy!.data.windup as number) ?? 0));
   const big = winding.find((e) => e.enemy!.type !== 'mite') ?? winding[0];
   const rears = winding.filter((e) => e.enemy!.type === 'mite').length;
   const move = big?.enemy!.type === 'mite' && rears > 1 ? `${rears} mites rear` : String(big?.enemy!.data.move ?? '');
-  const warn = big ? `⚠ ${clip(move, MOVE_MAX)} · ` : '';
+  const bolts = boltWarn(g);
+  const warn = big ? `⚠ ${clip(move, MOVE_MAX)} · ` : bolts ? `⚠ ${bolts} · ` : '';
   // an elite that missed its big move is open (src/fight/index.ts OPEN)
   const open = all.find((e) => g.t < ((e.enemy!.data.open as number) ?? 0));
   const opened = !open ? '' : open === foe ? '✦ open: hit it · ' : `✦ ${ENEMIES[open.enemy!.type].name.replace(/^(a|an|the) /, '')} open · `;
@@ -185,42 +190,61 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
   }
 });
 
-// ---- bosses (src/fight/bosses.ts): a bar with the name and phase at the top, the wind-up named in red
-// over it, and the zones a wind-up will hit drawn on the map spool
-let bossBar: HTMLElement | null = null;
-frameHooks.push((g) => {
+// ---- bosses (src/fight/bosses.ts): the name, a wide bar with its phase marks and the wind-up in red, all in
+// the HUD's fight line; the zones a wind-up will hit are drawn on the map spool
+frameHooks.push((g) => document.body.classList.toggle('boss-on', bossesNear(g).some((e) => e.enemy!.data.noticed)));
+
+/** the HUD's fight line with a boss on you (HTML), or '' */
+export function bossLine(g: Game): string {
   const here = bossesNear(g).filter((e) => e.enemy!.data.noticed);
-  if (!bossBar || !bossBar.isConnected) {
-    bossBar = document.createElement('div');
-    bossBar.className = 'bossbar';
-    document.body.append(bossBar);
-  }
-  document.body.classList.toggle('boss-on', here.length > 0);
-  if (!here.length) {
-    bossBar.style.display = 'none';
-    return;
-  }
-  bossBar.style.display = '';
+  if (!here.length) return '';
   const lead = here[0];
   const def = BOSS[lead.enemy!.type];
-  const name = def.mate ? 'the forge twins' : def.name;
+  const name = (def.mate ? 'the forge twins' : def.name).replace(/^the /, '');
   // the twins share one bar: both their hp over both their full
   const all = def.mate ? bossesNear(g, 40) : [lead];
   const max = all.reduce((s, e) => s + Number(e.enemy!.data.maxHp ?? 1), 0) + (def.mate && all.length < 2 ? BOSS[def.mate].hp : 0);
   const hp = all.reduce((s, e) => s + Math.max(0, e.enemy!.hp), 0);
   const phase = Math.max(...all.map((e) => Number(e.enemy!.data.phase ?? 0)));
-  const n = def.phases.length;
   const winding = all.find((e) => e.enemy!.data.move && (g.t < Number(e.enemy!.data.windup ?? 0) || e.enemy!.data.zones || e.enemy!.data.under));
   const open = all.some((e) => g.t < Number(e.enemy!.data.open ?? 0));
-  const move = winding ? `⚠ ${winding.enemy!.data.move}` : open ? '✦ open: hit it now' : g.t < stunOf(g) ? '⚠ stunned' : '';
-  const key = `${name}|${Math.ceil(hp)}|${phase}|${move}`;
-  if (bossBar.dataset.key === key) return;
-  bossBar.dataset.key = key;
+  const bolts = boltWarn(g);
+  const move = winding ? `⚠ ${clip(String(winding.enemy!.data.move), MOVE_MAX)}` : bolts ? `⚠ ${bolts}` : open ? '<em>✦ open: hit it now</em>' : g.t < stunOf(g) ? '⚠ stunned' : '';
   const marks = def.at.map((a) => `<u style="left:${a * 100}%"></u>`).join('');
-  bossBar.innerHTML =
-    `<div class="bb-name">${name}<span>phase ${phase + 1}/${n}</span></div>` +
-    `<div class="bb-bar"><b style="width:${(hp / Math.max(1, max)) * 100}%"></b>${marks}</div>` +
-    `<div class="bb-move${open && !winding ? ' open' : ''}">${move || '&nbsp;'}</div>`;
+  const bar = `<span class="bbar"><b style="width:${(hp / Math.max(1, max)) * 100}%"></b>${marks}</span>`;
+  const r = Math.min(...all.map((e) => Math.hypot(e.x - g.player.x, e.y - g.player.y)));
+  return `${move ? `${move} · ` : ''}⚔ ${name} ${bar} ${phase + 1}/${def.phases.length} · ${blowText(g) || weaponLine(g, r)}`;
+}
+
+// with foe shots near, the map redraws at 12 Hz so they move, not jump
+const shotsNear = (g: Game) => shots(g).some((s) => s.data!.foe && Math.abs(s.x - g.player.x) < 12 && Math.abs(s.y - g.player.y) < 12);
+mapHooks.fast.push(shotsNear);
+// foe shots on the map spool: a hot dot and a short tail behind it, so the small eyes' floors can be
+// dodged by sight (v2r1 fight: bullets showed nowhere you could read)
+mapHooks.draw.push((g, ctx, ox, oy, px) => {
+  const p = g.player;
+  const r = Math.max(2, px * 0.4);
+  for (const s of shots(g)) {
+    const d = s.data as unknown as ShotData;
+    if (!d.foe || Math.abs(s.x - p.x) > 12 || Math.abs(s.y - p.y) > 12) continue;
+    const v = Math.hypot(d.vx, d.vy) || 1;
+    const [x, y] = [(s.x - ox) * px, (s.y - oy) * px];
+    const [tx, ty] = [x - (d.vx / v) * px * 0.9, y - (d.vy / v) * px * 0.9];
+    ctx.lineCap = 'round';
+    for (const [color, w] of [['#000', r * 2 + 2], ['#ff3a28', r * 1.4]] as const) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ffe890';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.lineCap = 'butt';
 });
 
 mapHooks.draw.push((g, ctx, ox, oy, px) => {

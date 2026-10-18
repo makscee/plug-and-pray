@@ -20,6 +20,7 @@ import { frameHooks } from '../ui';
 import { tidy } from '../ui/windows';
 import { togglePause } from '../ui/pause';
 import type { Game, Line } from '../core/types';
+import { say } from '../core/game';
 import './views';
 import { clean } from '../tune/start';
 import { bigOn, dash, fpsEye, fpsFire, fpsMove, fpsTurn, lunge } from './fps';
@@ -173,6 +174,7 @@ function fpsKey(g: Game, e: KeyboardEvent, k: string): boolean {
   }
   if (e.repeat) return k === ' ' || k === 'shift' || k === 'f';
   if (k === 'shift') dash(g);
+  else if (k === '[' || k === ']') setSens(g, k === ']' ? 1.15 : 1 / 1.15);
   else if (k === 'f') lunge(g);
   else if (k === ' ') fpsFire(g);
   else if (k === 'escape') {
@@ -238,14 +240,35 @@ addEventListener('click', (e) => {
   (t.requestPointerLock?.() as unknown as Promise<void> | undefined)?.catch?.(() => {});
 });
 
-/** mouse-look in the big view: radians per pixel */
+/** mouse-look in the big view: radians per pixel, by default; [ and ] slow it down or speed it up, and
+ *  this browser keeps it (v2r1 fight: a little fast, with no setting) */
 export const SENS = 0.0026;
+const SENS_KEY = 'thaw.sens';
+let sens = SENS;
+try {
+  const v = Number(localStorage.getItem(SENS_KEY));
+  if (v > 0) sens = Math.min(SENS * 3, Math.max(SENS / 3, v));
+} catch {
+  // no storage (private mode, a sandbox): the default
+}
+/** the mouse speed now, as a share of the default (1 = 100%) */
+export const sensShare = (): number => sens / SENS;
+/** scale the mouse speed by `by` (kept between a third and three times the default) */
+export function setSens(g: Game, by: number): void {
+  sens = Math.min(SENS * 3, Math.max(SENS / 3, sens * by));
+  try {
+    localStorage.setItem(SENS_KEY, String(sens));
+  } catch {
+    // not kept: it still holds for this visit
+  }
+  say(g, `mouse speed ${Math.round(sensShare() * 100)}%. [ slower, ] faster.`);
+}
 addEventListener('mousemove', (e) => {
   const dragging = e.buttons === 1 && (e.target as HTMLElement).matches?.('canvas.eye');
   if (!document.pointerLockElement && !dragging) return;
   const g = thaw()?.g;
   if (g && bigOn(g)) {
-    if (document.pointerLockElement?.id === 'bigview') fpsTurn(g, e.movementX * SENS);
+    if (document.pointerLockElement?.id === 'bigview') fpsTurn(g, e.movementX * sens);
     return;
   }
   if (g) gyroTurn(g, e.movementX * 0.004);

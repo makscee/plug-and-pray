@@ -135,7 +135,7 @@ export function whatAt(g: Game, x: number, y: number, detail = 1): string {
 export function infoAt(g: Game, x: number, y: number): string[] {
   const p = g.player;
   const here = (e: { x: number; y: number }) => Math.floor(e.x) === x && Math.floor(e.y) === y;
-  if (here(p)) return ['you', `${p.hp.toFixed(0)}/${p.maxHp} hp`];
+  if (here(p)) return ['you', `${Math.max(0, Math.ceil(p.hp * 2) / 2)}/${p.maxHp} hp`];
   const t = targets(g).find(here);
   if (t) return [t.name, 'the hints point here.'];
   const k = know(g, x, y);

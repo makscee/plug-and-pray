@@ -278,6 +278,8 @@ view('camera', (el, inst, g) => {
   let next = 0;
   let shown = false;
   let held = false;
+  /** game time of the last frame shot: hits since then flash on the next one */
+  let last = -99;
   return {
     update(g) {
       const warm = inst.on && g.t >= inst.readyAt;
@@ -307,7 +309,8 @@ view('camera', (el, inst, g) => {
       // heat washes out in the furnace; sonar and heat show the hidden
       const range = eyeRange(g, inst);
       const name = param<string>(inst, 'filter', 'color');
-      const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color', hidden: name === 'sonar' || name === 'heat' || perk(inst) === 'hidden', filter: name, xray: perk(inst) === 'xray' });
+      const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color', hidden: name === 'sonar' || name === 'heat' || perk(inst) === 'hidden', filter: name, xray: perk(inst) === 'xray', since: last });
+      last = g.t;
       // what it sees goes on the map from its own tick (src/sight/reveal.ts), headless too
       if (firstSight(g, inst, range)) inst.data.flashAt = g.t;
       // a failed read (a lost GL context, a frame the GPU dropped) comes back all zero: hold the
