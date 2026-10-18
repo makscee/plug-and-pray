@@ -4,6 +4,7 @@ import { itemName, reach, say } from '../core/game';
 import { label } from '../core/mods';
 import { verb } from '../core/verbs';
 import { describe } from './describe';
+import { short } from '../ui/cardText';
 import { offers, shopNear } from '../world/printer';
 
 verb('info', {
@@ -22,7 +23,8 @@ verb('info', {
     ] as { mod: string; roll?: import('../core/types').Roll }[];
     const m = all.find((i) => label(i).toLowerCase().includes(q) || (q && itemName({ kind: 'mod', ...i }).toLowerCase().includes(q)));
     if (!q || !m) return say(g, 'info on what? a module you carry, wear or stand by.');
-    const [does, costs, text] = describe(m);
-    say(g, [label(m) + ': ' + does], '  ' + costs, '  ' + text);
+    // v3 cards: the card's mechanic line and key numbers first (src/ui/cardText.ts), then costs and flavour
+    const [, costs, text] = describe(m);
+    say(g, [label(m) + ': ' + short(m)], '  ' + costs, '  ' + text);
   },
 });

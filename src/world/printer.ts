@@ -6,9 +6,9 @@
 
 import { dist, say, tickHooks } from '../core/game';
 import { def, label, MODS, param, rarityOf, type Modish } from '../core/mods';
-import { does } from '../mods/describe';
+import { short } from '../ui/cardText';
 import { hash, rng } from '../core/rng';
-import { addItem, findInst, findItem, goThere, verb, VERBS } from '../core/verbs';
+import { addItem, findInst, findItem, goThere, owned, verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Item, Line, Res } from '../core/types';
 import { lootMod, ranged } from './spawn';
 import { upgradeLines } from './upgrade';
@@ -227,7 +227,7 @@ const SHUT = 'its glass stays shut until your own first eye is found';
 function shopMenu(g: Game, e: Entity): Line[] {
   const lines: Line[] = offers(g, e).map((it, k) =>
     it && it.kind === 'mod'
-      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}${def(it).family === 'power' || !def(it).power ? '' : ` (${def(it).power}p)`}: ${shutEye(g, it) ? SHUT : fmt(priceAt(e, k, it))}. ${does(it)}`]
+      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}${def(it).family === 'power' || !def(it).power ? '' : ` (${def(it).power}p)`}: ${shutEye(g, it) ? SHUT : fmt(priceAt(e, k, it))}. ${short(it)}${owned(g, it.mod) ? ' · ▲ upgrades yours' : ''}`]
       : [`  ${k + 1}: an empty niche.`],
   );
   lines.push([{ text: 'reroll', cmd: 'reroll' }, `  new relics: ${fmt(PRICES.reroll)}`]);
