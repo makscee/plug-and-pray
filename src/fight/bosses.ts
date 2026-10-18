@@ -922,7 +922,7 @@ killHooks.push((g, e) => {
 /** a loadout typical for each floor, and the hp it has by then */
 export const LOADOUTS: { mods: string[]; flesh: number; slots: number; core: number }[] = [
   { mods: ['pinhole-eye', 'stepper-relay', 'spark-finger', 'censer-flail', 'lead-lung'], flesh: 0, slots: 6, core: 6 }, // v2 balance: what the run sim really has at the cradle's keeper
-  { mods: ['vidicon-tube', 'stepper-relay', 'nail-psalm', 'censer-flail', 'frost-coat', 'map-spool'], flesh: 4, slots: 6, core: 10 },
+  { mods: ['vidicon-tube', 'stepper-relay', 'nail-psalm', 'spark-finger', 'rivet-sling', 'plumb-line', 'lead-lung'], flesh: 8, slots: 8, core: 9 }, // v2 balance: the run sim's kit at the nave's keeper
   // floors 3-5 are fought through the FPS scope (stageBoss goes big with it)
   { mods: ['pilgrim-scope', 'gyro-heart', 'bone-lance', 'nail-psalm', 'halo', 'frost-coat', 'map-spool'], flesh: 6, slots: 7, core: 13 },
   { mods: ['martyr-scope', 'gyro-heart', 'heat-lance', 'ember-spit', 'halo', 'ossuary-plate', 'rime-hood', 'map-spool'], flesh: 8, slots: 8, core: 18 },
