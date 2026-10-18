@@ -50,8 +50,8 @@ const ENDING = [`js:Object.assign(thaw.g.player, { slots: ${RUN1.slots}, core: $
 const SHOTS = [
   // the wake: map only, the floor-1 kit picked (choir bell, frost coat), a few legs walked out; the thread bell sweeps
   ['1-wake.png', '?seed=1&still', ['pick 1', 'pick 1', 'scrap', 'install all', 1, 'go e 5', 4, 'go n 2', 5, 'go e 6', 5, POS]],
-  // first sight: the same run at the pinhole's sealed niche (its walk drawn on the map), the wall broken, the eye in
-  ['2-sight.png', '?seed=1&still', ['pick 1', 'pick 1', 'scrap', 'install all', 1, 'go e 5', 4, 'go n 2', 5, 'go e 6', 5, 'js:thaw.g.player.x = 40.5; thaw.g.player.y = 8.5', 1, WALKED(19, 6, 40, 8), 'face e', 'break', 1, 'go e 3', 3, 'take', 'remove spark finger', 'install pinhole eye', 1.5, 'wait:1600', POS]],
+  // first sight: the same run at the pinhole on the way to the keeper (v3: open floor, firstEye(1) = 8.5,-8.5), the eye in
+  ['2-sight.png', '?seed=1&still', ['pick 1', 'pick 1', 'scrap', 'install all', 1, 'go e 5', 4, 'js:thaw.g.player.x = 8.5; thaw.g.player.y = -5.5', 1.5, 'go n 3', 4, 'take', 1, 'js:Object.assign(thaw.g.player, { slots: 7, core: 7 })', 'remove spark finger', 'install pinhole eye', 1.5, 'wait:1600', POS]],
   // floor 1's keeper (seed 5 rolls the bell): a floor-1 kit through the door, the room up as a map, a few blows traded
   ['3-keeper.png', '?seed=5&scene=boss&f=0&still', [1, CLEAN, 'js:Object.assign(thaw.g.player, { slots: 7, core: 7 })', ...KIT('pinhole-eye', 'stepper-relay', 'map-spool', 'choir-bell', 'censer-flail', 'frost-coat'), 1.5, 'go s 1', 1, 'go in', 1.5, 'go s 2', 2, 'go s 1', 1, 'go s 1', 1, 'attack', 3, 'attack', 3, POS, BOSSLOG, 'wait:600']],
   // floor 3 through the reins (seed 1 rolls the hollow saint): its ring of bolts in the air as it gathers a saltire
