@@ -8,6 +8,7 @@ import { active, def, families, param } from '../core/mods';
 import { verb } from '../core/verbs';
 import type { Entity, Game, Inst, Line } from '../core/types';
 import { bolted, clearShot, compass, fire } from './shots';
+import { fx as attackFx, kicked } from '../fx/attacks';
 import { COPY, haste } from '../mods/weapon';
 import { canHit, perceives } from '../mods/sense';
 import { offFacing, toward, turned } from './eye';
@@ -97,6 +98,9 @@ verb('shoot', {
       fire(g, { x: p.x + fx * 0.3, y: p.y + fy * 0.3, vx: fx * SHOT_SPEED, vy: fy * SHOT_SPEED, dmg: param<number>(i, 'damage', 1), range: param<number>(i, 'range', 6), src: null, foe: false, name: def(i).name });
       g.events.push({ type: 'shoot', data: i.uid });
     }
+    // seen: the flash at your muzzle and the kick (src/fx/attacks.ts); the shot itself flies on the map
+    attackFx(g, 'muzzle', p.x, p.y, p.x, p.y, 0, p.dir);
+    kicked.set(g, g.t);
   },
 });
 

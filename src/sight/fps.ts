@@ -14,6 +14,7 @@ import { fovAcross, plan } from './layers';
 import { engaged } from './foes';
 import { boltWarn, shots, type ShotData } from '../fight/shots';
 import { eaten, hpText, lastBlow } from '../fight/report';
+import { drawFpsFx, drawWeapon } from '../fx/attacks';
 import { bigOn, bossOf, dash, fps, fpsFire, fpsMove, fpsTurn, lunge, mark, nameOf, ray, weaponState } from '../body/fps';
 
 // ---- bolts: a hot core and a soft halo, never fogged, so a bolt reads in the dark from across a room
@@ -219,6 +220,9 @@ function overlay(g: Game, b: Big, fov: number): void {
     c.arc(cx + W * 0.08, H - 6, 14, 0, Math.PI * 2);
     c.fill();
   }
+  // your attacks: tracers, sparks, the bell's ring, swings, and the weapon that kicks (src/fx/attacks.ts)
+  drawFpsFx(g, c, W, H, fov);
+  if (ws.length) drawWeapon(g, c, W, H);
   // hit markers, an X on the crosshair: mk1 a plain white one; mk2 red and wider on a kill. A blow armour
   // mostly ate shows grey, with the word (v2r1: nothing said armour turned 1.5 into 0.7)
   const hit = g.t - s.hitAt;

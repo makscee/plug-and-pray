@@ -111,6 +111,17 @@ export const FILTERS: Record<string, Filter> = {
   '1bit'(px, res, o) {
     FILTERS.gray(px, res, { ...o, colors: 2 });
   },
+  /** v5: a grey eye's level II: its greys laid on an amber duotone, shadow brown to lamp amber */
+  amber(px, res, o) {
+    FILTERS.gray(px, res, o);
+    const w = o.w ?? res;
+    for (let i = 0; i < w * res; i++) {
+      const l = px[i * 4] / 255;
+      px[i * 4] = Math.round(20 + l * 235);
+      px[i * 4 + 1] = Math.round(10 + l * l * 190 + l * 10);
+      px[i * 4 + 2] = Math.round(6 + l * l * l * 110);
+    }
+  },
   /** heat arrives already cold and warm (scene mode heat): a ramp black, violet, red, amber, white */
   heat(px, res, { colors, w = res }) {
     const levels = colors || 8;

@@ -12,6 +12,7 @@ import { turned } from './warn';
 import { armed, foesNear } from './unarmed';
 import { clean } from '../tune/start';
 import { mapHooks } from '../world/mind';
+import { anyLive, drawMapFx } from '../fx/attacks';
 import { BOSS, BOSSES, bossesNear, poolsOf, stageBoss, stunOf, type Zone } from './bosses';
 
 let bar: HTMLElement | null = null;
@@ -248,6 +249,34 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
     ctx.fill();
   }
   ctx.lineCap = 'butt';
+});
+
+// your own shots and blows on the map (src/fx/attacks.ts): an amber bolt with a tail, the flash, sparks, swings
+mapHooks.fast.push((g) => anyLive(g) || shots(g).some((s) => !s.data!.foe));
+mapHooks.draw.push((g, ctx, ox, oy, px) => {
+  const r = Math.max(2, px * 0.35);
+  ctx.lineCap = 'round';
+  for (const s of shots(g)) {
+    const d = s.data as unknown as ShotData;
+    if (d.foe) continue;
+    const v = Math.hypot(d.vx, d.vy) || 1;
+    const [x, y] = [(s.x - ox) * px, (s.y - oy) * px];
+    const [tx, ty] = [x - (d.vx / v) * px * 1.4, y - (d.vy / v) * px * 1.4];
+    for (const [color, w] of [['#000', r * 2 + 2], ['#ffb040', r * 1.2]] as const) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#fff6d0';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.lineCap = 'butt';
+  drawMapFx(g, ctx, ox, oy, px);
 });
 
 mapHooks.draw.push((g, ctx, ox, oy, px) => {

@@ -5,6 +5,7 @@
 // melee lunge (F, right click, or a click with no aimed weapon) throws you forward into what you face.
 // Tab again (or Esc) gives the cursor back. The mk2 reins add a dash (Shift) and hit markers. Pure core, no DOM:
 // the screen side is src/sight/fps.ts.
+import { fx as attackFx, kicked, shotFx, strikeFx } from '../fx/attacks';
 import { dist, ENEMIES, hurtHooks, say, strike, tickHooks } from '../core/game';
 import { open } from '../core/grid';
 import { active, def, families, family, param, socketed } from '../core/mods';
@@ -153,6 +154,8 @@ export function fpsFire(g: Game): number {
     const { foe, len } = ray(g, g.player.dir, param<number>(i, 'range', 6));
     s.shotLen = len;
     g.events.push({ type: 'shoot', data: i.uid });
+    // seen: muzzle, tracer to where the ray stops, a spark on a foe (src/fx/attacks.ts)
+    shotFx(g, g.player.x + Math.sin(g.player.dir) * len, g.player.y - Math.cos(g.player.dir) * len, !!foe);
     if (!foe) continue;
     hits++;
     foe.enemy!.data.noticed = true;
@@ -188,6 +191,7 @@ export function lunge(g: Game): boolean {
       .sort((a, b) => dist(a, p) - dist(b, p));
     if (!front.length) continue;
     w.data.readyAt = g.t + autoCooldown(g, w);
+    strikeFx(g, w, front[0], param<number>(w, 'range', 1.3), param(w, 'sweep', false));
     for (const t of param(w, 'sweep', false) ? front : front.slice(0, 1)) {
       strike(g, t, param<number>(w, 'damage', 1));
       hit = true;
@@ -196,6 +200,10 @@ export function lunge(g: Game): boolean {
     }
   }
   g.events.push({ type: 'lunge' });
+  if (!hit) {
+    attackFx(g, 'arc', p.x, p.y, p.x, p.y, 1, p.dir);
+    kicked.set(g, g.t);
+  }
   return hit;
 }
 
