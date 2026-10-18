@@ -18,6 +18,8 @@ import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear, shutEye } fro
 import { altarNear, GIVES, offers as altarOffers } from '../world/altar';
 import { atStairs, STAIRS, type Stairs } from '../world/floors';
 import { nearPieces } from '../world/events';
+import { pieceOf, pieceProps, pieceUse } from '../world/piecefill';
+import { CHOICES } from '../world/choices';
 import { cacheNear, cardOpen, freeLeft } from '../world/cache';
 import { img, type Of } from './icons';
 import { freeing, makeRoom, setupsOf } from '../body';
@@ -333,6 +335,12 @@ export class Panels {
     if (st) {
       const style = STAIRS[st.data!.stairs as Stairs];
       rows.push({ name: style.name, tip: style.look, buttons: [st.data!.open ? { label: 'descend', cmd: 'descend' } : { label: 'descend', note: 'sealed: its keeper still stands' }] });
+    }
+    // the set piece you stand at: say plainly what it is for (Maks 10-18: "seems to have some use")
+    for (const e of pieceProps(g)) {
+      const pc = pieceOf(e);
+      if (!pc || dist(e, p) >= 3 || (CHOICES[pc.id] && !e.data!.chose)) continue;
+      rows.push({ icon: { thing: 'altar' }, name: pc.name, tip: `${pc.line} ${pieceUse(pc, e)}`, buttons: [{ label: 'look', note: pieceUse(pc, e) }], dim: true });
     }
     // a set piece's finds, until taken (src/world/events.ts)
     for (const o of nearPieces(g)) rows.push({ icon: o.item, name: `${o.name} ${Math.round(o.r)} ${o.side}`, tip: `${o.name}, ${Math.round(o.r)} cells ${o.side}: a set piece's finds`, buttons: [{ label: o.cmd.startsWith('goto') ? 'go' : o.cmd, cmd: o.cmd }] });

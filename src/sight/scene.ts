@@ -441,6 +441,7 @@ function place(g: Game, mode: Mode, hidden = false, filter = '', xray = false): 
     o.rotation.y = g.t * (l.spin ?? 0) + e.id;
     o.renderOrder = mode === 'heat' ? 2 : 0;
     ents.add(o);
+    if (mode === 'color' && e.item && !e.data?.mimic) ents.add(beamOf(e, g.t));
   }
   addPuffs(g, mode);
   for (const f of placeHooks) f(g, ents, mode);
@@ -629,3 +630,17 @@ export { CHUNK };
 
 /** test runs: the GL canvas, so a play step can lose the context on purpose */
 (globalThis as unknown as { thawGL?: () => HTMLCanvasElement | undefined }).thawGL = () => renderer?.domElement;
+
+// loot on the ground glows (Maks 10-18): a short soft column over every find, a tall gold (rare) or
+// purple (unique) beam that shows from across a room; shared, additive, cheap
+const beamGeo = new THREE.CylinderGeometry(0.05, 0.12, 1, 6, 1, true).translate(0, 0.5, 0);
+const beamMat = (c: number, o: number) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+const BEAM: Record<string, [THREE.Material, number]> = { common: [beamMat(0xffe0a0, 0.25), 0.45], fine: [beamMat(0x80c0ff, 0.3), 0.7], rare: [beamMat(0xffc030, 0.45), 2.4], unique: [beamMat(0xc060ff, 0.5), 2.8] };
+function beamOf(e: Entity, t: number): THREE.Mesh {
+  const [mat, h] = BEAM[e.item?.kind === 'mod' ? (e.item.rarity ?? 'common') : 'common'] ?? BEAM.common;
+  const b = new THREE.Mesh(beamGeo, mat);
+  const pulse = 0.85 + 0.15 * Math.sin(t * 3 + e.id);
+  b.position.set(e.x, 0, e.y);
+  b.scale.set(pulse, h * pulse, pulse);
+  return b;
+}

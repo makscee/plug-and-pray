@@ -270,6 +270,7 @@ export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => num
       for (const e of g.ents) {
         if (e.kind !== 'item' || !e.item || e.data?.mimic || !g.seen.has(`${Math.floor(e.x)},${Math.floor(e.y)}`)) continue;
         const [cx, cy] = [(Math.floor(e.x) + 0.5 - ox) * px, (Math.floor(e.y) + 0.5 - oy) * px];
+        halo(ctx, g, e, cx, cy, px);
         if (detail >= 2 && thingIcon.draw?.(ctx, e, cx, cy, Math.max(11, px * 1.8))) continue;
         if (e.item.kind === 'res') {
           ctx.fillStyle = detail ? NAMED[e.item.res] : SPOOL.thing;
@@ -394,3 +395,18 @@ view('mind', (el, inst, g) => {
   el.append(p);
   return { update() {} };
 });
+
+/** loot on the ground glows so it reads at a glance (Maks 10-18): a faint pulse for all of it,
+ * a wider gold (rare) or purple (unique) one that shows from further */
+export const LOOT_GLOW: Record<string, [string, number]> = { common: ['255,230,180', 0.9], fine: ['140,200,255', 1.1], rare: ['255,200,60', 1.8], unique: ['200,110,255', 2.2] };
+export const rarityOf = (e: Entity): string => (e.item?.kind === 'mod' ? (e.item.rarity ?? 'common') : 'common');
+export function halo(ctx: CanvasRenderingContext2D, g: Game, e: Entity, cx: number, cy: number, px: number) {
+  const [rgb, k] = LOOT_GLOW[rarityOf(e)] ?? LOOT_GLOW.common;
+  const pulse = 0.55 + 0.45 * Math.sin(g.t * 3 + e.id);
+  const r = Math.max(6, px * k);
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grd.addColorStop(0, `rgba(${rgb},${(k > 1.5 ? 0.75 : 0.45) * pulse})`);
+  grd.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = grd;
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+}
