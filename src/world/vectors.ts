@@ -11,11 +11,12 @@ import { ZONES, zoneAt, zoneOf } from './zones';
 import { active, def, param } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import { verb } from '../core/verbs';
-import type { Chunk, Game, Vector } from '../core/types';
+import type { Chunk, Game, Res, Vector } from '../core/types';
 import { CARDS, LOGS, OPENERS, SHARDS } from './cards';
 import { spot } from './gen';
 import { lootMod } from './spawn';
 import { foe } from '../fight/spawn';
+import { offer } from '../end/timeline';
 
 export interface Plan {
   /** chunk of shard 1, 2, 3 */
@@ -181,16 +182,28 @@ function vectorFor(g: Game, card: string): Vector {
 }
 
 export const reading = (g: Game): boolean => active(g, 'mind').some((i) => param<string>(i, 'what', '') === 'reader');
+/** r2 decide: a reader carried, not installed, still reads, for a bone a card (it was remove, install, read, swap back) */
+export const READ_BY_HAND: Partial<Record<Res, number>> = { bone: 1 };
+const carriesReader = (g: Game) => g.player.inv.some((i) => i.kind === 'mod' && def(i).family === 'mind' && param<string>(i, 'what', '') === 'reader');
+const bones = (g: Game) => g.player.inv.reduce((n, i) => n + (i.kind === 'res' && i.res === 'bone' ? i.n : 0), 0);
 
 verb('read', {
-  help: 'read a memory card: read card (needs the card reader)',
-  when: reading,
+  help: 'read a memory card: read card (needs the card reader: installed it reads free, carried it wants a bone)',
+  when: (g) => reading(g) || carriesReader(g),
+  whenFail: () => 'read: you need a card reader, installed or carried.',
   run(g) {
     const k = g.player.inv.findIndex((i) => i.kind === 'card');
     if (k < 0) return say(g, 'you carry no memory card.');
     const it = g.player.inv[k];
     if (it.kind !== 'card') return;
-    g.player.inv.splice(k, 1);
+    if (!reading(g)) {
+      if (bones(g) < READ_BY_HAND.bone!) return say(g, 'held in the hand, the reader wants a bone to read by. install it to read free.');
+      const b = g.player.inv.find((i) => i.kind === 'res' && i.res === 'bone');
+      if (b && b.kind === 'res') b.n -= READ_BY_HAND.bone!;
+      g.player.inv = g.player.inv.filter((i) => i.kind !== 'res' || i.n > 0);
+      say(g, 'you hold the reader to the light and feed it a bone. it reads.');
+    }
+    g.player.inv.splice(g.player.inv.indexOf(it), 1);
     const c = CARDS[it.card];
     if (!g.cards.includes(it.card)) g.cards.push(it.card);
     g.events.push({ type: 'read', data: it.card });
@@ -258,7 +271,9 @@ tickHooks.push((g) => {
   if (!g.ended && g.player.installed.some((i) => def(i).id === 'thaw-engine')) {
     g.ended = 'thaw';
     g.events.push({ type: 'thaw' });
-    say(g, 'the engine turns over. something vast, warming.');
+    // r2 econ: it takes everything you carry; the end card grades the thaw by it
+    const o = offer(g);
+    say(g, `the engine turns over. something vast, warming. it drinks what you carry: ${o.total}. ${o.grade}.`);
   }
 });
 

@@ -5,12 +5,14 @@ import { does } from '../mods/describe';
 import { dist, itemName, reach, say, spawn } from './game';
 import { DIRS, open } from './grid';
 import { active, def, label, MODS, param, powerMax, powerUsed, switchOff, switchOn } from './mods';
-import type { Game, Inst, Item, Line } from './types';
+import type { Game, Inst, Item, Line, Seg } from './types';
 
 export interface VerbDef {
   help: string;
   /** usable now? (a gait verb needs a gait on); hidden from help when not */
   when?: (g: Game) => boolean;
+  /** r2 decide: what to say when `when` fails, if it knows better than "nothing installed" (no altar in reach) */
+  whenFail?: (g: Game) => string | Line | null;
   run: (g: Game, args: string[]) => void;
 }
 export const VERBS: Record<string, VerbDef> = {};
@@ -27,8 +29,26 @@ export function exec(g: Game, line: string): void {
   const [v, ...args] = words;
   const d = VERBS[v];
   if (!d) return say(g, `${v}: unknown. try `, [{ text: 'help', cmd: 'help' }]);
-  if (d.when && !d.when(g)) return say(g, `${v}: nothing installed can do that.`);
+  if (d.when && !d.when(g)) return say(g, d.whenFail?.(g) ?? `${v}: nothing installed can do that.`);
   d.run(g, args);
+}
+
+/** "2 cells se" and a [go there] button (stepper legs: across, then along) from you to the cell (x, y);
+ *  `short`: stop a cell short on the last leg (a machine is used from beside it) */
+export function goThere(g: Game, x: number, y: number, short = false): [string, Seg] {
+  const p = g.player;
+  const [i, j] = [Math.floor(p.x), Math.floor(p.y)];
+  const [dx, dy] = [Math.floor(x) - i, Math.floor(y) - j];
+  const leg = (d: string, n: number, last: boolean) => `go ${d} ${Math.abs(n) - (last && short ? 1 : 0)}`;
+  // the leg order whose corner cell is open
+  const xFirst = !dy || (!!dx && open(g, i + dx, j));
+  const legs = [xFirst ? ['x', dx] : ['y', dy], xFirst ? ['y', dy] : ['x', dx]]
+    .filter(([, n]) => n)
+    .map(([a, n], k, all) => leg(a === 'x' ? ((n as number) > 0 ? 'e' : 'w') : (n as number) > 0 ? 's' : 'n', n as number, k === all.length - 1))
+    .filter((c) => !c.endsWith(' 0'));
+  const word = (dy < 0 ? 'n' : dy > 0 ? 's' : '') + (dx > 0 ? 'e' : dx < 0 ? 'w' : '');
+  const n = Math.max(Math.abs(dx), Math.abs(dy));
+  return [`${n} cell${n === 1 ? '' : 's'} ${word || 'here'}`, { text: 'go there', cmd: legs.join('; ') }];
 }
 
 /** an inventory item whose name contains the words, e.g. "pinhole", "pinhole eye" */
