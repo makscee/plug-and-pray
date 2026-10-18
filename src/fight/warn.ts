@@ -4,7 +4,7 @@
 // again only after you were 16+ cells from its post (src/fight/index.ts).
 // Playtest r2 pace: and when an elite turns to you within TURN cells, a line with how hard it hits and
 // how much it takes, and whether you have a weapon on; the HUD flashes it (src/fight/ui.ts, `turned`).
-import { dist, ENEMIES, say, tickHooks } from '../core/game';
+import { cells, dist, ENEMIES, say, tickHooks } from '../core/game';
 import { active, param } from '../core/mods';
 import type { Entity, Game, Line } from '../core/types';
 import { setupsOf } from '../body';
@@ -21,8 +21,9 @@ const word = (g: Game, e: { x: number; y: number }) => {
 
 function warn(g: Game, text: string, at: Entity): void {
   const p = g.player;
-  const line: Line = [`⚠ ${text}, ${Math.round(dist(at, p))} cells ${word(g, at)}. `];
-  line.push(setupsOf(g).battle ? { text: 'setup battle', cmd: 'setup battle' } : { text: 'setup', cmd: 'setup' });
+  const line: Line = [`⚠ ${text}, ${cells(Math.round(dist(at, p)))} ${word(g, at)}. `];
+  // r5: with no setup saved, `setup` only printed how to make one: offer to save the one on now
+  line.push(setupsOf(g).battle ? { text: 'setup battle', cmd: 'setup battle' } : { text: 'save setup battle', cmd: 'save setup battle' });
   say(g, line);
   g.events.push({ type: 'warn', at: [at.x, at.y] });
 }

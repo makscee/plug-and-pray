@@ -4,7 +4,7 @@
 // and only answers for its own `what`.
 
 import { CHUNK, cell, Cell, veinOf } from '../core/grid';
-import { tickHooks } from '../core/game';
+import { cells, tickHooks } from '../core/game';
 import { active, families, family, param } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 import { view, VIEWS, type View } from '../ui/views';
@@ -188,7 +188,7 @@ function compassView(el: HTMLElement, inst: Inst): View {
       ctx.moveTo(S / 2 - Math.sin(a) * r * 0.4, S / 2 + Math.cos(a) * r * 0.4);
       ctx.lineTo(S / 2 + Math.sin(a) * r, S / 2 - Math.cos(a) * r);
       ctx.stroke();
-      const text = v ? `${v.what}: ${Math.round(Math.hypot(v.x - p.x, v.y - p.y))} cells` : 'the needle drifts.';
+      const text = v ? `${v.what}: ${cells(Math.round(Math.hypot(v.x - p.x, v.y - p.y)))}` : 'the needle drifts.';
       if (label.textContent !== text) label.textContent = text;
     },
   };

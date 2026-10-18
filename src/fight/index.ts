@@ -258,7 +258,7 @@ export const ELITE = ['', 'warden', 'abbot', 'saint'];
 /** what the shard's guard is like, for the card that points at it (src/world/vectors.ts) */
 export const GUARD_HINT: Record<string, string> = {
   warden: 'the choir warden keeps it. it draws breath, then rushes: step aside.',
-  abbot: 'the bone abbot keeps it. bone shrugs off small hits; it sweeps two cells round.',
+  abbot: 'the bone abbot keeps it. bone shrugs off small hits. it lifts its arm: step back; it raises both arms: get two cells away.',
   saint: 'the furnace saint keeps it. it burns down its lines, and crosses all four at once: come at it on a diagonal.',
 };
 

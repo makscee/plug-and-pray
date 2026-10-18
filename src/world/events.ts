@@ -9,7 +9,7 @@
 import { open } from '../core/grid';
 import { MODS } from '../core/mods';
 import { VERBS, way } from '../core/verbs';
-import { dist, say, spawn, tickHooks } from '../core/game';
+import { cells, dist, say, spawn, tickHooks } from '../core/game';
 import { hash, rng, type Rng } from '../core/rng';
 import type { Entity, Game, Item } from '../core/types';
 import { foe } from '../fight/spawn';
@@ -83,7 +83,7 @@ const side = (dx: number, dy: number) => ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 
 function where(g: Game, x: number, y: number): (string | { text: string; cmd: string })[] {
   const [dx, dy] = [x - g.player.x, y - g.player.y];
   const cmd = goCmd(g, x, y);
-  return [`${Math.round(Math.hypot(dx, dy))} cells ${side(dx, dy)}.  `, { text: cmd, cmd }];
+  return [`${cells(Math.round(Math.hypot(dx, dy)))} ${side(dx, dy)}.  `, { text: cmd, cmd }];
 }
 
 /** what a set piece's finds are called while they lie there */

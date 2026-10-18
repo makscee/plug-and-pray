@@ -56,6 +56,9 @@ export function newGame(seed: number): Game {
   return g;
 }
 
+/** r5: "1 cell", "3 cells" */
+export const cells = (n: number): string => `${n} cell${n === 1 ? '' : 's'}`;
+
 export function say(g: Game, ...lines: (string | Line)[]): void {
   for (const l of lines) g.log.push(typeof l === 'string' ? [l] : l);
 }

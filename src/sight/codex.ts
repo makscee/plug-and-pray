@@ -18,7 +18,7 @@ export const CODEX: Record<string, string> = {
   hum: 'a knot of smoke with eyes. no clear eye shows it: only sonar and heat do, and only then can your weapons find it.',
   mimic: 'a reliquary that wanted to be opened. it lay as loot; a heat or black & white eye sees it breathe, sonar wakes it early.',
   warden: 'the choir warden: a mite grown huge and haloed, guarding a shard. fast and hard-biting: bring a second weapon, or a bell for its choir.',
-  abbot: 'the bone abbot: guards the second shard. its arm comes down for four: never stand there when it does.',
+  abbot: 'the bone abbot: guards the second shard. it lifts its arm, then hits for four: step back. when it raises both arms it sweeps: get two cells away.',
   saint: 'the furnace saint: guards the last shard and the engine. it does not move; its fire crosses the room.',
   altar: 'an altar, stained and patient. offer what you gather for power, flesh or mending, or attune and temper a module.',
   printer: 'a printer of the old machines. feed it bone and glass: it prints a slot, a module, or (for copper more) one kind of module.',
