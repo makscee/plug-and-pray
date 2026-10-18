@@ -27,5 +27,11 @@
 .thaw-card p { margin: 0 0 14px; }
 .thaw-card .big { font-size: 40px; }
 .thaw-card .run { color: #7a3a1a; }
+.thaw-card .tally { margin: 0 auto 16px; width: 260px; }
+.thaw-card .tally .head { margin-bottom: 6px; color: #7a3a1a; }
+.thaw-card .tally .row { display: flex; justify-content: space-between; margin: 0; font-size: 22px; opacity: 0; transform: translateY(4px); transition: opacity 0.25s, transform 0.25s; }
+.thaw-card .tally .row.on { opacity: 1; transform: none; }
+.thaw-card .tally .total { margin-top: 6px; padding-top: 6px; border-top: 1px solid #e07a3a; font-size: 28px; }
+.thaw-card .tally .grade { color: #a03a10; }
 .thaw-card button { color: #a03a10; font-size: 26px; }
 .thaw-end ~ .hpbar, body[data-state='thaw'] .hpbar { opacity: 0; }

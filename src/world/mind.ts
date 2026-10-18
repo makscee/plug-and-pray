@@ -9,6 +9,7 @@ import { active, families, family, param } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 import { view, VIEWS, type View } from '../ui/views';
 import { nearestOpen } from './vectors';
+import { isNamed } from './secrets';
 import { see } from '../sight/reveal';
 
 const OURS = ['reader', 'map', 'compass'];
@@ -51,6 +52,8 @@ export const mapCell = {
   px: (span: number) => ((mapCell.zoom ?? innerHeight >= 900) ? 297 : 198) / span,
 };
 
+/** veins a colour eye named, in their own colours */
+const NAMED: Record<string, string> = { bone: '#d8c8a8', glass: '#7fd8d0', copper: '#e08a40', ichor: '#e02848' };
 const CSS = { floor: '#6a5444', wall: '#2c221d', vein: '#7a4a2a', ichor: '#a02838', you: '#f0a050', vec: '#e0d0a0', printer: '#70a0a0' };
 
 function mapView(el: HTMLElement, inst: Inst, game: Game): View {
@@ -88,7 +91,8 @@ function mapView(el: HTMLElement, inst: Inst, game: Game): View {
           if (!g.seen.has(`${wx},${wy}`) || !g.chunks.has(`${Math.floor(wx / CHUNK)},${Math.floor(wy / CHUNK)}`)) continue;
           const c = cell(g, wx, wy);
           const v = veinOf(c);
-          ctx.fillStyle = c === Cell.floor ? CSS.floor : v ? (v === 'ichor' ? CSS.ichor : CSS.vein) : CSS.wall;
+          // r2 decide: a vein a colour eye named shows its kind
+          ctx.fillStyle = c === Cell.floor ? CSS.floor : v ? (isNamed(g, wx, wy) ? NAMED[v] : v === 'ichor' ? CSS.ichor : CSS.vein) : CSS.wall;
           ctx.fillRect(x * px, y * px, px, px);
         }
       for (const e of g.ents)
