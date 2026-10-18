@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../src/core/game';
 import { CHUNK, Cell, cell } from '../src/core/grid';
-import { firstEye, EYE_BAND } from '../src/world/spawn';
+import { firstEye, EYE_BAND, EYE_MIN } from '../src/world/spawn';
 import { bossRoom, inRoom, inside, origin } from '../src/world/floors';
 import '../src/mods';
 import '../src/world';
@@ -28,7 +28,7 @@ function steps(g: ReturnType<typeof newGame>, [ax, ay]: number[], [bx, by]: numb
 }
 
 describe('v3: the first eye', () => {
-  it('lies on open floor, walkable from the start, out of the keeper\'s room, 55-85% of the way to it', () => {
+  it('lies on open floor, walkable from the start, out of the keeper\'s room, 70-90% of the way to it', () => {
     for (let seed = 1; seed <= 60; seed++) {
       const g = newGame(seed);
       const e = g.ents.find((x) => x.item?.kind === 'mod' && x.item.mod === 'pinhole-eye')!;
@@ -43,8 +43,9 @@ describe('v3: the first eye', () => {
       expect(room).toBeGreaterThan(there);
       const f = firstEye(seed);
       expect(f.along).toBeGreaterThanOrEqual(EYE_BAND[0]);
-      expect(there / f.way, `seed ${seed}`).toBeGreaterThanOrEqual(0.55);
-      expect(there / f.way, `seed ${seed}`).toBeLessThanOrEqual(0.85);
+      expect(there / f.way, `seed ${seed}`).toBeGreaterThanOrEqual(0.69);
+      expect(there, `seed ${seed}`).toBeGreaterThanOrEqual(Math.min(EYE_MIN, f.way - 1));
+      expect(there / f.way, `seed ${seed}`).toBeLessThanOrEqual(0.95);
     }
   });
 });

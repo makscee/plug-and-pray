@@ -16,7 +16,9 @@ import { farOf, floorAt, floorOfChunk, HALF, inRoom, inside, isArrival, origin, 
 /** v3 (Maks 10-18: "my first eye was behind a wall and I couldn't get it"): the first eye lies in the open, on the
  *  walk from where you wake to the keeper's room, EYE_BAND of the way along it (by seed), so it comes at the mid to
  *  end of the cradle. The way is found over the cradle's open floor as generated (no wall to break on it) */
-export const EYE_BAND: [number, number] = [0.6, 0.8];
+export const EYE_BAND: [number, number] = [0.7, 0.85];
+/** and never nearer the start than this many steps (a short way to the keeper put it a minute out) */
+export const EYE_MIN = 22;
 const eyeSpots = new Map<number, { at: [number, number]; way: number; along: number }>();
 export function firstEye(seed: number): { at: [number, number]; way: number; along: number } {
   const hit = eyeSpots.get(seed);
@@ -56,7 +58,7 @@ export function firstEye(seed: number): { at: [number, number]; way: number; alo
   way.reverse();
   // the last cell is the room's own door cell: the eye lies before it, never in the room
   const along = EYE_BAND[0] + rng(hash(seed, 181))() * (EYE_BAND[1] - EYE_BAND[0]);
-  const i = way[Math.min(way.length - 2, Math.max(0, Math.round((way.length - 1) * along)))] ?? start;
+  const i = way[Math.min(way.length - 2, Math.max(EYE_MIN, Math.round((way.length - 1) * along)))] ?? start;
   const out = { at: [(i % W) + ox + 0.5, Math.floor(i / W) + oy + 0.5] as [number, number], way: way.length - 1, along };
   eyeSpots.set(seed, out);
   return out;
