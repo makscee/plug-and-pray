@@ -1,0 +1,26 @@
+/* v4 foes: the foe window (src/ui/foes.ts) at the foot of the panel column, and the first-meeting banner */
+.win-foe { width: 260px; }
+.win-foe .dot { display: none; }
+.win-foe p { margin: 0; }
+.foe-look { image-rendering: pixelated; flex: none; background: #0004; border: 1px solid var(--line); }
+.foe-top { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 4px; }
+.foe-name { color: var(--t-title); font-size: 22px; line-height: 1; }
+.foe-elite { font-size: 15px; color: #000; background: var(--warn); padding: 0 4px; letter-spacing: 1px; text-transform: uppercase; vertical-align: 2px; }
+.foe-what { color: var(--t-body); font-size: 16px; line-height: 1; }
+.foe-rows { font-size: 17px; line-height: 1.05; }
+.foe-rows .k { color: var(--t-head); display: inline-block; width: 52px; }
+.foe-rows .m { color: var(--t-meta); }
+.foe-drop { display: flex; align-items: center; gap: 4px; }
+.foe-drop .k { flex: none; }
+.foe-bar { display: inline-block; width: 110px; height: 8px; border: 1px solid var(--line-hi); vertical-align: 0; }
+.foe-bar b { display: block; height: 100%; background: var(--danger); }
+.foe-d-low { color: var(--good); }
+.foe-d-mid { color: var(--warn); }
+.foe-d-high { color: var(--danger); }
+.foe-call { margin: 2px 0 !important; text-transform: uppercase; letter-spacing: 1px; font-size: 15px; }
+.foe-fight { color: var(--good); }
+.foe-avoid { color: var(--danger); }
+.foe-either { color: var(--warn); }
+.foe-tip { color: var(--info); }
+.toast.toast-foe { top: 128px; border-color: var(--danger); box-shadow: 0 0 24px #ff5a4440, 0 8px 24px #000c; animation-duration: 3.2s; }
+.toast-foe .toast-head { color: var(--danger); }

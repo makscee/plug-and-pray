@@ -271,7 +271,7 @@ export function goDown(g: Game, f: number): void {
   const lines: (string | Line)[] = [`FLOOR ${f + 1}: ${F.name.toUpperCase()}.`, F.gimmick, WANTS[f]];
   if (F.stairs) lines.push(`the way down lies somewhere ${word}, past its keeper. a memory card or a scanner points to it.`);
   else lines.push(`its keeper waits ${word} of here.`);
-  if (KIT[f]?.length) lines.push('a cache lies where you land: this floor\'s kit. take two.');
+  if (KIT[f]?.length) lines.push(['a reliquary stands two cells south: this floor\'s kit, two free. ', { text: 'open', cmd: 'open' }, ' it or walk into it.']);
   say(g, ...lines);
 }
 
