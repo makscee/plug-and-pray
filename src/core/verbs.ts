@@ -127,8 +127,8 @@ export function inPlace(g: Game, it: Item, run: () => void): void {
 
 /** verbs help and the actions bar never list (test runs only) */
 const HIDDEN = new Set(['conjure']);
-/** verbs a key does (t, p): help lists them, the actions bar does not */
-const KEYED = new Set(['tidy', 'pause', 'map']);
+/** verbs a key does (t, p), and `turn` (the power hint's words): help lists them, the actions bar does not */
+const KEYED = new Set(['tidy', 'pause', 'map', 'turn']);
 
 verb('help', {
   help: 'the goal, the keys and what you can do: help, help go',

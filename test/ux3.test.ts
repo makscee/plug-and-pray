@@ -31,3 +31,20 @@ describe('v2r3 ux', () => {
     expect(lineKind(['mite queen hits you · hp 3/10'])).toBe('combat');
   });
 });
+
+describe('turn (the power hint, typed)', () => {
+  it('turn off X and turn on Y does both', async () => {
+    const { exec } = await import('../src/core/verbs');
+    const { startKit } = await import('../src/tune/start');
+    const g = newGame(1);
+    startKit(g);
+    exec(g, 'install all');
+    const map = g.player.installed.find((i) => i.mod === 'map-spool')!;
+    expect(map.on).toBe(true);
+    exec(g, 'turn off map spool');
+    expect(map.on).toBe(false);
+    exec(g, 'turn off thread bell and turn on map spool');
+    expect(map.on).toBe(true);
+    expect(g.player.installed.find((i) => i.mod === 'thread-bell')!.on).toBe(false);
+  });
+});

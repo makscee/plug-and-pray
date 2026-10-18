@@ -502,3 +502,24 @@ verb('swap', {
 
 // playtest r3: `uninstall` is what a new player types for remove
 if (VERBS.remove && !VERBS.uninstall) VERBS.uninstall = { ...VERBS.remove, help: 'the same as remove' };
+
+// the power hint says "turn off X and turn on Y"; typed, that was "turn: unknown". `turn` reads it
+if (!VERBS.turn)
+  verb('turn', {
+    help: 'turn off censer and turn on carrion eye: the same as off and on',
+    run(g, args) {
+      let mode = '';
+      let name: string[] = [];
+      const flush = () => {
+        if (mode && name.length) VERBS[mode]?.run(g, name);
+        name = [];
+      };
+      for (const w of args) {
+        if (w === 'and' || w === 'turn') flush();
+        else if ((w === 'on' || w === 'off') && !name.length) mode = w;
+        else name.push(w);
+      }
+      flush();
+      if (!mode) say(g, 'turn what? turn off censer, or turn on carrion eye. (face turns you)');
+    },
+  });

@@ -28,6 +28,7 @@ import { firstSight } from './codex';
 import { near, shoot } from './scene';
 import { HOLLOW } from './marks';
 import { secrets } from '../world/secrets';
+import { bossRoom } from '../world/floors';
 import { addBlur, addLag, addNoise, blank, creases, FILTERS, foeOutside, heatRamp, MODES, staticFrame } from './index';
 import { baseLook, fovAcross, plan, rowsOf, shownLayers, turnLayers, type Layer } from './layers';
 import { bigOn, reins } from '../body/fps';
@@ -139,10 +140,17 @@ frameHooks.push((g) => {
     // v2r2 fight: on floors 1 and 2 a coarse eye can hide the keeper: the big map comes up once, its radar dots the fight
     const f = g.floor ?? 0;
     const coarse = !pl.base || rowsOf(pl.base) < 64 || param<string>(pl.base, 'filter', 'color') !== 'color';
-    if (f <= 1 && coarse && !mappedOn(g).has(f) && !bigOn(g) && bestMap(g) && !bigMapOpen()) {
+    // v2r3 fight: with no map module too (map modules are rare in floor 1-2 kits): the room as you have seen it
+    if (f <= 1 && coarse && !mappedOn(g).has(f) && !bigOn(g) && !bigMapOpen()) {
       mappedOn(g).add(f);
-      toggleBigMap(g);
-      say(g, 'the keeper wakes. your map comes up big, so you can see it move: m or esc puts it away.');
+      const own = !!bestMap(g);
+      // no map of your own: the room you fight in, its walls known (you stand in it)
+      if (!own) {
+        const [x0, y0, x1, y1] = bossRoom(g.seed, f);
+        for (let y = y0 - 1; y <= y1 + 1; y++) for (let x = x0 - 1; x <= x1 + 1; x++) g.seen.add(`${x},${y}`);
+      }
+      toggleBigMap(g, true);
+      say(g, own ? 'the keeper wakes. your map comes up big, so you can see it move: m or esc puts it away.' : 'the keeper wakes. the room comes up as a map, so you can see it move: esc puts it away.');
     }
   }
   if (!boss && b.boss && bigMapOpen() && mappedOn(g).has(g.floor ?? 0)) closeBigMap();
