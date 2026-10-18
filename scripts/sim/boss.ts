@@ -13,7 +13,7 @@ import { exec } from '../../src/core/verbs';
 import { hash, rng } from '../../src/core/rng';
 import type { Entity, Game } from '../../src/core/types';
 import { BOSS, inZone, isUnder, poolsOf, stageBoss, stunOf, type Zone } from '../../src/fight/bosses';
-import { shots, type ShotData } from '../../src/fight/shots';
+import { clearShot, shots, type ShotData } from '../../src/fight/shots';
 import { volley } from '../../src/fight/aim';
 import { dash, fps, fpsEye, mark } from '../../src/body/fps';
 
@@ -181,7 +181,7 @@ export function duel(g: Game, floor: number, seed: number, o: Duel = {}): { won:
     // it shoots as it thinks, mid-step too (a person taps the key while the stepper walks)
     if (g.t >= stunOf(g) && near && think) {
       if (!(cells && p.path.length) || volley(g).length) p.dir = Math.atan2(near.x - p.x, -(near.y - p.y)) + (o.human && fps(g).big ? (r() - 0.5) * 2 * HUMAN.aim : 0);
-      if (volley(g).length && dist(near, p) <= reach && clear(g, p.x, p.y, near.x, near.y)) exec(g, 'shoot');
+      if (volley(g).length && dist(near, p) <= reach && clearShot(g, p.x, p.y, near.x, near.y)) exec(g, 'shoot');
     }
     const at = g.log.length;
     tick(g, DT);

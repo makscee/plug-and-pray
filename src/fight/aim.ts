@@ -4,11 +4,10 @@
 // counted as in front, and every shot passed it by). The gyro heart turns `player.dir`
 // to the mouse. Their windows carry a shoot button.
 import { dist, ENEMIES, REACH, say, tickHooks } from '../core/game';
-import { clear } from '../core/grid';
 import { active, def, families, param } from '../core/mods';
 import { verb } from '../core/verbs';
 import type { Entity, Game, Inst, Line } from '../core/types';
-import { bolted, compass, fire } from './shots';
+import { bolted, clearShot, compass, fire } from './shots';
 import { COPY, haste } from '../mods/weapon';
 import { canHit, perceives } from '../mods/sense';
 import { offFacing, toward, turned } from './eye';
@@ -21,11 +20,13 @@ weapon.buttons = (g, inst) => (param<string>(inst, 'aim', 'auto') === 'aimed' ? 
 
 /** speed of your shots, cells per second */
 export const SHOT_SPEED = 12;
-/** foes you could shoot at from here: perceived (or in touch), in a clear line, within `range` */
+/** foes you could shoot at from here: perceived (or in touch), in a clear line (low pillars do not block it),
+ *  within `range` */
 export function targets(g: Game, range: number): Entity[] {
   const p = g.player;
   return g.ents
-    .filter((e) => e.enemy && dist(e, p) <= range && canHit(g, e) && clear(g, p.x, p.y, e.x, e.y))
+    // (on floors 1-2 a keeper that woke stays a target behind a low pillar: you know where it stands)
+    .filter((e) => e.enemy && dist(e, p) <= range && (canHit(g, e) || (!!e.enemy.data.boss && !!e.enemy.data.noticed && (g.floor ?? 0) <= 1)) && clearShot(g, p.x, p.y, e.x, e.y))
     .sort((a, b) => dist(a, p) - dist(b, p));
 }
 
@@ -112,7 +113,7 @@ function whyNot(g: Game, range: number): void {
   if (!e) return;
   told.set(g, g.t);
   const w = compass(g, e);
-  if (!clear(g, p.x, p.y, e.x, e.y) && canHit(g, e)) return say(g, `stone stands between you and the ${nameOf(e)}: step out of its line.`);
+  if (!clearShot(g, p.x, p.y, e.x, e.y) && canHit(g, e)) return say(g, `stone stands between you and the ${nameOf(e)}: step out of its line.`);
   if (!perceives(g, e)) say(g, ['nothing in sight to aim at: ', { text: `turn ▶ ${nameOf(e)}`, cmd: `face ${w}` }]);
 }
 

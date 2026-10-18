@@ -95,6 +95,8 @@ export interface Check {
   ready: boolean;
   /** what is missing, plain words */
   why: string[];
+  /** ready, but thin: hp for less than half the fight at a newcomer's pace ('' when not); you can still go in */
+  risky: string;
   /** a button that fixes one of them (swap in the armour you carry) */
   link?: { text: string; cmd: string };
 }
@@ -145,8 +147,18 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
     const need = Math.ceil(k.damage * HUMAN_PACE * (k.hp / dps));
     if (p.hp < need) why.push(`about ${need - Math.floor(p.hp)} hp short for a fight this long: more hp (an altar's flesh, armour) or a stronger weapon`);
   }
-  return { name: k.name, hp: k.hp, damage: k.damage, hint: k.def.hint, dps, ready: !why.length, why, ...(link && why.length ? { link } : {}) };
+  // v2r6 newcomer: "ready" at a bare 10 hp lost the bell and the warden (2-2.5 hp an exchange, 10 hp gone in ~25 s
+  // of a 48 s fight): hp for less than half the fight at a newcomer's pace is risky, not ready, and not a "no"
+  let risky = '';
+  if (!why.length && dps > 0) {
+    const half = Math.ceil(0.5 * k.damage * NEW_PACE * (k.hp / dps));
+    if (p.hp < half) risky = `you'll likely need a retreat or two (hp for about ${Math.round((p.hp / half) * 50)}% of the fight; more hp or damage makes it one go)`;
+  }
+  return { name: k.name, hp: k.hp, damage: k.damage, hint: k.def.hint, dps, ready: !why.length, why, risky, ...(link && why.length ? { link } : {}) };
 }
+
+/** the share of a keeper's blow a newcomer loses a second (v2r6: 2-2.5 hp an exchange against the bell's 2.5) */
+export const NEW_PACE = 0.2;
 
 /** the share of a keeper's blow a person loses a second, in fights they win (boss-sim --human, floors 1-2) */
 export const HUMAN_PACE = 0.08;
@@ -160,7 +172,7 @@ export function keeperLine(g: Game, f = floorOf(g)): Line[] {
   const kill = c.dps > 0 ? ` (${secs(c.hp / c.dps)} to bring it down)` : '';
   const head = `the keeper: ${c.name}, ${c.hp} hp, hits up to ${c.damage.toFixed(1)}. you deal ${c.dps.toFixed(1)}/s${kill}.`;
   const verdict: Line = c.ready
-    ? ['ready. ', { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in', cmd: 'go in' }] : [])]
+    ? [c.risky ? `risky: ${c.risky}. ` : 'ready. ', { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in', cmd: 'go in' }] : [])]
     : [`you are not ready: ${c.why.join('; ')}. `, ...(c.link ? [c.link, '  '] : []), { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in anyway', cmd: 'go in' }] : [])];
   return [[head], verdict];
 }
@@ -269,4 +281,4 @@ doorIn.run = (g) => {
   say(g, 'you go in.');
 };
 
-Object.assign(keeperDoor, { at: atDoor, of: doorOf, line: keeperLine, ready: (g: Game, f: number) => keeperCheck(g, f).ready });
+Object.assign(keeperDoor, { at: atDoor, of: doorOf, line: keeperLine, ready: (g: Game, f: number) => keeperCheck(g, f).ready, risky: (g: Game, f: number) => keeperCheck(g, f).risky });

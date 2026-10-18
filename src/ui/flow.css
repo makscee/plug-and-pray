@@ -26,6 +26,7 @@
 .door-card .door-hint { font-size: 16px; color: var(--t-body, var(--fg)); opacity: 0.85; }
 .door-card .door-verdict.ok { color: var(--good, #8fd080); }
 .door-card .door-verdict.no { color: #ffcf5a; }
+.door-card .door-verdict.risky { color: #e8d890; }
 .door-card .door-btns { display: flex; gap: 14px; justify-content: center; margin-top: 4px; }
 .door-card { position: fixed; }
 .door-card .door-x { position: absolute; right: 6px; top: 2px; font-size: 20px; padding: 0 4px; }

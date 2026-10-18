@@ -50,7 +50,7 @@ frameHooks.push((g) => {
   const f = floorOf(g);
   const c = keeperCheck(g, f);
   const k = keeperOf(g, f);
-  const s = JSON.stringify([f, c.ready, c.why, c.link, c.dps.toFixed(1), d.dir, g.player.hp > 0, !!altarSeen(g)]);
+  const s = JSON.stringify([f, c.ready, c.risky, c.why, c.link, c.dps.toFixed(1), d.dir, g.player.hp > 0, !!altarSeen(g)]);
   if (s === sig) return;
   sig = s;
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -59,7 +59,7 @@ frameHooks.push((g) => {
     `<p class="door-name">${esc(k.name)}</p>` +
     `<p class="door-stats"><b>${c.hp}</b> hp · hits up to <b>${c.damage.toFixed(1)}</b> · you deal <b>${c.dps.toFixed(1)}</b>/s</p>` +
     `<p class="door-hint">${esc(c.hint)}</p>` +
-    `<p class="door-verdict ${c.ready ? 'ok' : 'no'}">${c.ready ? 'you look ready.' : `not ready:${c.why.map((w) => `<br><span>· ${esc(tight(g, w))}</span>`).join('')}`}</p>`;
+    `<p class="door-verdict ${c.ready ? (c.risky ? 'risky' : 'ok') : 'no'}">${c.ready ? (c.risky ? `risky: ${esc(c.risky)}.` : 'you look ready.') : `not ready:${c.why.map((w) => `<br><span>· ${esc(tight(g, w))}</span>`).join('')}`}</p>`;
   const row = document.createElement('p');
   row.className = 'door-btns';
   // v2r5 run: the armour it asks for comes with the swap that makes room for it
