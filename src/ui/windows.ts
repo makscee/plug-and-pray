@@ -113,6 +113,7 @@ function rects(el: HTMLElement, skip?: (o: HTMLElement) => boolean): Rect[] {
     .filter((o) => o !== el && !o.dataset.tidy && !skip?.(o))
     .map((o) => o.getBoundingClientRect());
   out.push({ left: innerWidth - COLUMN, top: 0, right: innerWidth, bottom: innerHeight });
+  if (el.classList.contains('mod-win') && !el.classList.contains('min')) out.push(middle());
   return out;
 }
 const hit = (x: number, y: number, w: number, h: number, r: Rect, gap: number) =>
@@ -125,6 +126,10 @@ function inside(el: HTMLElement): boolean {
   const a = el.getBoundingClientRect();
   return a.left >= 0 && a.top >= 0 && a.right <= innerWidth && a.bottom <= innerHeight;
 }
+
+/** v2-view: the view behind the windows keeps its middle clear: module windows keep to the edges (the console
+ *  and the panels have their own spots) */
+export const middle = (): Rect => ({ left: innerWidth * 0.3, top: innerHeight * 0.2, right: innerWidth * 0.7, bottom: innerHeight });
 
 /** the first free top-left (row by row from the top left, 16 px steps) where `el` overlaps no window */
 function free(el: HTMLElement, skip?: (o: HTMLElement) => boolean): [number, number] | null {
@@ -351,7 +356,7 @@ function layout(all: boolean): void {
 
 /** the console's own spot: bottom centre, low enough that a map fits above it at 1280x720 (style.css
  * shortens its output under 800 px tall) */
-export const consoleAt = (): [number, number] => [Math.max(16, innerWidth / 2 - 220), Math.max(TOP, innerHeight - (innerHeight < 800 ? 330 : 390))];
+export const consoleAt = (): [number, number] => [Math.max(16, innerWidth / 2 - 240), Math.max(TOP, innerHeight - (innerHeight < 800 ? 262 : 330))];
 
 /** the console on screen: back to its own spot unless you dragged it, else just inside the edges */
 function homeConsole(): void {
@@ -381,13 +386,17 @@ if (typeof window !== 'undefined')
     homeConsole();
     // windows resize with the screen (the map's cells), so look once they have
     clearTimeout(settle);
-    settle = setTimeout(() => {
-      homeConsole();
-      if (modWins().some((w) => !w.classList.contains('min') && (!inside(w) || overlaps(w)))) layout(false);
-      else dock();
-      refill();
-    }, 150);
+    settle = setTimeout(resettle, 150);
   });
+
+/** the console home, and every module window that sits off screen or on another to a free spot or the dock
+ *  (a resize; v2-view: windows shown again as the map leaves the screen or the reins are let go) */
+export function resettle(): void {
+  homeConsole();
+  if (modWins().some((w) => !w.classList.contains('min') && (!inside(w) || overlaps(w)))) layout(false);
+  else dock();
+  refill();
+}
 export function close(id: string): void {
   const docked = wins.get(id)?.el.classList.contains('min');
   wins.get(id)?.el.remove();

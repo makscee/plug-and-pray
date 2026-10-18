@@ -27,10 +27,12 @@ describe('map reveal', () => {
     addItem(g, { kind: 'mod', mod: 'map-spool' });
     exec(g, 'install map spool');
     for (let k = 0; k < 60; k++) tick(g, 1 / 30);
-    expect(g.seen.size).toBeLessThanOrEqual(9);
+    // v2-view: blind, it feels the walls by the body's glow (BLIND cells round you)
+    const blind = g.seen.size;
+    expect(blind).toBeLessThanOrEqual(25);
     addItem(g, { kind: 'mod', mod: 'pinhole-eye' });
     exec(g, 'install pinhole eye');
     for (let k = 0; k < 60; k++) tick(g, 1 / 30);
-    expect(g.seen.size).toBeGreaterThan(20);
+    expect(g.seen.size).toBeGreaterThan(blind + 10);
   });
 });

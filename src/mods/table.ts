@@ -21,7 +21,7 @@ mods([
   // body slice: gaits, power, slot boards, ledger, clock of hours. Its own keys: gait pace, speed (cells/s),
   // cooldown (s); power slots (a slot board: installing it adds slots and uses it up); mind clock range, ahead (s)
   { id: 'servo-gait', name: 'servo gait', family: 'gait', power: 1, warm: 1, tier: 0, params: { keys: true, pace: 4 }, text: 'pistons that answer the arrow keys. esc leaves the console, enter goes back.' },
-  { id: 'gyro-heart', name: 'gyro heart', family: 'gait', power: 2, warm: 2, tier: 1, params: { free: true, speed: 2.5 }, text: 'a spinning heart: wasd to walk, click the eye to turn with the mouse.' },
+  { id: 'gyro-heart', name: 'gyro heart', family: 'gait', power: 2, warm: 2, tier: 1, params: { free: true, speed: 2.5 }, text: 'a spinning heart: wasd to walk free, q and e to turn.' },
   { id: 'tunnel-tongue', name: 'tunnel tongue', family: 'gait', power: 2, warm: 1.5, tier: 1, params: { dig: true, cooldown: 1 }, text: 'a rasp of bone-iron. it eats plain wall, not ore.' },
   { id: 'votive-battery', name: 'votive battery', family: 'power', power: 0, warm: 1, tier: 1, params: { power: 3, loud: 1 }, text: 'a jar of prayers that still hold a charge. they whisper.' },
   { id: 'heart-shard', name: 'heart-shard', family: 'power', power: 0, warm: 2, tier: 2, params: { power: 5, loud: 3 }, text: 'a splinter of the god\'s heart. it beats against your board, and everything hears it.' },
@@ -29,7 +29,7 @@ mods([
   { id: 'ledger', name: 'tithe ledger', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'ledger', tithe: 2 }, text: 'a clerk of the dead counts every kill: twice as many pay out.' },
   { id: 'clock-of-hours', name: 'clock of hours', family: 'mind', power: 2, warm: 1.5, tier: 1, params: { what: 'clock', range: 8, ahead: 1 }, text: 'it ticks a second ahead of the world.' },
   { id: 'dawn-eye', name: 'dawn eye', family: 'camera', power: 2, warm: 0.5, tier: 0, params: { res: 96, colors: 0, fps: 8, fov: 75, range: 9, filter: 'color' }, text: 'a clear colour eye. honest, but it needs light to see far.' },
-  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 0, warm: 1, tier: 0, params: { res: 24, colors: 4, fps: 3, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
+  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 0, warm: 1, tier: 0, params: { res: 32, colors: 4, fps: 3, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
   { id: 'vidicon-tube', name: 'vidicon tube', family: 'camera', power: 1, warm: 1.5, tier: 0, params: { res: 64, colors: 4, fps: 4, fov: 70, range: 8, lag: 0.4, filter: 'color' }, text: 'a glass tube that drags its ghosts behind it.' },
   { id: 'saints-lens', name: "saint's lens", family: 'camera', power: 4, warm: 3, tier: 2, params: { size: 2, res: 200, colors: 0, fps: 15, fov: 80, range: 14, filter: 'color' }, text: 'ground from a saint, they say. it sees as he did.' },
   { id: 'stepper-relay', name: 'stepper relay', family: 'gait', power: 1, warm: 0.5, tier: 0, params: { go: true }, text: 'clicks your legs forward one cell at a time. go n 3.' },
@@ -47,6 +47,8 @@ mods([
   { id: 'marrow-rod', name: 'marrow rod', family: 'scanner', power: 1, warm: 1.5, tier: 1, params: { range: 8, sees: ['veins'], refresh: 3, shape: 'cone' }, text: 'it drinks a little of every vein it finds.' },
   // v2 radars (src/mods/radar.ts): each finds one kind of thing across the floor and marks it on your map, as
   // sure as it can tell (spread: cells it may be off; names: it says what). Without the right one, those stay unmarked
+  // v2-view: the start's only sight (Maks 10-18: "on the very start you only have a map ... radar could render on top")
+  { id: 'thread-bell', name: 'thread bell', family: 'scanner', power: 0, warm: 0.5, tier: 0, params: { finds: 'life', range: 9, every: 1.5, spread: 0.6 }, text: 'a little bell on a thread. it shivers when a heart comes near.' },
   { id: 'sounding-knell', name: 'sounding knell', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'thing', range: 26, every: 8, spread: 3, loud: 2 }, text: 'a knell rung into the stone. what rings back is "something", somewhere near there.' },
   { id: 'hollow-tap', name: 'hollow tap', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'cache', range: 14, every: 4 }, text: 'a little hammer that taps the walls. it hears where they are hollow, not what is inside.' },
   { id: 'vein-fork', name: 'vein fork', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'vein', range: 22, every: 5, names: true }, text: 'a tuning fork that hums the note of ore, and knows which ore.' },
@@ -100,8 +102,12 @@ mods([
   { id: 'suture-moth', name: 'suture moth', family: 'body', power: 1, warm: 1, tier: 1, params: { mend: 4, recharge: 18 }, text: 'a moth that sews. it waits until you are torn.' },
   { id: 'rime-hood', name: 'rime hood', family: 'body', power: 1, warm: 1, tier: 1, params: { heatproof: 1, chill: 1 }, text: 'frost that keeps a head cool in the furnace, and cold everywhere else.' },
   { id: 'thorn-mantle', name: 'thorn mantle', family: 'body', power: 1, warm: 1, tier: 1, params: { thorns: 1 }, text: 'whatever bites you bleeds for it.' },
-  // v2 fps (floors 3 and 4's kits): eyes that go big (`big`, key v): mouse-look, click to shoot, wasd to strafe.
-  // Their own keys: big (the mark: 1, 2), wide (px across; res is px high), fov (degrees across), speed (cells/s)
-  { id: 'pilgrim-scope', name: 'pilgrim scope', family: 'camera', power: 2, warm: 1.5, tier: 3, params: { big: 1, res: 108, wide: 192, colors: 0, fps: 60, fov: 90, range: 10, speed: 2.6, filter: 'color' }, text: 'a soldier-saint\'s eye. v: it fills your sight; the mouse turns you, a click shoots.' },
-  { id: 'martyr-scope', name: 'martyr scope', family: 'camera', power: 3, warm: 1.5, tier: 3, params: { big: 2, res: 180, wide: 320, colors: 0, fps: 60, fov: 110, range: 13, speed: 2.9, filter: 'color' }, text: 'it saw its death coming and stepped aside. wider, sharper; shift dashes, hits marked.' },
+  // v2 scopes (floors 3 and 4's kits): good wide eyes, nothing more (v2-view: the reins below give the true fps).
+  // Their own key: wide (px across; res is px high), and then fov is degrees across
+  { id: 'pilgrim-scope', name: 'pilgrim scope', family: 'camera', power: 2, warm: 1.5, tier: 3, params: { res: 108, wide: 192, colors: 0, fps: 30, fov: 90, range: 10, filter: 'color' }, text: 'a soldier-saint\'s eye: wide, sharp and quick.' },
+  { id: 'martyr-scope', name: 'martyr scope', family: 'camera', power: 3, warm: 1.5, tier: 3, params: { res: 180, wide: 320, colors: 0, fps: 30, fov: 110, range: 13, filter: 'color' }, text: 'it saw its death coming and stepped aside. wider still, and sharper.' },
+  // v2-view (Maks 10-18 ~10:50): true fps comes with the reins, not an eye. Taken (tab), the mouse looks, a click
+  // shoots, wasd walks the way you look; tab again gives the cursor back. Their own keys: big (the mark: 1, 2), speed (cells/s)
+  { id: 'saints-reins', name: "saint's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 1, speed: 2.6 }, text: 'gut and gold thread, and a socket of their own. tab: the mouse turns you, a click shoots.' },
+  { id: 'martyrs-reins', name: "martyr's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 2, speed: 2.9 }, text: 'the reins it died holding. quicker hands: shift dashes, every hit is marked.' },
 ]);

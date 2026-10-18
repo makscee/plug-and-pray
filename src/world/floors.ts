@@ -67,9 +67,9 @@ export const STAIRS: Record<Stairs, { name: string; look: string }> = {
  *  the rest turn with the seed. The cradle's offer holds no eye (its first eye is a find) */
 export const KIT: Record<number, string[]> = {
   0: ['choir-bell', 'frost-coat', 'hollow-tap', 'lead-lung', 'thorn-mantle'],
-  1: ['nail-psalm', 'survey-spool', 'sounding-knell', 'vein-fork', 'plumb-line'],
-  2: ['pilgrim-scope', 'illuminated-atlas', 'pulse-choir', 'bone-glass', 'ember-iris', 'censer', 'bone-lance'],
-  3: ['martyr-scope', 'rime-hood', 'glass-diorama', 'heat-lance', 'heart-shard'],
+  1: ['nail-psalm', 'dawn-eye', 'survey-spool', 'vein-fork', 'plumb-line'],
+  2: ['saints-reins', 'pilgrim-scope', 'illuminated-atlas', 'pulse-choir', 'bone-glass', 'ember-iris', 'censer', 'bone-lance'],
+  3: ['martyrs-reins', 'martyr-scope', 'rime-hood', 'glass-diorama', 'heat-lance', 'heart-shard'],
   4: [],
 };
 

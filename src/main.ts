@@ -34,13 +34,14 @@ const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e9);
 function boot(g: Game): void {
   startKit(g);
   const inst = (name: string) => ({ text: `install ${name}`, cmd: `install ${name}` });
-  const kit = ['pinhole eye', 'map spool', 'stepper relay', 'spark finger'];
+  const kit = ['map spool', 'thread bell', 'stepper relay', 'spark finger'];
   // the install links last, so a short console still shows them (playtest r1)
   say(
     g,
     `core ok. you hold four modules and wear none. slots 0/${g.player.slots}. power 0/${powerMax(g)}.`,
     ['the goal, the keys and every verb: ', { text: 'help', cmd: 'help' }, '. lost or stuck? ', { text: 'unstuck', cmd: 'unstuck' }],
-    ['once they are in, walk with the arrow keys (esc leaves the console) or ', { text: 'go e 3', cmd: 'go e 3' }, '. things move out there; the spark bites what comes close.'],
+    ['you have no eye yet: the map is your sight, the bell hears what lives, and a click on the map walks you there.'],
+    ['once they are in, walk with the arrow keys (esc leaves the console), a click on the map, or ', { text: 'go e 3', cmd: 'go e 3' }, '. things move out there; the spark bites what comes close.'],
     ['install them: ', { text: 'install all', cmd: kit.map((k) => `install ${k}`).join('; ') }, '  or one by one: ', ...kit.flatMap((k) => [inst(k), '  '])],
   );
 }
@@ -85,7 +86,8 @@ function deathCard(): void {
     g.t = t;
   }
   // the last frame your first working eye showed (a 2D canvas: cheap to copy)
-  const eye = [...document.querySelectorAll<HTMLCanvasElement>('canvas.eye')].find((c) => c.width > 0);
+  // v2-view: the screen's picture (the eye's view, or the map while you had none)
+  const eye = [...document.querySelectorAll<HTMLCanvasElement>('#backdrop canvas.bd-base, #backdrop canvas.map')].find((c) => c.width > 0 && !c.hidden && !c.closest('[hidden]'));
   let frame = '';
   try {
     if (eye) frame = `<img class="last-frame" alt="the last thing it saw" src="${eye.toDataURL()}">`;

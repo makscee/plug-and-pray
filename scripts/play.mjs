@@ -8,12 +8,13 @@ import { spawn } from 'child_process';
 const STEPS = [
   // sound slice: audio on (as the first click does), every cue once; the run below then plays through it
   [0, '(thawAudio.start(), thawAudio.CUES.forEach((c) => thawAudio.cue(c, { secs: 0.5, uid: 999 })), thawAudio.started())'],
-  // start (playtest 10-18): you wake holding the pinhole, stepper, map spool and spark finger and install them
-  [0, 'g.player.installed.length === 0 && g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector("[data-cmd=\'install pinhole eye\']") !== null'],
-  ['install pinhole eye'], ['install map spool'], ['install stepper relay'], ['install spark finger', 'g.player.installed.length === 4'],
+  // start (playtest 10-18): you wake holding the thread bell, stepper, map spool and spark finger and install them
+  // (v2-view: no eye; the map is the screen, the bell sweeps over it)
+  [0, 'g.player.installed.length === 0 && g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector("[data-cmd=\'install thread bell\']") !== null'],
+  ['install thread bell'], ['install map spool'], ['install stepper relay'], ['install spark finger', 'g.player.installed.length === 4'],
   ['take', 'g.player.inv.some(i => i.mod === "halo")'],
-  [1.5, 'document.querySelector("canvas.eye") && document.querySelector(".facing").textContent === "facing north" && document.querySelector("canvas.map") && document.querySelector("[data-cmd=\'go n 1\']")'],
-  ['face e'], [0.1, 'document.querySelector("[data-cmd=\'go e 1\']") !== null'],
+  [1.5, 'document.body.dataset.view === "map" && document.querySelector("#backdrop canvas.map")?.width > 600 && /no eye/.test(document.querySelector(".bd-tag").textContent) && document.querySelector("[data-cmd^=\'go n\']") !== null'],
+  ['face e'], [0.1, 'Math.abs(g.player.dir - Math.PI / 2) < 0.01'],
   // console (Maks's playtest): the actions bar lists what you can do now; go and unstuck from the start
   [0, '[...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd.startsWith("go ")) && [...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd === "unstuck")'],
   // panels (Maks's second playtest): install and remove by click in the modules / inventory windows, take by click in nearby; slots in the HUD
@@ -48,14 +49,14 @@ const STEPS = [
   // two eyes at once (Maks 10-18: one went dark while the other ran): warming shows static, and
   // both stay lit frame after frame
   ['conjure pinhole eye'], ['conjure vidicon tube'], ['install pinhole eye'], ['install vidicon tube'],
-  [0.3, 'document.querySelectorAll(".facing")[1].textContent === "warming up…" && [...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'],
-  [1.6, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'], [0.4, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'], [0.4, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'], [0.4, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'], [0.7, '[...document.querySelectorAll("canvas.eye")].every(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })'],
+  [0.3, 'document.querySelectorAll(".facing")[1].textContent === "warming up…" && (c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'],
+  [1.6, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'], [0.4, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'], [0.4, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'], [0.4, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'], [0.7, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'],
   ['remove pinhole eye'], ['remove vidicon tube'],
   // sight (#1321): a lamp, a scanner, a heat eye and an edge eye (conjure works only on test runs)
   ['conjure halo'], ['install halo'], [1, 'g.player.installed.some(i => i.mod === "halo" && i.on)'],
   ['remove halo'], ['conjure heat choir'], ['install heat choir'], [1.5, 'document.querySelector("canvas.scan") !== null'],
-  ['remove heat choir'], ['remove pinhole'], ['conjure ember iris'], ['install ember iris'], [2.5, 'document.querySelectorAll("canvas.eye").length === 1'],
-  ['remove ember iris'], ['conjure lattice eye'], ['install lattice eye'], [1.5, 'document.querySelectorAll("canvas.eye").length === 1'],
+  ['remove heat choir'], ['remove pinhole'], ['remove thread bell'], ['conjure ember iris'], ['install ember iris'], [2.5, 'document.querySelectorAll(".win.fam-camera").length === 1'],
+  ['remove ember iris'], ['conjure lattice eye'], ['install lattice eye'], [1.5, 'document.querySelectorAll(".win.fam-camera").length === 1'],
   // world: the reader and a card lie a chunk south; this hands them over (the check is the setup)
   [0, '(g.player.slots = 5, g.player.inv.push({ kind: "mod", mod: "card-reader" }, { kind: "mod", mod: "map-spool" }, { kind: "card", card: "log-surveyor" }), true)'],
   ['install card reader'], ['install map spool'], [1.5, 'document.querySelector("canvas.map") !== null'],
@@ -94,8 +95,8 @@ const STEPS = [
   [0, '(document.querySelector(".thaw-card button").click(), true)'],
   [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && window.thaw.g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
   // descriptions, reliquary (shop), recycling (playtest 3)
-  ['info pinhole', 'JSON.stringify(g.log).includes("eye · 24 px")'],
-  ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("eye · 24 px")'],
+  ['conjure pinhole eye'], ['info pinhole', 'JSON.stringify(g.log).includes("eye · 32 px")'],
+  ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("eye · 32 px")'], ['install thread bell'],
   [0, '(g.ents.push({ id: 9998, kind: "printer", x: g.player.x + 0.6, y: g.player.y, data: { far: 0, shop: true } }), ["bone","glass","copper"].forEach(r => g.player.inv.push({ kind: "res", res: r, n: 20 })), g.player.inv.push({ kind: "res", res: "ichor", n: 5 }), true)'],
   [0.2, 'document.querySelector(".panel-near [data-cmd=\'buy 1\']") !== null && JSON.stringify(g.log).includes("reliquary")'],
   ['buy 1', 'g.ents.find(e => e.id === 9998).data.offers[0] === null && g.player.inv.filter(i => i.kind === "mod").length === 4'],
@@ -109,7 +110,7 @@ const STEPS = [
   [0, `(document.querySelectorAll(".dead, .thaw-end").forEach(e => e.remove()), thaw.restart(1), true)`],
   [0, `(g.player.slots = 12, g.player.core = 20, g.player.hp = g.player.maxHp = 999, g.ents = g.ents.filter(e => !e.enemy), true)`],
   ...['pinhole-eye', 'dawn-eye', 'map-spool', 'stepper-relay'].flatMap((id) => [[0, `(g.player.installed.some(i => i.mod === "${id}") || (g.player.inv.some(i => i.mod === "${id}") || g.player.inv.push({ kind: "mod", mod: "${id}" }), thaw.send("install " + "${id}".replace("-", " "))), true)`]]),
-  [2, `(window.__eye = () => [...document.querySelectorAll("canvas.eye")].map(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let s = 0, h = 0; for (let i = 0; i < d.length; i += 4) { s += d[i] + d[i + 1] + d[i + 2]; h = (h * 31 + d[i] + 7 * d[i + 1]) | 0; } return [s / (d.length / 4) / 3, h]; }), window.__walk = { seen: g.seen.size, x: g.player.x, y: g.player.y, rows: [], last: "" }, document.querySelectorAll("canvas.eye").length >= 2)`],
+  [2, `(window.__eye = () => [...document.querySelectorAll("canvas.bd-base")].map(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let s = 0, h = 0; for (let i = 0; i < d.length; i += 4) { s += d[i] + d[i + 1] + d[i + 2]; h = (h * 31 + d[i] + 7 * d[i + 1]) | 0; } return [s / (d.length / 4) / 3, h]; }), window.__walk = { seen: g.seen.size, x: g.player.x, y: g.player.y, rows: [], last: "" }, document.querySelectorAll("canvas.bd-base").length === 1 && document.body.dataset.view === "view")`],
   ...Array.from({ length: 40 }, () => [
     [0, `(() => { const P = g.player, W = window.__walk; g.ents = g.ents.filter(e => !e.enemy); P.hp = P.maxHp; if (P.path.length) return true; const op = (x, y) => { const c = g.chunks.get(Math.floor(x / 16) + "," + Math.floor(y / 16)); return !!c && c.cells[((y % 16) + 16) % 16 * 16 + ((x % 16) + 16) % 16] === 1; }; const bfs = (sx, sy) => { const prev = new Map([[sx + "," + sy, null]]), q = [[sx, sy]]; for (let h = 0; h < q.length; h++) { const [x, y] = q[h]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (x + dx) + "," + (y + dy); if (prev.has(k) || !op(x + dx, y + dy)) continue; prev.set(k, [x, y]); q.push([x + dx, y + dy]); } } return { prev, q }; }; const px = Math.floor(P.x), py = Math.floor(P.y); if (!W.goal || (px === W.goal[0] && py === W.goal[1])) { const { q } = bfs(px, py); W.goal = q.reduce((a, b) => (Math.hypot(b[0] - W.x, b[1] - W.y) > Math.hypot(a[0] - W.x, a[1] - W.y) ? b : a)); } const { prev } = bfs(px, py); let c = W.goal, path = []; while (c && !(c[0] === px && c[1] === py)) { path.unshift(c); c = prev.get(c[0] + "," + c[1]); } if (!path.length) { W.goal = null; return true; } const d0 = [path[0][0] - px, path[0][1] - py]; let n = 0; while (n < path.length && n < 6 && path[n][0] - (n ? path[n - 1][0] : px) === d0[0] && path[n][1] - (n ? path[n - 1][1] : py) === d0[1]) n++; const d = d0[0] === 1 ? "e" : d0[0] === -1 ? "w" : d0[1] === 1 ? "s" : "n"; thaw.send("go " + d + " " + n); return true; })()`],
     [1.5, `(window.__walk.rows.push([...window.__eye(), [Math.floor(g.player.x * 2), Math.floor(g.player.y * 2), g.player.dir].join() + (thaw.g.chunks && [1, 2].every(k => { const x = Math.floor(g.player.x + Math.sin(g.player.dir) * k), y = Math.floor(g.player.y - Math.cos(g.player.dir) * k), c = g.chunks.get(Math.floor(x / 16) + ',' + Math.floor(y / 16)); return c && c.cells[(y % 16 + 16) % 16 * 16 + (x % 16 + 16) % 16] === 1; }) ? '' : ' wall')]), true)`],
@@ -123,7 +124,7 @@ const STEPS = [
   // (v2: back in the start chamber first: the walk can end in a floor's corner, by its boss room)
   [0, `(g.ents = g.ents.filter(e => !e.enemy), Object.assign(g.player, { x: 8.5, y: 8.5, path: [] }), g.player.hp = g.player.maxHp, g.player.dir = 0, [["mite", 0, -1.2], ["walker", 0, 1.6]].forEach(([t, dx, dy]) => g.ents.push({ id: g.nextId++, kind: "enemy", x: g.player.x + dx, y: g.player.y + dy, enemy: { type: t, hp: 3, readyAt: 0, data: { noticed: true } } })), window.__log = g.log.length, true)`],
   [0.6, `/⚔ (choir )?mite/.test(document.querySelector(".hpbar .fight")?.textContent ?? "")`],
-  [0, `[...document.querySelectorAll(".foe-arrow")].some(a => a.style.display !== "none" && /walker behind/.test(a.textContent))`],
+  [0, `/walker behind/.test(document.getElementById("backdrop").dataset.arrow)`],
   [3, `(() => { const lines = g.log.slice(window.__log).map(l => l.map(s => typeof s === "string" ? s : s.text).join("")); return lines.some(l => /hits you/.test(l)) && lines.filter(l => /hits you|you hit/.test(l)).length <= 4; })()`],
 ];
 

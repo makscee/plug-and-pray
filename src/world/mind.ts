@@ -11,7 +11,10 @@ import { view, VIEWS, type View } from '../ui/views';
 import { consoleAt, TOP } from '../ui/windows';
 import { nearestOpen } from './vectors';
 import { isNamed } from './secrets';
-import '../sight/reveal';
+import { see } from '../sight/reveal';
+
+/** cells a map feels round you with no eye on */
+export const BLIND = 2.5;
 import { know, marks, thinWall, type Mark, type MarkKind } from '../sight/know';
 
 const OURS = ['reader', 'map', 'compass'];
@@ -37,6 +40,8 @@ tickHooks.push((g) => {
   const i = Math.floor(g.player.x);
   const j = Math.floor(g.player.y);
   for (let y = j - 1; y <= j + 1; y++) for (let x = i - 1; x <= i + 1; x++) g.seen.add(`${x},${y}`);
+  // v2-view: no eye at all (the run wakes blind): it feels the walls a little farther, by the body's own glow
+  if (!active(g, 'camera').length && active(g, 'mind').some((m) => param<string>(m, 'what', '') === 'map')) see(g, BLIND);
 });
 
 /** other slices hook the map window: a click on a cell (world cells), and drawing on top of it */
@@ -141,52 +146,64 @@ function drawMark(g: Game, ctx: CanvasRenderingContext2D, m: Mark, ox: number, o
 let toldClick = new WeakSet<Game>();
 export const resetMapTold = () => (toldClick = new WeakSet());
 
-export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => number): View {
+/** v2-view: the map as the screen itself (src/sight/backdrop.ts): cells across and down and their size, how often
+ *  it redraws; a click always walks there (the map is your only sight); lives are left to the radar's sweep */
+export interface Fill {
+  size: () => [number, number, number];
+  hz: number;
+}
+
+export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => number, fill?: Fill): View {
   const all = Math.round(param<number>(inst, 'span', 33));
   /** cells shown across: the window crops to what fits, the big map shows them all */
   let span = all;
+  /** cells shown down: the same, but for the screen-filling map */
+  let rows = all;
   const detail = detailOf(inst);
   // a cell's size follows mapCell (the map's zoom link, playtest r1: 6 px hid one-cell corridors)
   let px = 0;
   const canvas = document.createElement('canvas');
   canvas.className = 'map';
   canvas.dataset.detail = String(detail);
-  if (!param(inst, 'click', false)) canvas.style.cursor = 'default';
+  if (!param(inst, 'click', false) && !fill) canvas.style.cursor = 'default';
   el.append(canvas);
   const ctx = canvas.getContext('2d')!;
   let next = 0;
   let [ox, oy] = [0, 0];
   canvas.addEventListener('click', (ev) => {
     // v2 (Maks 10-18): clicking to walk is an upgrade; the map spool only remembers
-    if (!param(inst, 'click', false)) {
+    if (!param(inst, 'click', false) && !fill) {
       if (toldClick.has(game)) return;
       toldClick.add(game);
       return say(game, ['the map spool only remembers; it takes no clicks. the buttons in the console walk you (', { text: 'where', cmd: 'where' }, '); a surveyor\'s map walks you where you click.']);
     }
     const r = canvas.getBoundingClientRect();
     const x = ox + Math.floor(((ev.clientX - r.left) / r.width) * span);
-    const y = oy + Math.floor(((ev.clientY - r.top) / r.height) * span);
+    const y = oy + Math.floor(((ev.clientY - r.top) / r.height) * rows);
     for (const f of mapHooks.click) f(game, x, y);
   });
   return {
     update(g: Game) {
       if (!(inst.on && g.t >= inst.readyAt)) return;
-      const want = big ? big() : mapCell.px(all);
-      const n = big ? all : mapCell.cells(all);
-      if (want !== px || n !== span) [px, span, next, canvas.width, canvas.height] = [want, n, 0, n * want, n * want];
+      const [n, m, want] = fill ? fill.size() : [big ? all : mapCell.cells(all), 0, big ? big() : mapCell.px(all)];
+      const down = fill ? m : n;
+      if (want !== px || n !== span || down !== rows) [px, span, rows, next, canvas.width, canvas.height] = [want, n, down, 0, n * want, down * want];
       canvas.dataset.cells = String(span);
       if (g.t < next) return;
-      next = g.t + (mapHooks.fast.some((f) => f(g)) ? 1 / 12 : 0.25);
+      next = g.t + (fill ? 1 / fill.hz : mapHooks.fast.some((f) => f(g)) ? 1 / 12 : 0.25);
       const p = g.player;
       ox = Math.floor(p.x) - (span >> 1);
-      oy = Math.floor(p.y) - (span >> 1);
+      oy = Math.floor(p.y) - (rows >> 1);
+      // where this picture's top-left cell is, for what draws over it (the backdrop's radar)
+      canvas.dataset.ox = String(ox);
+      canvas.dataset.oy = String(oy);
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       const made = (wx: number, wy: number) => g.chunks.has(`${Math.floor(wx / CHUNK)},${Math.floor(wy / CHUNK)}`);
       const isFloor = (wx: number, wy: number) => made(wx, wy) && cell(g, wx, wy) === Cell.floor;
       const plain = detail ? hatch(ctx, '#8a7cb8', '#1c1726') : hatch(ctx, '#7a7090', '#16121c');
       const stone = detail ? hatch(ctx, '#3e3650', '#0a080e') : hatch(ctx, '#363044', '#09070b');
-      for (let y = 0; y < span; y++)
+      for (let y = 0; y < rows; y++)
         for (let x = 0; x < span; x++) {
           const wx = ox + x;
           const wy = oy + y;
@@ -254,22 +271,23 @@ export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => num
       }
       // what the radars marked (src/mods/radar.ts): only as much as this map can draw
       for (const m of marks(g)) {
-        if (m.x + m.r < ox - 1 || m.y + m.r < oy - 1 || m.x - m.r > ox + span + 1 || m.y - m.r > oy + span + 1) continue;
+        if (m.x + m.r < ox - 1 || m.y + m.r < oy - 1 || m.x - m.r > ox + span + 1 || m.y - m.r > oy + rows + 1) continue;
+        if (fill && m.kind === 'life') continue;
         drawMark(g, ctx, m, ox, oy, px, detail);
       }
       // vectors: a cross where they end, or a tick on the edge toward them
-      const half = (span * px) / 2;
+      const [hx, hy] = [(span * px) / 2, (rows * px) / 2];
       for (const v of g.vectors) {
         if (v.found) continue;
         let vx = (v.x - ox) * px;
         let vy = (v.y - oy) * px;
-        const inside = vx >= 0 && vy >= 0 && vx < span * px && vy < span * px;
+        const inside = vx >= 0 && vy >= 0 && vx < span * px && vy < rows * px;
         if (!inside) {
-          const dx = vx - half;
-          const dy = vy - half;
-          const k = (half - 4) / Math.max(Math.abs(dx), Math.abs(dy));
-          vx = half + dx * k;
-          vy = half + dy * k;
+          const dx = vx - hx;
+          const dy = vy - hy;
+          const k = Math.min((hx - 4) / Math.max(1e-6, Math.abs(dx)), (hy - 4) / Math.max(1e-6, Math.abs(dy)));
+          vx = hx + dx * k;
+          vy = hy + dy * k;
         }
         ctx.strokeStyle = CSS.vec;
         ctx.lineWidth = 2;

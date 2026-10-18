@@ -1,11 +1,13 @@
-// The FPS eye (v2, floors 3 and 4): with one on, `big` (key V) fills the screen with its view. Mouse-look
-// turns you on a continuous angle, W/S walk and A/D strafe relative to the view, a click fires every
+// The reins (v2-view, floors 3 and 4: Maks 10-18 ~10:50 "later you get a control module which when enabled
+// allows true fps controls, should be easy to go back to cursor controls"): with them on, `big` (Tab, or V) takes
+// them: the eye's view is the screen already (src/sight/backdrop.ts), and now mouse-look turns you on a continuous angle, W/S walk and A/D strafe relative to the view, a click fires every
 // ready aimed weapon down the crosshair as a hitscan (as far as the weapon reaches, never farther), and a
 // melee lunge (F, right click, or a click with no aimed weapon) throws you forward into what you face.
-// The mk2 eye adds a dash (Shift) and hit markers. Pure core, no DOM: the screen side is src/sight/fps.ts.
+// Tab again (or Esc) gives the cursor back. The mk2 reins add a dash (Shift) and hit markers. Pure core, no DOM:
+// the screen side is src/sight/fps.ts.
 import { dist, ENEMIES, say, strike, tickHooks } from '../core/game';
 import { open } from '../core/grid';
-import { active, def, param } from '../core/mods';
+import { active, def, families, family, param } from '../core/mods';
 import { verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
 import { aimed, shotCooldown, volley } from '../fight/aim';
@@ -14,17 +16,19 @@ import { mouseAims } from '../fight/eye';
 import { armed, warnUnarmed } from '../fight/unarmed';
 import { SPRITES } from '../sight/sprites';
 
-/** the FPS eye that is on and warm: the one with the highest mark */
-export function fpsEye(g: Game): Inst | undefined {
-  return active(g, 'camera')
-    .filter((i) => param<number>(i, 'big', 0) > 0)
+/** the reins that are on and warm: the ones with the highest mark */
+export function reins(g: Game): Inst | undefined {
+  return active(g, 'mind')
+    .filter((i) => param<string>(i, 'what', '') === 'reins')
     .sort((a, b) => param<number>(b, 'big', 0) - param<number>(a, 'big', 0))[0];
 }
+/** the old name (the sims): the reins */
+export const fpsEye = reins;
 /** its mark: 0 none, 1 mk1, 2 mk2 */
 export const mark = (g: Game): number => (fpsEye(g) ? param<number>(fpsEye(g)!, 'big', 0) : 0);
 
 export interface Fps {
-  /** the big view is up */
+  /** the reins are taken: mouse-look, view-relative keys, click shoots (else the cursor is yours) */
   big: boolean;
   /** game time a dash ends, and its velocity (cells/s, east and south) */
   dashUntil: number;
@@ -47,8 +51,8 @@ export function fps(g: Game): Fps {
   if (!s) state.set(g, (s = { big: false, dashUntil: -99, dashV: [0, 0], dashReady: 0, shotAt: -99, hitAt: -99, killAt: -99, shotLen: 0, lungeAt: -99, move: null }));
   return s;
 }
-/** the big view is up and an FPS eye works: mouse-look and view-relative keys apply */
-export const bigOn = (g: Game): boolean => fps(g).big && !!fpsEye(g);
+/** the reins are taken and work: mouse-look and view-relative keys apply */
+export const bigOn = (g: Game): boolean => fps(g).big && !!reins(g);
 // the eye's snap to threats never turns the view under the mouse
 mouseAims.push(bigOn);
 
@@ -70,7 +74,8 @@ export function fpsMove(g: Game, fwd: number, side: number): void {
   let vx = fwd * fx - side * fy;
   let vy = fwd * fy + side * fx;
   const r = Math.hypot(vx, vy) || 1;
-  const speed = param<number>(fpsEye(g) ?? { mod: '' }, 'speed', WALK);
+  const r0 = reins(g);
+  const speed = r0 ? param<number>(r0, 'speed', WALK) : WALK;
   vx = (vx / r) * speed;
   vy = (vy / r) * speed;
   s.move = [vx, vy];
@@ -204,7 +209,7 @@ tickHooks.push((g, dt) => {
   const s = state.get(g);
   if (!s) return;
   if (!bigOn(g)) {
-    s.big = s.big && !!fpsEye(g);
+    s.big = s.big && !!reins(g);
     s.move = null;
     s.dashUntil = -99;
     return;
@@ -223,28 +228,52 @@ function slide(g: Game, vx: number, vy: number, dt: number): void {
   if (open(g, p.x - R, ny + Math.sign(vy) * R) && open(g, p.x + R, ny + Math.sign(vy) * R)) p.y = ny;
 }
 
+/** the reins bring their own socket: the first time you wear a pair, your body grows a slot for them (v2-view: the
+ *  scope used to be the eye and the fps in one module; the sims lost a weapon's slot to the reins without it) */
+const socketed = new WeakSet<Game>();
+tickHooks.push((g) => {
+  if (socketed.has(g) || !g.player.installed.some((i) => param<string>(i, 'what', '') === 'reins')) return;
+  socketed.add(g);
+  g.player.slots += 1;
+  say(g, `the reins bring their own socket: slots ${g.player.slots}.`);
+});
+
+// the reins' window: one button, take them or give the cursor back (src/body/input.ts locks the mouse on its click)
+const mind = families.mind;
+family('mind', {
+  ...mind,
+  buttons: (g, inst) => (param<string>(inst, 'what', '') === 'reins' ? [{ label: bigOn(g) ? 'cursor (tab)' : 'take the reins (tab)', cmd: 'big' }] : mind?.buttons?.(g, inst) ?? []),
+});
+
+/** said once per run: taking the reins and letting go teach their keys the first time only */
+const taught = new WeakMap<Game, Set<string>>();
 verb('big', {
-  help: 'fps eye: fill the screen with its view, or leave it (key v)',
-  when: (g) => !!fpsEye(g),
-  whenFail: () => 'no fps eye on. a scope (pilgrim or martyr) goes big.',
+  help: 'the reins: take them (the mouse looks, a click shoots, wasd walks) or give the cursor back (key tab)',
+  when: (g) => !!reins(g),
+  whenFail: () => "no reins on. the saint's reins (floor 3) give you the eye to turn with the mouse.",
   run(g) {
     const s = fps(g);
     s.big = !s.big;
     s.move = null;
-    say(g, s.big ? 'the eye fills your sight. click to take the mouse; click shoots, wasd walks and strafes, esc lets go, v comes back.' : 'the eye folds back into its window.');
+    let t = taught.get(g);
+    if (!t) taught.set(g, (t = new Set()));
+    const k = s.big ? 'on' : 'off';
+    if (t.has(k)) return;
+    t.add(k);
+    say(g, s.big ? 'you take the reins. the mouse turns you, a click shoots, wasd walks the way you look. tab gives the cursor back.' : 'you let the reins go: the cursor is yours, for the windows. tab takes them again.');
   },
 });
 
 verb('lunge', {
-  help: 'fps eye: throw yourself forward; melee weapons strike what you face (key f)',
-  when: (g) => !!fpsEye(g),
+  help: 'the reins: throw yourself forward; melee weapons strike what you face (key f)',
+  when: (g) => !!reins(g),
   run(g) {
     if (!lunge(g) && armed(g) && !active(g, 'weapon').some((i) => param<string>(i, 'aim', 'auto') === 'auto')) say(g, 'you lunge, but nothing you wear strikes up close: click shoots.');
   },
 });
 
 verb('dash', {
-  help: 'fps eye mk2: a quick dash the way you move (key shift)',
+  help: "the martyr's reins: a quick dash the way you move (key shift)",
   when: (g) => mark(g) >= 2,
   run(g) {
     if (!dash(g)) say(g, 'the dash is still winding.');

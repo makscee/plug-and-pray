@@ -5,12 +5,11 @@
 // buttons do), with neither you crawl. WASD: the gyro heart walks free; without one, WASD are arrows.
 // Q and E turn a quarter. T tidies the windows, P pauses, 1-4 switch to saved setups 1-4.
 // On the end screen Enter or R wakes again.
-// Mouse: with the gyro heart, a click on a camera's eye (or the empty desk) locks the pointer and the
-// mouse turns you; Esc lets it go. Without a lock, dragging on the eye turns you too.
-// The FPS eye's big view (src/body/fps.ts, v2): V goes big and back; there WASD and the arrows walk and
-// strafe relative to the view, a click on the view takes the mouse (smooth yaw), then a click shoots down the
-// crosshair (right click or F: a melee lunge; Space shoots too), Shift dashes (mk2), Esc frees the mouse,
-// and Esc again with the mouse free leaves the big view.
+// Mouse: the cursor is yours for the windows, and a click on the map (while it is your sight) walks you there.
+// The reins (src/body/fps.ts, v2-view): Tab (or V, or a click on the view) takes them and the mouse; there WASD
+// and the arrows walk and strafe relative to the view, the mouse turns you (smooth yaw), a click shoots down the
+// crosshair (right click or F: a melee lunge; Space shoots too), Shift dashes (mk2). Tab again, or Esc, gives
+// the cursor back for the windows.
 
 import { gyroMove, gyroTurn, hasGyro, saveSetup, servoStep, setupsOf } from './index';
 import { exec, VERBS } from '../core/verbs';
@@ -23,7 +22,7 @@ import type { Game, Line } from '../core/types';
 import { say } from '../core/game';
 import './views';
 import { clean } from '../tune/start';
-import { bigOn, dash, fpsEye, fpsFire, fpsMove, fpsTurn, lunge } from './fps';
+import { bigOn, dash, fpsFire, fpsMove, fpsTurn, lunge, reins } from './fps';
 
 const ARROWS: Record<string, string> = { ArrowUp: 'n', ArrowRight: 'e', ArrowDown: 's', ArrowLeft: 'w' };
 const WASD: Record<string, string> = { w: 'n', a: 'w', s: 's', d: 'e' };
@@ -105,6 +104,14 @@ addEventListener(
         return;
       }
     }
+    // the reins: Tab takes them and gives the cursor back, from anywhere, the console too
+    if (e.key === 'Tab' && g && !g.ended && reins(g)) {
+      if (typing(e.target)) (e.target as HTMLElement).blur();
+      takeReins(g, !bigOn(g));
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (typing(e.target)) {
       // an empty console line: the arrows walk; with text (or ctrl) they are the history
       const d = ARROWS[e.key];
@@ -161,14 +168,35 @@ addEventListener('keyup', (e) => {
   held.delete(e.key);
 });
 
-/** when the mouse was last freed from the big view */
-let lockLost = -1e9;
-if (typeof document !== 'undefined') document.addEventListener('pointerlockchange', () => !document.pointerLockElement && (lockLost = performance.now()));
+/** the reins' overlay: the pointer locks to it */
+const reinsView = () => document.getElementById('bigview');
+/** whether the pointer was locked to the reins' overlay, to tell a lock lost (Esc) from one never had */
+let locked = false;
 
-/** the big view's keys; true when it took the key */
+/** take the reins (the mouse with them) or give the cursor back */
+export function takeReins(g: Game, on: boolean): void {
+  if (on !== bigOn(g)) exec(g, 'big');
+  const view = reinsView();
+  if (on && view && document.pointerLockElement !== view) {
+    // shown at once: a lock asked for in this same key press or click
+    view.hidden = false;
+    (view.requestPointerLock?.() as unknown as Promise<void> | undefined)?.catch?.(() => {});
+  } else if (!on && document.pointerLockElement) document.exitPointerLock?.();
+}
+
+if (typeof document !== 'undefined')
+  document.addEventListener('pointerlockchange', () => {
+    const now = !!document.pointerLockElement && document.pointerLockElement === reinsView();
+    // the browser let the mouse go (Esc): the cursor is yours again, for the windows
+    const g = thaw()?.g;
+    if (locked && !now && g && bigOn(g)) exec(g, 'big');
+    locked = now;
+  });
+
+/** the reins' keys; true when it took the key */
 function fpsKey(g: Game, e: KeyboardEvent, k: string): boolean {
-  if (k === 'v' && !e.repeat && fpsEye(g)) {
-    thaw().send('big');
+  if (k === 'v' && !e.repeat && reins(g)) {
+    takeReins(g, !bigOn(g));
     return true;
   }
   if (!bigOn(g)) return false;
@@ -181,12 +209,8 @@ function fpsKey(g: Game, e: KeyboardEvent, k: string): boolean {
   else if (k === '[' || k === ']') setSens(g, k === ']' ? 1.15 : 1 / 1.15);
   else if (k === 'f') lunge(g);
   else if (k === ' ') fpsFire(g);
-  else if (k === 'escape') {
-    // the first Esc frees the mouse (the browser's own, or this one); only an Esc with the mouse already
-    // free leaves the big view (v2r1 ux: one press did both where the browser passed that Esc on)
-    if (document.pointerLockElement) document.exitPointerLock();
-    else if (performance.now() - lockLost > 400) thaw().send('big');
-  } else return false;
+  else if (k === 'escape') takeReins(g, false);
+  else return false;
   return true;
 }
 
@@ -210,15 +234,17 @@ frameHooks.push((g) => {
   if (fwd || side || g.player.move) gyroMove(g, fwd, side);
 });
 
-// the big view: a press takes the mouse, then fires (left) or lunges (right)
+// the reins: a press on the view takes them (and the mouse), then fires (left) or lunges (right)
 addEventListener('mousedown', (e) => {
   const g = thaw()?.g;
-  const view = document.getElementById('bigview');
-  if (!g || !view || !bigOn(g) || !view.contains(e.target as Node)) return;
+  const view = reinsView();
+  if (!g || g.ended || !view || !reins(g)) return;
+  const onView = view.contains(e.target as Node) || !!document.getElementById('backdrop')?.contains(e.target as Node);
+  if (!onView) return;
   e.preventDefault();
   (document.activeElement as HTMLElement | null)?.blur();
   if (document.pointerLockElement !== view) {
-    (view.requestPointerLock?.() as unknown as Promise<void> | undefined)?.catch?.(() => {});
+    if (e.button === 0) takeReins(g, true);
     return;
   }
   if (e.button === 2) lunge(g);
@@ -226,6 +252,17 @@ addEventListener('mousedown', (e) => {
 });
 addEventListener('contextmenu', (e) => {
   if (document.getElementById('bigview')?.contains(e.target as Node)) e.preventDefault();
+});
+
+// a `big` button (the reins' window) took the reins: the mouse goes with them, in this same click
+addEventListener('click', (e) => {
+  const g = thaw()?.g;
+  if (!g || (e.target as HTMLElement).dataset?.cmd !== 'big' || !bigOn(g)) return;
+  const view = reinsView();
+  if (view && document.pointerLockElement !== view) {
+    view.hidden = false;
+    (view.requestPointerLock?.() as unknown as Promise<void> | undefined)?.catch?.(() => {});
+  }
 });
 
 addEventListener('click', (e) => {
@@ -238,12 +275,7 @@ addEventListener('click', (e) => {
     else if (VERBS.attack && !active(thaw().g, 'weapon').length) thaw().send('attack');
     return;
   }
-  const g = thaw()?.g;
-  if (!g || !(t.matches('canvas.eye') || t.id === 'desk')) return;
-  if (!hasGyro(g)) return;
-  (document.activeElement as HTMLElement | null)?.blur();
-  // some browsers (and a lock released under a second ago) refuse: dragging on the eye still turns you
-  (t.requestPointerLock?.() as unknown as Promise<void> | undefined)?.catch?.(() => {});
+  void t;
 });
 
 /** mouse-look in the big view: radians per pixel, by default; [ and ] slow it down or speed it up, and
@@ -269,15 +301,11 @@ export function setSens(g: Game, by: number): void {
   }
   say(g, `mouse speed ${Math.round(sensShare() * 100)}%. [ slower, ] faster.`);
 }
+// v2-view: without the reins the mouse never turns you (the gyro heart turns with Q and E)
 addEventListener('mousemove', (e) => {
-  const dragging = e.buttons === 1 && (e.target as HTMLElement).matches?.('canvas.eye');
-  if (!document.pointerLockElement && !dragging) return;
+  if (document.pointerLockElement?.id !== 'bigview') return;
   const g = thaw()?.g;
-  if (g && bigOn(g)) {
-    if (document.pointerLockElement?.id === 'bigview') fpsTurn(g, e.movementX * sens);
-    return;
-  }
-  if (g) gyroTurn(g, e.movementX * 0.004);
+  if (g && bigOn(g)) fpsTurn(g, e.movementX * sens);
 });
 
 // ?scene=body stages the body for judging: vidicon, gyro heart, ledger, clock of hours, tunnel tongue
@@ -306,7 +334,7 @@ frameHooks.push((g) => {
   p.dir = Math.PI / 2;
   for (const [x, y] of [[11.5, 6.5], [11.5, 10.5], [11.5, 8.5]]) g.ents.push({ id: g.nextId++, kind: 'enemy', x, y, enemy: { type: 'mite', hp: 2, readyAt: 0, data: { noticed: true } } });
   g.log.push(
-    ['a body, staged. you face east; three mites come. esc, then wasd walks; click the eye to turn with the mouse.'],
+    ['a body, staged. you face east; three mites come. esc, then wasd walks; q and e turn.'],
     [{ text: 'dig', cmd: 'dig' }, '  ', { text: 'setup battle', cmd: 'setup battle' }, '  ', { text: 'setup explore', cmd: 'setup explore' }, '  ', { text: 'status', cmd: 'status' }],
   );
 });

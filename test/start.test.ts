@@ -7,16 +7,16 @@ import { powerUsed, working } from '../src/core/mods';
 import { startKit } from '../src/tune/start';
 
 describe('accessible start (10-18)', () => {
-  it('wakes holding a pinhole, legs, a map and the spark; installing them all leaves room to spare', () => {
+  it('wakes holding a radar, legs, a map and the spark, and no eye; installing them all leaves room to spare', () => {
     const g = newGame(1);
     startKit(g);
     expect(g.player.installed).toHaveLength(0);
-    expect(g.player.inv.flatMap((i) => (i.kind === 'mod' ? [i.mod] : []))).toEqual(['pinhole-eye', 'stepper-relay', 'map-spool', 'spark-finger']);
-    for (const m of ['pinhole eye', 'stepper relay', 'map spool', 'spark finger']) exec(g, 'install ' + m);
+    expect(g.player.inv.flatMap((i) => (i.kind === 'mod' ? [i.mod] : []))).toEqual(['thread-bell', 'stepper-relay', 'map-spool', 'spark-finger']);
+    for (const m of ['thread bell', 'stepper relay', 'map spool', 'spark finger']) exec(g, 'install ' + m);
     for (let k = 0; k < 30; k++) tick(g, 0.05);
     expect(g.player.installed.every((i) => working(g, i))).toBe(true);
     expect(g.player.slots - g.player.installed.length).toBe(2);
-    expect(g.player.core - powerUsed(g)).toBe(1); // module pass: power binds first (the pinhole is free, the core is 4)
+    expect(g.player.core - powerUsed(g)).toBe(1); // module pass: power binds first (the thread bell is free, the core is 4)
     exec(g, 'go e 2');
     expect(g.player.path.length).toBeGreaterThan(0);
   });

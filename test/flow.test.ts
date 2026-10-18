@@ -20,6 +20,7 @@ import { bossAt, inRoom, stairsChunk } from '../src/world/floors';
 const text = (g: Game, from = 0) => g.log.slice(from).map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
 const kit = (g: Game) => {
   startKit(g);
+  g.player.inv.push({ kind: 'mod', mod: 'pinhole-eye' }); // v2-view: the run wakes blind; the first eye is a find
   exec(g, 'install all');
   tick(g, 3);
 };

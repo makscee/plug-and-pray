@@ -107,7 +107,7 @@ function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReade
   const fam = MODS[it.mod].family;
   if (fam === 'weapon') return w * (param(it, 'aim', 'auto') === 'aimed' && lampNear(g) ? 3 : 1.5);
   if (fam === 'body') return w * 1.2;
-  if (fam === 'mind') return 0;
+  if (fam === 'mind') return param<string>(it, 'what', '') === 'reins' ? w : 0; // v2-view: the reins stay on to fight
   if (fam === 'scanner') return zone >= 2 && w >= 45 ? w : 0;
   if (fam === 'camera' && zone >= 2 && humNear(g)) {
     const f = param<string>(it, 'filter', 'color');
@@ -116,7 +116,7 @@ function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReade
   return w;
 }
 type Mode = 'explore' | 'battle';
-/** v2: on floors 3 and 4 it plays through the FPS scope (big view, hitscan at any angle) */
+/** v2: on floors 3 and 4 it plays with the reins taken (mouse-look, hitscan at any angle) */
 const FPS = true;
 const lampNear = (g: Game) => g.ents.some((e) => e.enemy && ['seraph', 'pyre', 'saint'].includes(e.enemy.type) && dist(e, g.player) < 10);
 const humNear = (g: Game) => g.ents.some((e) => e.enemy && ENEMIES[e.enemy.type]?.hidden && dist(e, g.player) < 9);
@@ -133,8 +133,8 @@ function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantRead
       // the eye that perceives in the zone ahead (src/mods/sense.ts): dark ossuary, the hum, the furnace's glare
       const f = param<string>(it, 'filter', 'color');
       let v = 200 + p('res') / 10 + p('fps');
-      // v2: the FPS eye is how floors 3 and 4 play (src/body/fps.ts): big view, mouse-look, hitscan shots
-      if (FPS && zone >= 2 && p('big')) v += 100 + 20 * p('big');
+      // v2-view: the reins aim through the base eye; a wide scope is the eye a person takes them with on floors 3 and 4
+      if (FPS && zone >= 2 && p('wide')) v += 100;
       if (zone === 2) v += f === 'sonar' || f === 'edge' || f === 'heat' ? 60 : f === '1bit' ? 30 : 0;
       if (deep && (f === 'sonar' || f === 'heat')) v += 25;
       if (zone === 3 && f === 'heat') v -= 90;
@@ -175,6 +175,8 @@ function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantRead
       const what = param<string>(it, 'what', '');
       if (what === 'reader') return wantReader ? 300 : 0;
       if (what === 'map') return param(it, 'click', false) ? 24 : 8; // v2: a map you click walks you
+      // v2-view: the reins are how floors 3 and 4 play (src/body/fps.ts): mouse-look, hitscan shots
+      if (what === 'reins') return FPS && zone >= 2 ? 160 + 20 * p('big') : 0;
       if (what === 'ledger') return 30; // the tithe: kills pay out twice as often
       return 0;
     }
