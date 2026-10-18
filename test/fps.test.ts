@@ -6,7 +6,7 @@ import { exec } from '../src/core/verbs';
 import { shots, type ShotData } from '../src/fight/shots';
 import type { Game } from '../src/core/types';
 import { MODS } from '../src/core/mods';
-import { bigOn, dash, fps, fpsEye, fpsFire, fpsMove, lunge, ray } from '../src/body/fps';
+import { bigOn, dash, fps, fpsEye, fpsFire, fpsMove, lunge, mark, ray } from '../src/body/fps';
 import { floorNow, spread } from '../src/fight/bolts';
 
 const run = (g: Game, s: number) => {
@@ -30,11 +30,18 @@ function scoped(...mods: string[]): Game {
 const at = (g: Game, x: number, y: number, dir: number) => Object.assign(g.player, { x, y, dir });
 
 describe('the reins (v2-view)', () => {
-  it('takes the reins only with reins on; they drop when the reins go off', () => {
+  it('first person with any eye on; the reins add to it; it drops when the reins or the last eye go off (v4)', () => {
     const g = scoped('pilgrim-scope', 'nail-psalm');
     expect(fpsEye(g)?.mod).toBe('saints-reins');
     expect(bigOn(g)).toBe(true);
     exec(g, "off saint's reins");
+    run(g, 0.1);
+    // the reins off give the cursor back; the eye still takes first person
+    expect(bigOn(g)).toBe(false);
+    exec(g, 'big');
+    expect(bigOn(g)).toBe(true);
+    expect(mark(g)).toBe(0);
+    exec(g, 'off pilgrim scope');
     run(g, 0.1);
     expect(bigOn(g)).toBe(false);
     expect(fps(g).big).toBe(false);
@@ -154,5 +161,39 @@ describe('enemy bolts (v2)', () => {
     // the middle one heads straight at you (south)
     expect(Math.abs(vs[1].vx)).toBeLessThan(1e-9);
     expect(vs[1].vy).toBeGreaterThan(0);
+  });
+});
+
+describe('first person with an eye alone (v4)', () => {
+  function eyed(...mods: string[]): Game {
+    const g = newGame(2);
+    g.ents = [];
+    g.player.slots = 8;
+    g.player.core = 12;
+    for (const m of ['pinhole-eye', ...mods]) {
+      g.player.inv.push({ kind: 'mod', mod: m });
+      exec(g, 'install ' + MODS[m].name);
+    }
+    run(g, 3);
+    exec(g, 'big');
+    return g;
+  }
+  it('the pinhole is cheap and walks: 1 power, no legs is a slow walk, not the crawl', () => {
+    expect(MODS['pinhole-eye'].power).toBeLessThanOrEqual(2);
+    const g = eyed('nail-psalm');
+    expect(fpsEye(g)).toBeUndefined();
+    expect(bigOn(g)).toBe(true);
+    at(g, 8.5, 8.5, Math.PI / 2);
+    fpsMove(g, 1, 0);
+    run(g, 1);
+    expect(g.player.x - 8.5).toBeGreaterThan(1.2);
+  });
+  it('shoots down the crosshair at plain damage (the reins add the 25%)', () => {
+    const g = eyed('nail-psalm');
+    at(g, 6.5, 8.5, Math.PI / 2);
+    const m = spawnEnemy(g, 'walker', 9.5, 8.5);
+    m.enemy!.hp = 10;
+    expect(fpsFire(g)).toBe(1);
+    expect(fps(g).hitAt).toBe(g.t);
   });
 });

@@ -25,7 +25,7 @@ import type { Game, Line } from '../core/types';
 import { say, tickHooks } from '../core/game';
 import './views';
 import { clean } from '../tune/start';
-import { bigOn, dash, fpsFire, fpsMove, fpsTurn, lunge, reins } from './fps';
+import { bigOn, canFps, dash, fpsFire, fpsMove, fpsTurn, lunge } from './fps';
 import { aimed, volley } from '../fight/aim';
 
 const ARROWS: Record<string, string> = { ArrowUp: 'n', ArrowRight: 'e', ArrowDown: 's', ArrowLeft: 'w' };
@@ -109,7 +109,7 @@ addEventListener(
       }
     }
     // the reins: Tab takes them and gives the cursor back, from anywhere, the console too
-    if (e.key === 'Tab' && g && !g.ended && reins(g)) {
+    if (e.key === 'Tab' && g && !g.ended && canFps(g)) {
       if (typing(e.target)) (e.target as HTMLElement).blur();
       takeReins(g, !bigOn(g));
       e.preventDefault();
@@ -219,7 +219,7 @@ if (typeof document !== 'undefined')
 
 /** the reins' keys; true when it took the key */
 function fpsKey(g: Game, e: KeyboardEvent, k: string): boolean {
-  if (k === 'v' && !e.repeat && reins(g)) {
+  if (k === 'v' && !e.repeat && canFps(g)) {
     takeReins(g, !bigOn(g));
     return true;
   }
@@ -289,8 +289,8 @@ addEventListener('mousedown', (e) => {
   const g = thaw()?.g;
   const view = reinsView();
   if (!g || g.ended) return;
-  if (!view || !reins(g)) {
-    // no reins: a left press on the eye's view (not a window, not the map) shoots an aimed weapon
+  if (!view || !canFps(g)) {
+    // no eye: a left press on the eye's view (not a window, not the map) shoots an aimed weapon
     const t = e.target as HTMLElement;
     // v2r5 newcomer: a click on the black round the screen-filling map did nothing; it says why
     if (e.button === 0 && document.body.dataset.view === 'map' && (t?.id === 'backdrop' || t?.classList?.contains('bd-map')) && document.querySelector('#backdrop .bd-map canvas.map')) {
@@ -418,4 +418,14 @@ frameHooks.push((g) => {
     ['a body, staged. you face east; three mites come. esc, then wasd walks; q and e turn.'],
     [{ text: 'dig', cmd: 'dig' }, '  ', { text: 'setup battle', cmd: 'setup battle' }, '  ', { text: 'setup explore', cmd: 'setup explore' }, '  ', { text: 'status', cmd: 'status' }],
   );
+});
+
+// v4 (Maks 10-18: "it should play as an fps ... when eye is equipped"): an eye coming on takes first person at
+// once (wasd and q/e at once; a click on the view takes the mouse too); tab gives the cursor back, and it stays so
+// until the next eye comes on. The screen only: the sims choose for themselves.
+const hadEye = new WeakMap<Game, boolean>();
+frameHooks.push((g) => {
+  const now = canFps(g) && !g.ended;
+  if (now && hadEye.get(g) === false && !bigOn(g)) flip(g);
+  hadEye.set(g, now);
 });

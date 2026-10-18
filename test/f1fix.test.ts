@@ -26,21 +26,21 @@ const fresh = (core: number) => {
 };
 
 describe('v3r1 floor 1', () => {
-  it('swap in pinhole eye turns a spare weapon off, never the map', () => {
+  it('swap in lattice eye turns a spare weapon off, never the map', () => {
     const g = fresh(6);
-    g.player.inv.push({ kind: 'mod', mod: 'pinhole-eye' });
-    exec(g, 'swap in pinhole eye');
+    g.player.inv.push({ kind: 'mod', mod: 'lattice-eye' });
+    exec(g, 'swap in lattice eye');
     const p = g.player;
     expect(p.installed.find((i) => i.mod === 'map-spool')!.on).toBe(true);
-    expect(p.installed.find((i) => i.mod === 'pinhole-eye')?.on).toBe(true);
+    expect(p.installed.find((i) => i.mod === 'lattice-eye')?.on).toBe(true);
     expect(p.installed.filter((i) => i.on && (i.mod === 'spark-finger' || i.mod === 'choir-bell')).length).toBe(1);
   });
 
   it('a refused eye names the ember cell you carry, with a link', () => {
     const g = fresh(4);
-    g.player.inv.push({ kind: 'mod', mod: 'pinhole-eye' }, { kind: 'mod', mod: 'ember-cell' });
+    g.player.inv.push({ kind: 'mod', mod: 'lattice-eye' }, { kind: 'mod', mod: 'ember-cell' });
     const n = g.log.length;
-    exec(g, 'swap in pinhole eye');
+    exec(g, 'swap in lattice eye');
     expect(text(g, n)).toMatch(/install your ember cell first/);
     expect(g.log.slice(n).some((l) => l.some((s) => typeof s !== 'string' && s.cmd === 'install ember cell'))).toBe(true);
     expect(g.player.installed.find((i) => i.mod === 'map-spool')!.on).toBe(true);

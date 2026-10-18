@@ -48,10 +48,11 @@ const STEPS = [
   [0, '(document.querySelector(".win-console .out").scrollTop = 1e9, true)'],
   // two eyes at once (Maks 10-18: one went dark while the other ran): warming shows static, and
   // both stay lit frame after frame
+  [0, '(g.player.core += 1, true)'], // v4: the pinhole drinks 1 now, so both fit with one more
   ['conjure pinhole eye'], ['conjure vidicon tube'], ['install pinhole eye'], ['install vidicon tube'],
   [0.3, 'document.querySelectorAll(".facing")[1].textContent === "warming up…" && (c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'],
   [1.6, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'], [0.4, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'], [0.4, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'], [0.4, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'], [0.7, '(c => { if (!c || c.hidden) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) return true; return false; })(document.querySelector("canvas.bd-base"))'],
-  ['remove pinhole eye'], ['remove vidicon tube'],
+  ['remove pinhole eye'], ['remove vidicon tube'], [0, '(g.player.core -= 1, true)'],
   // sight (#1321): a lamp, a scanner, a heat eye and an edge eye (conjure works only on test runs)
   ['conjure halo'], ['install halo'], [1, 'g.player.installed.some(i => i.mod === "halo" && i.on)'],
   ['remove halo'], ['conjure heat choir'], ['install heat choir'], [1.5, 'document.querySelector("canvas.scan") !== null'],
@@ -95,7 +96,7 @@ const STEPS = [
   [0, '(document.querySelector(".thaw-card button").click(), true)'],
   [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && window.thaw.g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
   // descriptions, reliquary (shop), recycling (playtest 3)
-  ['conjure pinhole eye'], ['info pinhole', 'JSON.stringify(g.log).includes("pinhole eye: ") && JSON.stringify(g.log).includes("sees 6 cells")'],
+  ['conjure pinhole eye'], ['info pinhole', 'JSON.stringify(g.log).includes("pinhole eye: ") && JSON.stringify(g.log).includes("sees 8 cells")'],
   ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("a dim grey view")'], ['install thread bell'],
   [0, '(g.ents.push({ id: 9998, kind: "printer", x: g.player.x + 0.6, y: g.player.y, data: { far: 0, shop: true } }), ["bone","glass","copper"].forEach(r => g.player.inv.push({ kind: "res", res: r, n: 20 })), g.player.inv.push({ kind: "res", res: "ichor", n: 5 }), true)'],
   [0.2, 'document.querySelector(".panel-near [data-cmd=\'buy 1\']") !== null && JSON.stringify(g.log).includes("reliquary")'],

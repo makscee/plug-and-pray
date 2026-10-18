@@ -32,7 +32,7 @@ import { bossRoom } from '../world/floors';
 import { bossesNear } from '../fight/bosses';
 import { addBlur, addLag, addNoise, blank, creases, FILTERS, foeOutside, heatRamp, MODES, staticFrame } from './index';
 import { baseLook, fovAcross, plan, rowsOf, shownLayers, turnLayers, type Layer } from './layers';
-import { bigOn, reins } from '../body/fps';
+import { bigOn, canFps } from '../body/fps';
 import { aimed } from '../fight/aim';
 import './backdrop.css';
 
@@ -629,7 +629,7 @@ function chevrons(g: Game, b: Bd, c: CanvasRenderingContext2D, W: number): void 
 // ---- the tag in the corner: what the screen is, and the reins' mode
 
 function tag(g: Game, b: Bd, base: Inst | null, all: number): void {
-  const r = reins(g);
+  const r = canFps(g);
   let t: string;
   let cls = '';
   // v2r2 ux: what is layered stays said, the reins text beside it
@@ -642,7 +642,7 @@ function tag(g: Game, b: Bd, base: Inst | null, all: number): void {
   const px = base ? Math.round(param<number>(base, 'res', rowsOf(base))) : 0; // the px its window says (v2r4 ux)
   if (r) {
     const on = bigOn(g);
-    t = (tight ? (on ? '◉ reins · tab' : '○ cursor · tab') : on ? '◉ reins · tab: cursor' : '○ cursor · tab or click the view: reins') + (tight && n ? ` +${n}` : more);
+    t = (tight ? (on ? '◉ first person · tab' : '○ cursor · tab') : on ? '◉ first person · tab: cursor' : '○ cursor · tab or click the view: first person') + (tight && n ? ` +${n}` : more);
     cls = on ? 'reins' : 'cursor';
   } else if (mode === 'map') t = b.map ? (room < 170 ? 'the map' : tight ? 'map · click to walk' : 'no eye: the map is your sight · click to walk') : 'no eye, no map';
   else if (mode === 'static') t = 'an eye warms up…';

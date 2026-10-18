@@ -45,11 +45,12 @@ describe('the view (v2-view)', () => {
     expect(plan(g).warming?.mod).toBe('pinhole-eye');
   });
 
-  it('the reins, not a scope, give the fps; martyr\'s are mk2', () => {
+  it('any eye gives the fps (v4); martyr\'s reins are mk2', () => {
     const g = wearing('pilgrim-scope');
     expect(reins(g)).toBeUndefined();
     exec(g, 'big');
-    expect(bigOn(g)).toBe(false);
+    expect(bigOn(g)).toBe(true);
+    expect(mark(g)).toBe(0);
     const h = wearing('martyrs-reins');
     expect(mark(h)).toBe(2);
     exec(h, 'big');
