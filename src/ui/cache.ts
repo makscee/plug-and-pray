@@ -5,12 +5,14 @@
 // until the floor's banner is gone.
 
 import { frameHooks } from '.';
-import { def, label, rarityOf, size } from '../core/mods';
+import { def, label, rarityOf } from '../core/mods';
 import type { Game, Item } from '../core/types';
 import { VERBS } from '../core/verbs';
 import { boneOf, cacheNear, cardHidden, costOf, fitOf, FREE, freeLeft, hideCard, SCRAP } from '../world/cache';
 import { floorOf, FLOORS, KIT } from '../world/floors';
 import { img } from './icons';
+import { attach } from './card';
+import { costLine, keyNums, kindOf, mechanic } from './cardText';
 import './cache.css';
 
 const send = (cmd: string) => (window as unknown as { thaw?: { send: (c: string) => void } }).thaw?.send(cmd);
@@ -82,7 +84,6 @@ frameHooks.push((g) => {
   if (!firstOffer.has(c!)) firstOffer.set(c!, [...c!.offer]);
   firstOffer.get(c!)!.forEach((it) => {
     if (it.kind !== 'mod') return;
-    const d = def(it);
     const n = c!.offer.indexOf(it);
     if (n < 0) {
       // taken: its spot stays, greyed
@@ -95,15 +96,18 @@ frameHooks.push((g) => {
     const icon = el_('div', `kit-icon cell rar-${rarityOf(it)}`);
     icon.append(img(it, 3));
     const name = el_('p', `name rar-${rarityOf(it)}`, label(it));
-    const meta = el_('p', 'kit-meta', `${d.family}${d.power ? ` · ${d.power}⚡︎` : ''}${size(it) > 1 ? ` · ${size(it)} slots` : ''}${it.mod === KIT[f]?.[0] ? ' · headline' : ''}`);
-    const text = el_('p', 'kit-text', d.text);
+    // v3 cards: kind and cost, then the mechanic and its key numbers; the full card on hover and click
+    const meta = el_('p', 'kit-meta', `${kindOf(it)} · ${costLine(it)}${it.mod === KIT[f]?.[0] ? ' · headline' : ''}`);
+    const text = el_('p', 'kit-text', mechanic(it));
+    const nums = el_('p', 'kit-nums', keyNums(it).join(' · '));
     const fitText = fitOf(g, it);
     const fit = el_('p', `kit-fit${fitText.startsWith('⚠') ? ' kit-warn' : ''}`, fitText);
     const b = el_('button', 'kit-pick', free ? 'take' : `take · ${cost} bone`) as HTMLButtonElement;
     b.dataset.cmd = `pick ${n + 1}`;
     if (!free && bone < cost) b.disabled = true;
     b.addEventListener('click', () => send(`pick ${n + 1}`));
-    tile.append(icon, name, meta, text, fit, b);
+    tile.append(icon, name, meta, text, nums, fit, b);
+    attach(tile, `kit:${f}:${n}:${it.mod}`, () => it);
     row.append(tile);
   });
   const foot = el_('div', 'kit-foot');

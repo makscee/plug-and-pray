@@ -19,7 +19,9 @@
 .kit-icon img { image-rendering: pixelated; }
 .kit-tile .name { font-size: 20px; line-height: 1.05; color: var(--t-title); overflow-wrap: anywhere; }
 .kit-meta { font-size: 15px; color: var(--t-meta); }
-.kit-text { font-size: 15px; color: var(--t-body); line-height: 1.15; flex: 1; }
+.kit-text { font-size: 16px; color: var(--t-title); line-height: 1.1; flex: 1; }
+.kit-nums { font-size: 15px; color: var(--acc); }
+.kit-tile { cursor: help; }
 .kit-fit { font-size: 14px; color: var(--info); line-height: 1.1; min-height: 3.3em; } /* v2r4 ux: room for a longer line after a pick */
 /* v2r4 run: a pick that costs your last weapon for swarms, or one that stays out for it: big and red */
 .kit-fit.kit-warn { font-size: 18px; color: var(--danger); font-weight: bold; }
