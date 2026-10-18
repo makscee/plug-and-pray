@@ -19,7 +19,7 @@ export interface Roll {
 export type Rarity = 'common' | 'fine' | 'rare' | 'unique';
 
 export type Item =
-  | { kind: 'mod'; mod: string; roll?: Roll; rarity?: Rarity; title?: string }
+  | { kind: 'mod'; mod: string; roll?: Roll; rarity?: Rarity; title?: string; level?: number }
   | { kind: 'res'; res: Res; n: number }
   | { kind: 'card'; card: string };
 
@@ -31,6 +31,8 @@ export interface Inst {
   rarity?: Rarity;
   /** a unique's own name */
   title?: string;
+  /** v3 modules: I..III (missing = I); a duplicate find or `upgrade` raises it */
+  level?: number;
   on: boolean;
   /** game time (s) when it is warm and works; meaningless while off */
   readyAt: number;

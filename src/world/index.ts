@@ -17,3 +17,4 @@ import './cache';
 import './piecefill';
 import './choices';
 import './gimmicks';
+import './upgrade';

@@ -36,8 +36,9 @@ describe('ux (playtest r2)', () => {
 
   it('two of the same: the ordinal names the second', () => {
     const g = newGame(1);
-    addItem(g, { kind: 'mod', mod: 'spark-finger' });
-    addItem(g, { kind: 'mod', mod: 'spark-finger' });
+    // (v3 modules: a second find upgrades the first; two copies come only from old saves and slots: `back`)
+    addItem(g, { kind: 'mod', mod: 'spark-finger' }, true);
+    addItem(g, { kind: 'mod', mod: 'spark-finger' }, true);
     exec(g, 'install spark finger');
     exec(g, 'install spark finger');
     const [a, b] = g.player.installed;

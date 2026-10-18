@@ -6,11 +6,12 @@
 
 import { dist, say, tickHooks } from '../core/game';
 import { def, label, MODS, param, rarityOf, type Modish } from '../core/mods';
-import { does } from '../mods/describe';
+import { short } from '../ui/cardText';
 import { hash, rng } from '../core/rng';
-import { addItem, findInst, findItem, goThere, verb, VERBS } from '../core/verbs';
+import { addItem, findInst, findItem, goThere, owned, verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Item, Line, Res } from '../core/types';
 import { lootMod, ranged } from './spawn';
+import { upgradeLines } from './upgrade';
 import { dealUnique } from '../mods/uniques';
 import { cradleEye } from './secrets';
 import { ZONES, zoneFar } from './zones';
@@ -54,7 +55,7 @@ export const glassTip = (g: Game, c: Cost, altar = false): string =>
 export const copperTip = (g: Game, c: Cost, altar = false): string =>
   (c.copper ?? 0) <= have(g, 'copper') ? '' : altar ? ' short of copper: offer bone for copper here, 3 bone for 1.' : ' short of copper: an altar takes 3 bone for 1 (offer bone for copper), and recycling pays copper.';
 
-function pay(g: Game, c: Cost): void {
+export function pay(g: Game, c: Cost): void {
   for (const [r, n] of Object.entries(c)) {
     const it = g.player.inv.find((i) => i.kind === 'res' && i.res === r);
     if (it && it.kind === 'res') it.n -= n!;
@@ -87,7 +88,7 @@ function menu(g: Game, e: Entity): Line[] {
   const far = (e.data?.far as number) ?? 0;
   const slot: Line = g.player.slots >= MAX_SLOTS ? ['  slots: the board is full (8).'] : [{ text: 'print slot', cmd: 'print slot' }, `  +1 slot: ${fmt(slotCost(g))}`];
   const aimed: Line = ['  or one kind: ', ...Object.keys(AIMED).flatMap((k, n) => [...(n ? [' '] : []), { text: k, cmd: `print ${k}` }]), `: ${fmt(aimedCost(far))}`];
-  return [slot, [{ text: 'print module', cmd: 'print module' }, `  a module: ${fmt(modCost(far))}`], aimed];
+  return [slot, [{ text: 'print module', cmd: 'print module' }, `  a module: ${fmt(modCost(far))}`], aimed, ...upgradeLines(g, 3)];
 }
 
 /** damage a second per power (a 0p one counts as 1p) */
@@ -226,7 +227,7 @@ const SHUT = 'its glass stays shut until your own first eye is found';
 function shopMenu(g: Game, e: Entity): Line[] {
   const lines: Line[] = offers(g, e).map((it, k) =>
     it && it.kind === 'mod'
-      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}${def(it).family === 'power' || !def(it).power ? '' : ` (${def(it).power}p)`}: ${shutEye(g, it) ? SHUT : fmt(priceAt(e, k, it))}. ${does(it)}`]
+      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}${def(it).family === 'power' || !def(it).power ? '' : ` (${def(it).power}p)`}: ${shutEye(g, it) ? SHUT : fmt(priceAt(e, k, it))}. ${short(it)}${owned(g, it.mod) ? ' · ▲ upgrades yours' : ''}`]
       : [`  ${k + 1}: an empty niche.`],
   );
   lines.push([{ text: 'reroll', cmd: 'reroll' }, `  new relics: ${fmt(PRICES.reroll)}`]);

@@ -49,6 +49,7 @@ for (const style of styles) {
   console.log(`  floor lengths (median, of runs that left it): ${[1, 2, 3, 4, 5].map((f) => `f${f} ${mm(med(runs.map((r) => len(r, f))))}`).join('  ')}`);
   console.log(`  deaths by floor: ${[0, 1, 2, 3, 4].map((z) => `f${z + 1} ${dead.filter((r) => r.deathZone === z).length}`).join(', ')}; to bosses ${dead.filter((r) => BOSSY.test(r.killer ?? '')).length}`);
   console.log(`  killers: ${Object.entries(dead.reduce((m, r) => ((m[`${r.killer} f${r.deathZone + 1}`] = (m[`${r.killer} f${r.deathZone + 1}`] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(', ')}`);
+  console.log(`  module finds per run: mean ${mean(runs.map((r) => r.found ?? 0)).toFixed(1)}, median ${med(runs.map((r) => r.found ?? 0))}`);
   console.log(`  uniques per run: seen ${mean(runs.map((r) => r.uniques.seen.length)).toFixed(1)}, held ${mean(runs.map((r) => r.uniques.held.length)).toFixed(1)}, dealt ${mean(runs.map((r) => r.uniques.dealt)).toFixed(1)}`);
   // keepers: met, beaten, first-try (no break-off), by floor
   const rows = [];

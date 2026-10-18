@@ -36,10 +36,11 @@ chunkHook((g, c) => {
     }
   };
   const h = p.hold;
-  if (h.mods !== undefined) {
+  // v3 modules: only the richer pieces hold a module (fewer, bigger finds)
+  if (h.mods !== undefined && h.mods >= 2) {
     const it = lootMod(r, far + Math.max(0, h.mods), undefined, p.floor === 0);
     // the richer pieces hand out finer work
-    if (h.mods >= 2 && it.kind === 'mod' && !it.rarity) it.rarity = 'fine';
+    if (h.mods >= 2 && it.kind === 'mod' && !it.rarity) it.level = 2;
     put(it);
   }
   for (const [res, n] of h.res ?? []) put({ kind: 'res', res, n });

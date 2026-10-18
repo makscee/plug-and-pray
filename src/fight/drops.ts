@@ -13,15 +13,16 @@ export const MITE_DROP = 0.6;
 
 /** per enemy: resource, how many, chance of a module */
 export const DROPS: Record<string, [Res, number, number]> = {
-  mite: ['bone', 1, 0.12], // playtest 10-18: early fights pay (was 0.05)
-  seraph: ['glass', 2, 0.25],
-  walker: ['bone', 3, 0.35],
-  hum: ['ichor', 1, 0.4],
+  // v3 modules (Maks 10-18: fewer, bigger finds): common foes drop no modules; nor do the elites (a mimic still gives up what it wore)
+  mite: ['bone', 1, 0],
+  seraph: ['glass', 2, 0],
+  walker: ['bone', 3, 0],
+  hum: ['ichor', 1, 0],
   mimic: ['copper', 2, 0],
-  pyre: ['glass', 2, 0.3],
-  warden: ['copper', 3, 1],
-  abbot: ['bone', 5, 1],
-  saint: ['ichor', 2, 1],
+  pyre: ['glass', 2, 0],
+  warden: ['copper', 3, 0],
+  abbot: ['bone', 5, 0],
+  saint: ['ichor', 2, 0],
 };
 
 killHooks.push((g, e) => {

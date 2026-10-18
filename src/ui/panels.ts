@@ -7,7 +7,7 @@
 
 import { dist, itemName, reach } from '../core/game';
 import { Cell, cell, veinOf } from '../core/grid';
-import { def, label, ownSocket, param, powerMax, powerUsed, size, slotsUsed, working } from '../core/mods';
+import { def, label, maxLevel, moduleLevel, ownSocket, param, powerMax, powerUsed, ROMAN, size, slotsUsed, working } from '../core/mods';
 import { inPlace, instRef, lastLegs, VERBS } from '../core/verbs';
 import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
@@ -88,6 +88,8 @@ export function pips(used: number, max: number): string {
 const modLines = (m: { mod: string; roll?: Roll }) => [mechanic(m)];
 /** a module's rarity and a unique's own name (src/core/types.ts, from the rarity pass; common when absent) */
 const rarOf = (m: object): string => (m as { rarity?: string }).rarity ?? 'common';
+/** v3 modules: its level on the tile (I..III), for modules that can rise */
+const lvlOf = (m: { mod: string; level?: number }): string | undefined => (maxLevel(m) > 1 ? ROMAN[moduleLevel(m)] : undefined);
 const titleOf = (m: object): string | undefined => (m as { title?: string }).title;
 
 /** the install (or swap in) button for a carried module, and why it is greyed */
@@ -175,7 +177,7 @@ export class Panels {
     const p = g.player;
     const cells: GridCell[] = p.installed.map((i) => {
       const state = !i.on ? 'off' : working(g, i) ? 'on' : 'warm';
-      return { sel: 'u' + i.uid, icon: { mod: i.mod, roll: i.roll }, title: `${label(i)} · ${state}`, state, mod: i.mod, dbl: `${i.on ? 'off' : 'on'} ${instRef(g, i)}`, span: size(i), rar: rarOf(i), drag: true };
+      return { sel: 'u' + i.uid, icon: { mod: i.mod, roll: i.roll }, title: `${label(i)} · ${state}`, state, mod: i.mod, dbl: `${i.on ? 'off' : 'on'} ${instRef(g, i)}`, span: size(i), rar: rarOf(i), drag: true, badge: lvlOf(i) };
     });
     for (let k = slotsUsed(g); k < p.slots; k++) cells.push({ sel: 'empty' + k, title: 'an empty socket' });
     const s = this.sel.get('modules');
@@ -214,7 +216,7 @@ export class Panels {
         const recycle: Btn = Object.keys(scrap).length ? { label: 'recycle', cmd: `recycle ${label(it)}`, note: `recycle: ${fmt(scrap)}` } : { label: 'recycle', note: 'it will not break' };
         buttons = [install, { label: '?', cmd: `info ${label(it)}` }, recycle, drop];
         lines = modLines(it);
-        c = { sel, icon: it, title: label(it), mod: it.mod, dbl: install.cmd, dim: !install.cmd, span: size(it), rar: rarOf(it), drag: true };
+        c = { sel, icon: it, title: label(it), mod: it.mod, dbl: install.cmd, dim: !install.cmd, span: size(it), rar: rarOf(it), drag: true, badge: lvlOf(it) };
       } else if (it.kind === 'card') {
         const scripture = !it.card.startsWith('log');
         buttons = [ok(g, 'read') ? { label: 'read', cmd: 'read card' } : { label: 'read', note: 'needs a card reader' }, drop];

@@ -62,7 +62,7 @@ export const BETTER: Record<string, 'up' | 'down'> = {
 };
 
 /** what a module is, rarity and name: v2 rarity rides on the item and the installed module alike */
-export type Modish = { mod: string; roll?: Roll; rarity?: Rarity; title?: string };
+export type Modish = { mod: string; roll?: Roll; rarity?: Rarity; title?: string; level?: number };
 /** v2 rarity: fine and rare move the module's key number its better way */
 export const RARITY_MULT: Partial<Record<Rarity, number>> = { fine: 1.15, rare: 1.3 };
 /** the number rarity works: a weapon's damage, an eye's range, a lamp's radius, a generator's power, else the
@@ -76,7 +76,25 @@ export function rarityKey(m: { mod: string }): string | null {
 }
 export const rarityOf = (m: Modish): Rarity => m.rarity ?? 'common';
 /** the traits an item and its installed module share (roll, rarity, title): copied on install and remove */
-export const traits = (m: Modish) => ({ roll: m.roll, rarity: m.rarity, title: m.title });
+export const traits = (m: Modish) => ({ roll: m.roll, rarity: m.rarity, title: m.title, level: m.level });
+
+/** v3 modules (Maks 10-18: fewer finds, duplicates upgrade): levels I..III. Each level moves the module's ONE key
+ *  number (levelKey) by LEVEL_STEP its better way; a power module gives +1 power a level instead */
+export const MAX_LEVEL = 3;
+export const LEVEL_STEP = 0.35;
+export const moduleLevel = (m: { level?: number }): number => Math.max(1, Math.min(MAX_LEVEL, m.level ?? 1));
+export const ROMAN = ['', 'I', 'II', 'III'];
+/** the number a level works: a weapon's damage, an eye's range, a radar's range, legs' speed or pace, a lamp's radius, power */
+export function levelKey(m: { mod: string }): string | null {
+  const d = MODS[m.mod];
+  if (!d) return null;
+  const first = ({ weapon: ['damage', 'cooldown'], camera: ['range'], scanner: ['range'], lamp: ['radius'], power: ['power'], gait: ['speed', 'pace'] } as Record<string, string[]>)[d.family]?.find((k) => typeof d.params[k] === 'number');
+  return first ?? rarityKey(m);
+}
+/** how high it goes: modules with no key number (the slot board, the stepper relay) stay at I */
+export const maxLevel = (m: { mod: string }): number => (levelKey(m) ? MAX_LEVEL : 1);
+/** "nail psalm II": the name with its level (I is left off) */
+export const levelTag = (m: { level?: number }): string => (moduleLevel(m) > 1 ? ' ' + ROMAN[moduleLevel(m)] : '');
 
 /** a parameter with the find's roll (and its rarity) applied */
 export function param<T extends Param>(inst: Modish, key: string, fallback?: T): T {
@@ -84,14 +102,22 @@ export function param<T extends Param>(inst: Modish, key: string, fallback?: T):
   if (inst.roll && inst.roll.key === key && typeof v === 'number') v = v * inst.roll.mult;
   const r = inst.rarity && RARITY_MULT[inst.rarity];
   if (r && typeof v === 'number' && BETTER[key] && key === rarityKey(inst)) v = BETTER[key] === 'down' ? v / r : v * r;
+  const lv = moduleLevel(inst);
+  if (lv > 1 && typeof v === 'number' && key === levelKey(inst)) {
+    if (def(inst).family === 'power') v = v + (lv - 1);
+    else {
+      const m = 1 + LEVEL_STEP * (lv - 1);
+      v = BETTER[key] === 'down' ? v / m : v * m;
+    }
+  }
   return v as T;
 }
 
 /** the name on screen: "pinhole eye", "attuned pinhole eye", "fine dawn eye", a unique's title */
 export function label(item: Modish): string {
-  if (item.title) return item.title + (item.roll ? ` (${item.roll.tag})` : '');
+  if (item.title) return item.title + levelTag(item) + (item.roll ? ` (${item.roll.tag})` : '');
   const r = item.rarity === 'fine' || item.rarity === 'rare' ? item.rarity + ' ' : '';
-  return r + (item.roll ? item.roll.tag + ' ' : '') + def(item).name;
+  return r + (item.roll ? item.roll.tag + ' ' : '') + def(item).name + levelTag(item);
 }
 
 /** slots it fills on the board: most take one, a few heavy ones two (`params.size`, v2 asks) */

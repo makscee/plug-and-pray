@@ -3,7 +3,7 @@
 // from the module's params (so rolls, rarity and levels show), the noise stats go to a dim footer.
 // Pure (no DOM), so vitest reads it. Keyed by module id; a module missing here falls back to describe.ts.
 
-import { def, label, param, RARITY_MULT, rarityKey, rarityOf, size, BETTER, type Modish } from '../core/mods';
+import { def, label, LEVEL_STEP, levelKey, param, RARITY_MULT, rarityKey, rarityOf, size, BETTER, type Modish } from '../core/mods';
 import { perkText } from '../mods/uniques';
 import { does as describeDoes } from '../mods/describe';
 
@@ -203,6 +203,10 @@ export function footer(m: Modish): string {
   const r = rarityOf(m);
   const k = rarityKey(m);
   if (RARITY_MULT[r] && k) parts.push(`${r}: ${k} ${BETTER[k] === 'down' ? '−' : '+'}${Math.round((RARITY_MULT[r]! - 1) * 100)}%`);
+  // v3 modules: what its level moved
+  const lk = levelKey(m);
+  const lv = levelOf(m);
+  if (lv > 1 && lk) parts.push(`level ${roman(lv)}: ${lk} ${d.family === 'power' ? `+${lv - 1}` : `${BETTER[lk] === 'down' ? '−' : '+'}${Math.round(LEVEL_STEP * (lv - 1) * 100)}%`}`);
   return parts.join(' · ');
 }
 
@@ -237,7 +241,7 @@ export function card(m: Modish): Card {
   const r = rarityOf(m);
   const perk = perkText(m);
   return {
-    name: label(m),
+    name: label({ ...m, level: undefined } as Modish),
     level: levelOf(m) ? roman(levelOf(m)) : '',
     kind: kindOf(m),
     rarity: perk ? 'unique' : r === 'common' ? '' : r,

@@ -184,7 +184,7 @@ export function useSetup(g: Game, name: string): string[] | null {
       if (!out) break;
       switchOff(g, out);
       p.installed = p.installed.filter((i) => i !== out);
-      addItem(g, { kind: 'mod', mod: out.mod, ...traits(out) });
+      addItem(g, { kind: 'mod', mod: out.mod, ...traits(out) }, true);
       g.events.push({ type: 'remove', data: out.uid });
     }
     if (slotsUsed(g) + size({ mod: m }) > p.slots) break;
@@ -516,7 +516,7 @@ verb('swap', {
     for (const r of room.remove ? [room.remove, ...(room.more ?? [])] : []) {
       switchOff(g, r);
       p.installed = p.installed.filter((i) => i !== r);
-      addItem(g, { kind: 'mod', mod: r.mod, ...traits(r) });
+      addItem(g, { kind: 'mod', mod: r.mod, ...traits(r) }, true);
       g.events.push({ type: 'remove', data: r.uid });
       did.push(`${label(r)} out`);
     }

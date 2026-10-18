@@ -98,9 +98,13 @@ export function lootMod(r: Rng, far: number, family?: string, cradle = false): I
   // v2 rarity: one more draw; deeper (and a printer or reliquary's reach) rolls finer
   const [fine, rare] = RARITY_ODDS[z];
   const k = r();
-  if (rarityKey(item) && k < rare + fine) item.rarity = k < rare ? 'rare' : 'fine';
+  // v3 modules: fine is level II now (src/core/mods.ts levels); rare stays a rarity
+  if (rarityKey(item) && k < rare + fine) k < rare ? (item.rarity = 'rare') : (item.level = 2);
   return item;
 }
+
+/** the chance a chunk's loot roll is a module, not a pile (v3 modules: was 0.55; none now: modules come from caches, keepers, set pieces and events) */
+export const LOOSE_MOD = 0;
 
 /** a weapon that reaches past arm's length (the cradle rolls none) */
 export const ranged = (m: { family: string; params: Record<string, unknown> }): boolean => m.family === 'weapon' && Number(m.params.range ?? 1.3) >= 3;
@@ -227,7 +231,8 @@ export function fill(g: Game, c: Chunk): void {
   const again = rng(hash(g.seed, 14, c.cx, c.cy));
   for (let k = 0; k < loot; k++) {
     const [x, y] = cellIn(r, c, g.seed);
-    const it: Item = r.chance(0.55) ? lootMod(r, far, undefined, f === 0) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 2) };
+    // v3 modules (Maks 10-18: "inventory quickly got bloated"): a loose module is rare; finds are events (caches, set pieces, keepers)
+    const it: Item = r.chance(LOOSE_MOD) ? lootMod(r, far, undefined, f === 0) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 2) };
     spawn(g, { kind: 'item', x, y, item: again.chance(0.5) ? fresh(g, it, again, far) : it });
   }
   // enemies: the fight slice's own chunk hook (src/fight/spawn.ts)
