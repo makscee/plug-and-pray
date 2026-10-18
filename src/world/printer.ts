@@ -132,11 +132,10 @@ tickHooks.push((g) => {
 export const shopNear = (g: Game): Entity | undefined =>
   g.ents.filter((e) => e.kind === 'printer' && e.data?.shop && dist(e, g.player) < 1.6).sort((a, b) => dist(a, g.player) - dist(b, g.player))[0];
 
-/** what a module costs at a reliquary; generators cost a copper and a glass more (power is the scarce thing) */
+/** what a module costs at a reliquary (r5 balance: generators lost their +1 copper +1 glass; the sim wanted power 66% of the time) */
 export const priceOf = (it: Item): Cost => {
   if (it.kind !== 'mod') return {};
   const c = { ...PRICES.shop[Math.min(2, def(it).tier)] };
-  if (def(it).family === 'power') (c.copper = (c.copper ?? 0) + 1), (c.glass = (c.glass ?? 0) + 1);
   return c;
 };
 /** the reliquary by the start (it stands at 1 chunk) always prices one relic in bone and glass alone */

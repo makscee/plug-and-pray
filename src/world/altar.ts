@@ -13,7 +13,7 @@ import { affords, fmt, type Cost } from './printer';
 import { BETTER, rollMult } from './spawn';
 
 /** the core's power can grow to this at altars */
-export const MAX_CORE = 9; // r1 econ: was 12; past 9 power comes from generators, so power binds all run (docs/modules.md)
+export const MAX_CORE = 10; // r5 balance: was 9 (sims: power-bound 66% → 60%, finish not lower). r1 econ: was 12; past 9 power comes from generators, so power binds all run (docs/modules.md)
 
 /** the price of the next point of power: it climbs steeply with every one */
 export function powerCost(g: Game): Cost {

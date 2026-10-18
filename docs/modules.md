@@ -59,7 +59,7 @@ gives three rules.
   of 4 power.
 - **The dawn eye (2)** one chunk east is the first choice. Run it instead of the pinhole and you are
   at 5 of 4 power, so something goes off or you find an ember cell (+2 for a slot).
-- **Altars** add core power (+1, prices climbing steeply, up to 9) and max hp. **Printers** add slots, up to 8.
+- **Altars** add core power (+1, prices climbing steeply, up to 10) and max hp. **Printers** add slots, up to 8.
 - **By the ossuary** a careful loadout wants: an eye that sees in the dark (2–3), legs (1), a map (1),
   a lamp or warmth (1–2), two weapons (3–4), a body module (1–2). That is 9–13 power on 7–8 slots,
   with a core of 6–8. One or two generators fill that gap, and setups switch the rest.
@@ -97,9 +97,9 @@ number that rolls (the mirror ward's recharge gets shorter). `test/econ.test.ts`
 - **Copper early.** You wake with 2 copper; recycling a tier-0 module gives 1 bone and 1 copper; the reliquary by
   the start prices its first relic in bone and glass only. So the first shop is a pick, not a locked door.
   Later prices lean on copper instead of glass (prints, slots, power), since recycling now pays it.
-- **Power binds.** The core grows to 9 at altars (was 12), each point dearer than the last (4b 2g, then 6b 3g 1c,
+- **Power binds.** The core grows to 10 at altars (was 12, then 9; r5 balance: 10), each point dearer than the last (4b 2g, then 6b 3g 1c,
   8b 4g 2c, 10b 5g 3c 1i, 12b 6g 4c 2i). Past that, power comes from generators, which take a slot, and the
-  shop charges a copper and a glass more for them; the votive battery whispers (loud 1). So a generator is a
+  shop prices them like any module of their tier (r5 balance dropped the +1 copper +1 glass); the votive battery whispers (loud 1). So a generator is a
   slot and a price for power, and two setups (explore, battle) are how a full kit runs.
 - **The late sink: temper (option B).** At an altar an attuned module can be tempered up to three times: its
   rolled number moves another step each time (×1.2, or ×0.85 for a number that is better low), so a weapon you
