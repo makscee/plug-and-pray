@@ -126,6 +126,8 @@ export class Panels {
     addEventListener('pointermove', (e) => this.dragMove(e));
     addEventListener('pointerup', (e) => this.dragEnd(e));
     addEventListener('pointercancel', () => this.dragEnd(null));
+    // v3: a release lost outside the page (or a lost focus) drops the tile back, not on the next click
+    addEventListener('blur', () => this.dragEnd(null));
     addEventListener('click', (e) => this.dragged && (e.stopPropagation(), e.preventDefault()), true);
   }
 
@@ -293,6 +295,7 @@ export class Panels {
   dragMove(e: PointerEvent): void {
     const d = this.drag;
     if (!d) return;
+    if (!(e.buttons & 1)) return this.dragEnd(null);
     if (!d.ghost) {
       if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 5) return;
       const src = windows.get(d.id)?.body.querySelector<HTMLElement>(`.cell[data-key="${CSS.escape(d.key)}"]`);

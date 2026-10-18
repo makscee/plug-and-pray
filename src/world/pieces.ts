@@ -4,7 +4,7 @@
 // in, and what it holds (src/world/piecefill.ts). Pure: the generator reads it before any chunk exists.
 
 import { hash } from '../core/rng';
-import { floorOfChunk, HALF, LAST, local, stairsChunk, STRIDE } from './floors';
+import { floorOfChunk, HALF, inside, LAST, local, stairsChunk, STRIDE } from './floors';
 import type { Res } from '../core/types';
 
 export type Carve = 'box' | 'oval' | 'cross' | 'ribs' | 'pews' | 'ring' | 'niches';
@@ -82,6 +82,7 @@ export function piecesOf(seed: number, f: number): [string, number, number][] {
     for (let x = -HALF; x <= HALF; x++) {
       if (Math.max(Math.abs(x), Math.abs(y)) !== HALF) continue;
       const [cx, cy] = [f * STRIDE + x, y];
+      if (!inside(cx, cy)) continue; // v3: the small floors have no corners
       // never the boss room, nor the chunks beside it (its approach stays plain)
       if (Math.abs(cx - bx) + Math.abs(cy - by) <= 1) continue;
       ring.push([cx, cy]);

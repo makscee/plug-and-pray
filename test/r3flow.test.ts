@@ -10,6 +10,7 @@ import { makeRoom } from '../src/body';
 const text = (g: ReturnType<typeof newGame>, from = 0) => JSON.stringify(g.log.slice(from));
 const kit = (g: ReturnType<typeof newGame>, more: string[] = []) => {
   g.player.slots = 9;
+  g.player.core += 3; // v3: the pinhole drinks 3 (it was free when these were written)
   for (const mod of ['pinhole-eye', 'map-spool', 'stepper-relay', 'spark-finger', ...more]) addItem(g, { kind: 'mod', mod });
   exec(g, 'install all');
   g.player.slots = g.player.installed.length;

@@ -8,17 +8,63 @@ import { spawn, tickHooks } from '../core/game';
 import { BETTER, MODS, rarityKey } from '../core/mods';
 import { hash, rng, type Rng } from '../core/rng';
 import { RES, type Chunk, type Game, type Item } from '../core/types';
-import { floors, rooms } from './gen';
+import { floors, generate, rooms } from './gen';
 import { nextLog } from './vectors';
 import { ZONES, zoneFar } from './zones';
-import { farOf, floorAt, floorOfChunk, isArrival, stairsChunk, STRIDE } from './floors';
+import { farOf, floorAt, floorOfChunk, HALF, inRoom, inside, isArrival, origin, stairsChunk, STRIDE } from './floors';
 
-/** v2r2 ux: the first eye lies two chunks out on the eye's side (the next one over when that is the keeper's room),
- *  sealed behind a cracked wall (src/world/secrets.ts eyeNiche), so the map-only start lasts a couple of minutes */
+/** v3 (Maks 10-18: "my first eye was behind a wall and I couldn't get it"): the first eye lies in the open, on the
+ *  walk from where you wake to the keeper's room, EYE_BAND of the way along it (by seed), so it comes at the mid to
+ *  end of the cradle. The way is found over the cradle's open floor as generated (no wall to break on it) */
+export const EYE_BAND: [number, number] = [0.6, 0.8];
+const eyeSpots = new Map<number, { at: [number, number]; way: number; along: number }>();
+export function firstEye(seed: number): { at: [number, number]; way: number; along: number } {
+  const hit = eyeSpots.get(seed);
+  if (hit) return hit;
+  // the cradle's cells, world coords, from its chunks as the generator makes them
+  const [ox, oy] = [-HALF * CHUNK, -HALF * CHUNK];
+  const W = (2 * HALF + 1) * CHUNK;
+  const open = new Uint8Array(W * W);
+  for (let cy = -HALF; cy <= HALF; cy++)
+    for (let cx = -HALF; cx <= HALF; cx++) {
+      if (!inside(cx, cy)) continue;
+      const c = generate(seed, cx, cy);
+      for (let j = 0; j < CHUNK; j++) for (let i = 0; i < CHUNK; i++) if (c.cells[j * CHUNK + i] === Cell.floor) open[(cy * CHUNK + j - oy) * W + cx * CHUNK + i - ox] = 1;
+    }
+  const [sx, sy] = origin(0).map(Math.floor);
+  const from = new Int32Array(W * W).fill(-1);
+  const start = (sy - oy) * W + sx - ox;
+  from[start] = start;
+  const q = [start];
+  let end = -1;
+  for (let k = 0; k < q.length && end < 0; k++) {
+    const i = q[k];
+    const [x, y] = [(i % W) + ox, Math.floor(i / W) + oy];
+    if (inRoom(seed, 0, x + 0.5, y + 0.5)) end = i;
+    else
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const [nx, ny] = [x + dx - ox, y + dy - oy];
+        const n = ny * W + nx;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= W || !open[n] || from[n] >= 0) continue;
+        from[n] = i;
+        q.push(n);
+      }
+  }
+  const way: number[] = [];
+  for (let i = end; i >= 0 && i !== start; i = from[i]) way.push(i);
+  way.push(start);
+  way.reverse();
+  // the last cell is the room's own door cell: the eye lies before it, never in the room
+  const along = EYE_BAND[0] + rng(hash(seed, 181))() * (EYE_BAND[1] - EYE_BAND[0]);
+  const i = way[Math.min(way.length - 2, Math.max(0, Math.round((way.length - 1) * along)))] ?? start;
+  const out = { at: [(i % W) + ox + 0.5, Math.floor(i / W) + oy + 0.5] as [number, number], way: way.length - 1, along };
+  eyeSpots.set(seed, out);
+  return out;
+}
+/** the chunk the first eye lies in */
 export function eyeChunk(seed: number): [number, number] {
-  const [sx, sy] = opening(seed).eye;
-  const [bx, by] = stairsChunk(seed, 0);
-  return bx === 2 * sx && by === 2 * sy ? [2 * sx + sy, 2 * sy + sx] : [2 * sx, 2 * sy];
+  const [x, y] = firstEye(seed).at;
+  return [Math.floor(x / CHUNK), Math.floor(y / CHUNK)];
 }
 import { placeCache } from './cache';
 

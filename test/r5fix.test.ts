@@ -49,7 +49,7 @@ describe('r5 fixes', () => {
     g.player.installed = [];
     g.player.slots = 6;
     g.player.core = 3;
-    put(g, 'pinhole-eye');
+    put(g, 'thread-bell'); // v3: the pinhole drinks 3 now; the bell is the free one
     put(g, 'spark-finger');
     put(g, 'map-spool');
     put(g, 'halo');
