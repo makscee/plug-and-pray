@@ -306,6 +306,8 @@ const TEACH: Record<string, string> = {
   edge: 'traces every scratch: scripture cut into the walls shows as lines.',
 };
 const KINDS: Record<string, Kind> = { heat: 'hands', sonar: 'hollow', '1bit': 'script', edge: 'script' };
+/** the eye filters that show a hidden layer (the UI keeps such an eye's window open) */
+export const LAYERS = Object.keys(KINDS);
 
 tickHooks.push((g) => {
   const p = g.player;

@@ -6,7 +6,7 @@
 
 import { CHUNK, chunkHook, open } from '../core/grid';
 import { dist, say, spawn, spawnEnemy, tickHooks } from '../core/game';
-import { ELITE } from '../fight';
+import { ELITE, GUARD_HINT } from '../fight';
 import { ZONES, zoneAt, zoneOf } from './zones';
 import { active, def, param } from '../core/mods';
 import { hash, rng } from '../core/rng';
@@ -210,9 +210,10 @@ verb('read', {
           const [x, y] = shardAt(g, k);
           g.vectors.push({ card: it.card, x, y, what: 'scripture shard', found: false });
           say(g, [`  the next shard lies in ${ZONES[zoneAt(x, y)].name}. vector: ${bearing(g, x, y)}. `, { text: 'vectors', cmd: 'vectors' }]);
+          const guard = GUARD_HINT[ELITE[Math.max(1, Math.min(3, zoneAt(x, y)))]];
+          if (guard) say(g, `  ${guard}`);
         }
-      }
-      else if (n === 2) say(g, `  the engine: about ${fromStart} cells out, bearing near ${Math.round(deg / 45) * 45} from here.`);
+      } else if (n === 2) say(g, `  the engine: about ${fromStart} cells out, bearing near ${Math.round(deg / 45) * 45} from here.`);
       else {
         const v: Vector = { card: it.card, x: ex, y: ey, what: 'thaw engine', found: false };
         g.vectors.push(v);
@@ -223,6 +224,9 @@ verb('read', {
       g.vectors.push(v);
       place(g, v);
       say(g, `  vector: ${bearing(g, v.x, v.y)}. ${v.what}.`);
+      // the fight slice's word on the shard's guard (playtest r1: the first elite came unannounced)
+      const guard = v.what === 'scripture shard' && GUARD_HINT[ELITE[Math.max(1, Math.min(3, zoneAt(v.x, v.y)))]];
+      if (guard) say(g, `  ${guard}`);
     }
     say(g, 'the card goes blank.');
   },

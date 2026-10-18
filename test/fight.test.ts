@@ -6,6 +6,7 @@ import { CHUNK, chunk } from '../src/core/grid';
 import { shots } from '../src/fight/shots';
 import { table } from '../src/fight/spawn';
 import type { Game } from '../src/core/types';
+import { deathInfo, lesson } from '../src/fight/death';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
 const run = (g: Game, s: number) => {
@@ -86,10 +87,10 @@ describe('fight', () => {
     const h = armed('mirror-ward');
     const m = spawnEnemy(h, 'mite', 9.5, 8.5);
     m.enemy!.hp = 5;
-    run(h, 0.2);
+    run(h, 0.6); // a mite rears for 0.4 s before it bites
     expect(h.player.hp).toBe(10);
     expect(m.enemy!.hp).toBe(4.5);
-    run(h, 2);
+    run(h, 2.4);
     expect(h.player.hp).toBe(9.5);
   });
 
@@ -142,5 +143,110 @@ describe('fight', () => {
     run(g, 10);
     expect(g.ents.filter((e) => e.enemy)).toHaveLength(0);
     expect(g.player.hp).toBeGreaterThan(5);
+  });
+});
+
+describe('fight r1: seeing the fight', () => {
+  it('the eye snaps to a foe that comes close, but not right after you turned yourself', () => {
+    const g = armed('stepper-relay');
+    g.player.dir = 0; // north
+    const m = spawnEnemy(g, 'mite', 10.5, 8.5); // east
+    m.enemy!.data.noticed = true;
+    run(g, 0.1);
+    expect(g.player.dir).toBeCloseTo(Math.PI / 2, 1);
+    const h = armed('stepper-relay');
+    exec(h, 'face n');
+    const n = spawnEnemy(h, 'mite', 10.5, 8.5);
+    n.enemy!.data.noticed = true;
+    run(h, 0.1);
+    expect(h.player.dir).toBeCloseTo(0, 5);
+  });
+
+  it('face takes the diagonals; shoot turns to the nearest foe; copies shorten the cooldown, not stack burst', () => {
+    const g = armed('stepper-relay', 'pinhole-eye', 'nail-psalm');
+    g.player.installed.push({ uid: g.nextId++, mod: 'nail-psalm', on: true, readyAt: 0, data: {} });
+    exec(g, 'face ne');
+    expect(g.player.dir).toBeCloseTo(Math.PI / 4, 5);
+    exec(g, 'face s');
+    const m = spawnEnemy(g, 'mite', 6.5, 6.5); // north-west, 2 cells each way
+    m.enemy!.hp = 9;
+    exec(g, 'shoot');
+    expect(g.player.dir).toBeCloseTo(-Math.PI / 4, 5);
+    expect(shots(g)).toHaveLength(1); // two psalms: one shot, a quicker cooldown
+    const psalms = g.player.installed.filter((i) => i.mod === 'nail-psalm');
+    expect(psalms.every((i) => Math.abs((i.data.readyAt as number) - g.t - 0.9 * 0.75) < 1e-6)).toBe(true);
+    exec(g, 'shoot');
+    expect(text(g)).toContain('still cooling');
+  });
+
+  it('warns once of an elite ahead and names a swarm when you listen', () => {
+    const g = armed('stepper-relay');
+    const w = spawnEnemy(g, 'warden', 8.5, 8.5 - 9);
+    w.enemy!.data.elite = true;
+    for (let k = 0; k < 4; k++) spawnEnemy(g, 'mite', 5.5 + k * 0.3, 8.5 + 9);
+    run(g, 0.2);
+    const t = text(g);
+    expect(t).toContain('the choir warden waits ahead, 9 cells n');
+    expect(t).toContain('a swarm of 4 mites ahead');
+    run(g, 0.5);
+    expect(text(g).split('waits ahead').length).toBe(2);
+    exec(g, 'listen');
+    expect(text(g)).toContain('something large, keeping time');
+    expect(text(g)).toContain('a swarm');
+  });
+
+  it('the warden draws breath, dashes, and reels when you step aside', () => {
+    const g = armed('stepper-relay');
+    const w = spawnEnemy(g, 'warden', 8.5, 5.5);
+    w.enemy!.data.noticed = true;
+    run(g, 0.1);
+    expect(text(g)).toContain('draws breath');
+    expect(w.enemy!.data.move).toBe('warden draws breath');
+    exec(g, 'go e 2');
+    run(g, 2);
+    expect(text(g)).toContain('reels');
+    expect(g.player.hp).toBe(10);
+  });
+
+  it('an elite back at its post with you gone is whole again', () => {
+    const g = armed('stepper-relay');
+    const w = spawnEnemy(g, 'abbot', 8.5, 8.5);
+    Object.assign(w.enemy!.data, { elite: true, post: [8.5, 8.5], maxHp: 16 });
+    w.enemy!.hp = 3;
+    g.player.x = 8.5 + 0; // inside the chamber, then far off
+    g.player.y = 8.5;
+    g.player.x = 30.5;
+    run(g, 0.2);
+    expect(w.enemy!.hp).toBe(16);
+    expect(text(g)).toContain('whole again');
+  });
+
+  it('a mite rears before it bites; the death card names who took you and what would have helped', () => {
+    const g = armed();
+    const m = spawnEnemy(g, 'mite', 9.5, 8.5);
+    m.enemy!.data.noticed = true;
+    run(g, 0.2);
+    expect(m.enemy!.data.windup).toBeGreaterThan(g.t);
+    expect(g.player.hp).toBe(10);
+    run(g, 0.4);
+    expect(g.player.hp).toBe(9.5);
+    g.player.hp = 0.2;
+    const w = spawnEnemy(g, 'warden', 7.5, 8.5);
+    w.enemy!.data.noticed = true;
+    run(g, 2);
+    expect(g.ended).toBe('dead');
+    const info = deathInfo(g);
+    expect(info.killer).toMatch(/took you/);
+    expect(info.blows.length).toBeGreaterThan(0);
+    expect(lesson(g).length).toBeGreaterThan(5);
+  });
+
+  it('taking a scripture shard is told big', () => {
+    const g = armed();
+    spawn(g, { kind: 'item', x: 9.5, y: 8.5, item: { kind: 'card', card: 'shard-1' } });
+    exec(g, 'take');
+    run(g, 0.1);
+    expect(text(g)).toContain('you take: scripture shard');
+    expect(text(g)).toContain('SCRIPTURE SHARD 1 of 3');
   });
 });
