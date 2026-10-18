@@ -1,0 +1,29 @@
+/* v2 flow (src/ui/bigmap.ts, goal.ts, door.ts): the big map, the goal line, the keeper's door */
+#bigmap { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 9200; background: var(--win); border: 1px solid var(--acc); box-shadow: 0 10px 40px #000d; max-width: calc(100vw - 32px); max-height: calc(100vh - 16px); overflow: auto; }
+#bigmap header { display: flex; align-items: baseline; gap: 4px; padding: 3px 8px; border-bottom: 1px solid var(--line); color: var(--dim); font-size: 16px; white-space: nowrap; }
+#bigmap header b { color: var(--fg); font-weight: normal; font-size: 20px; }
+#bigmap header button { margin-left: auto; padding: 0 4px; font-size: 22px; }
+#bigmap .body { padding: 6px 8px; }
+#bigmap canvas.map { display: block; }
+#bigmap .map-legend { max-width: none; }
+/* a map window's does line keeps to one line (the full text on hover), so the bigger map fits above the console */
+/* a map window drops its does line (it is the title's tooltip), so the 8 px map fits above the console at 720 */
+.win.fam-mind:has(canvas.map) .does { display: none; }
+.win canvas.map + .map-legend { width: 0; min-width: 100%; max-width: none; }
+/* v2r1 ux: tiles say they can be dragged */
+.win.panel-inv .cell:not(.socket), .win.panel-modules .cell:not(.socket) { cursor: grab; }
+/* the goal line, under the HUD and above the windows (windows.TOP) */
+.goal { position: fixed; top: 36px; left: 50%; transform: translateX(-50%); z-index: 8990; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; line-height: 16px; color: var(--t-body, var(--fg)); opacity: 0.85; pointer-events: none; }
+.goal[hidden] { display: none; }
+/* the keeper's door: a card in the middle, under the goal line */
+.door-card { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 8995; width: min(420px, calc(100vw - 32px)); padding: 6px 12px 8px; background: #0c0908f2; border: 1px solid #a03020; box-shadow: 0 8px 30px #000c; text-align: center; }
+.door-card[hidden] { display: none; }
+.door-card p { margin: 2px 0; }
+.door-card .door-k { font-size: 16px; color: var(--dim); letter-spacing: 1px; }
+.door-card .door-name { font-size: 26px; color: #ff8a6c; }
+.door-card .door-stats b { font-weight: normal; color: var(--fg); }
+.door-card .door-stats { color: var(--dim); }
+.door-card .door-hint { font-size: 16px; color: var(--t-body, var(--fg)); opacity: 0.85; }
+.door-card .door-verdict.ok { color: var(--good, #8fd080); }
+.door-card .door-verdict.no { color: #ffcf5a; }
+.door-card .door-btns { display: flex; gap: 14px; justify-content: center; margin-top: 4px; }

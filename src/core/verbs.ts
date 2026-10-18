@@ -114,7 +114,7 @@ export function addItem(g: Game, it: Item): void {
 /** verbs help and the actions bar never list (test runs only) */
 const HIDDEN = new Set(['conjure']);
 /** verbs a key does (t, p): help lists them, the actions bar does not */
-const KEYED = new Set(['tidy', 'pause']);
+const KEYED = new Set(['tidy', 'pause', 'map']);
 
 verb('help', {
   help: 'the goal, the keys and what you can do: help, help go',
@@ -132,7 +132,8 @@ verb('help', {
       ['help <verb> tells one: ', { text: 'help go', cmd: 'help go' }],
       'the goal: go down. four floors, each with a keeper in the room before its stairs: kill it, then descend.',
       'under the furnace lies the heart. kill its keeper and the god thaws. a memory card points the way down.',
-      'keys: arrows or wasd walk · q e turn · t tidies windows · p pauses · 1-4 setups · esc leaves the console, enter comes back',
+      'drag a module from the inventory onto the modules grid to install it, or onto an installed one to swap the two.',
+      'keys: arrows or wasd walk · q e turn · m big map · t tidies windows · p pauses · 1-4 setups · esc leaves the console, enter comes back',
     );
   },
 });

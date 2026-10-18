@@ -7,7 +7,8 @@
 import { active, def, label, param, slotsUsed } from '../core/mods';
 import { cells, dist, say, tickHooks } from '../core/game';
 import { canRead, carriesReader } from '../world/vectors';
-import { bossDown, FLOORS, floorOf, LAST, STAIRS, stairsAt } from '../world/floors';
+import { bossDown, floorAt, FLOORS, floorOf, LAST, STAIRS, stairsAt } from '../world/floors';
+import { atDoor, doorOf, keeperCheck, keeperLine } from './door';
 import { lightest, makeRoom } from '../body';
 import { DIRS, open } from '../core/grid';
 import { VERBS, verb, way } from '../core/verbs';
@@ -81,7 +82,11 @@ if (go)
 
 function toward(g: Game, mod: string, sound: string): Line | null {
   const p = g.player;
-  const e = g.ents.find((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === mod && !e.data?.mimic);
+  // v2r1 pace: a second card reader lies about as loot; the one with the card beside it comes first
+  const card = (e: Entity) => g.ents.some((o) => o.item?.kind === 'card' && dist(o, e) < 1);
+  const e = g.ents
+    .filter((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === mod && !e.data?.mimic)
+    .sort((a, b) => +card(b) - +card(a) || dist(a, p) - dist(b, p))[0];
   // playtest r3: one you wear counts too (it pointed at a second dawn eye)
   if (!e || [...p.inv, ...p.installed].some((i) => 'mod' in i && i.mod === mod)) return null;
   return toCell(g, e.x, e.y, sound);
@@ -115,11 +120,13 @@ const hintLines = (g: Game) => {
   const shop = cradleShop(g);
   return [
     toward(g, 'dawn-eye', 'the dawn eye glints, waiting for a socket'),
-    toward(g, 'card-reader', 'a card reader ticks, waiting for a card'),
+    // v2r1 ux: "ticks, waiting for a card" read as a machine you needed a card for; it is a pickup, with the card
+    toward(g, 'card-reader', 'a card reader and a memory card lie together (take both, then read the card)'),
     shop ? toCell(g, shop.x, shop.y, 'glass doors chime: a reliquary keeps an eye for hidden things', 'buy') : null,
   ].filter((l): l is Line => !!l);
 };
 
+const toldDrag = new WeakSet<Game>();
 // playtest r3: the take line named `read card` as plain text in a burst; a skimmer never read the card
 const take = VERBS.take;
 if (take)
@@ -127,7 +134,13 @@ if (take)
     ...take,
     run(g, args) {
       const had = g.player.inv.filter((i) => i.kind === 'card' || (i.kind === 'mod' && i.mod === 'card-reader')).length;
+      const mods = g.player.inv.filter((i) => i.kind === 'mod').length;
       take.run(g, args);
+      // v2r1 ux: dragging was never taught; the first module you pick up says it once
+      if (g.player.inv.filter((i) => i.kind === 'mod').length > mods && !toldDrag.has(g)) {
+        toldDrag.add(g);
+        say(g, 'drag it from the inventory onto the modules grid to install it, or onto an installed module to swap the two. a click works too.');
+      }
       const now = g.player.inv.filter((i) => i.kind === 'card' || (i.kind === 'mod' && i.mod === 'card-reader')).length;
       const read = VERBS.read;
       if (now > had && g.player.inv.some((i) => i.kind === 'card') && read && canRead(g))
@@ -195,10 +208,18 @@ function wayDown(g: Game): Line {
   if (f === LAST) return bossDown(g) ? ['the heart is still.'] : [`the heart's keeper waits in the arena, north. kill it and the god thaws.`];
   const name = STAIRS[FLOORS[f].stairs!].name;
   if (bossDown(g)) return toCell(g, sx, sy, `${name} is open`, 'descend');
-  if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`)) return toCell(g, sx, sy, `the way down, ${name}, past its keeper`, 'help descend');
+  // v2r1: it stops at the keeper's door and weighs you, instead of walking you in (src/tune/door.ts)
+  if (atDoor(g)) return keeperLine(g, f).flat();
+  const door = doorOf(g, f);
+  if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`))
+    return door ? toCell(g, door.x, door.y, `the keeper's door; the way down, ${name}, lies past it`, 'where') : toCell(g, sx, sy, `the way down, ${name}, past its keeper`, 'help descend');
   const p = g.player;
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(sx - p.x, -(sy - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8];
-  return [`the way down lies somewhere ${word}, past its keeper. a memory card points to it.`];
+  // v2r1 ux: on floor 2 "a memory card points to it" gave no direction and no card: name a card lying on
+  // this floor, and give a first leg the rough way
+  const card = g.ents.filter((e) => e.kind === 'item' && e.item?.kind === 'card' && floorAt(e.x) === f).sort((a, b) => dist(a, p) - dist(b, p))[0];
+  if (card && dist(card, p) < 60) return toCell(g, card.x, card.y, `the way down is not seen yet (somewhere ${word}, past its keeper); a memory card that points to it lies`);
+  return toCell(g, sx, sy, `the way down is not seen yet; it lies past its keeper, roughly`, 'where');
 }
 
 /** r5: a carried reader with no bone looped (read card: wants a bone; where: read card). The ways out,
@@ -227,3 +248,21 @@ if (read)
       if (g.log.slice(n).some((l) => l.some((s) => (typeof s === 'string' ? s : s.text).includes('bone to read by')))) say(g, readFix(g));
     },
   };
+
+/** v2r1 ux: the goal, one line, always on screen under the HUD (src/ui/goal.ts): "floor 2: find the way
+ *  down (stairs: unknown / NE)". The same facts `where` uses */
+export function goalLine(g: Game): string {
+  const p = g.player;
+  const f = floorOf(g);
+  const n = `floor ${f + 1}`;
+  if (!p.installed.some((i) => def(i).family === 'gait')) return `${n}: install your kit (drag it onto the modules grid, or install all)`;
+  if (f === LAST) return bossDown(g) ? 'the heart is still.' : `${n}: the heart. kill its keeper, north, and the god thaws`;
+  const [sx, sy] = stairsAt(g.seed, f);
+  const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(sx - p.x, -(sy - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8].toUpperCase();
+  const name = STAIRS[FLOORS[f].stairs!].name;
+  const far = cells(Math.round(Math.hypot(sx - p.x, sy - p.y)));
+  if (bossDown(g)) return `${n}: ${name} is open, ${far} ${word}: descend`;
+  if (atDoor(g, 2.5)) return `${n}: the keeper's door. ${keeperCheck(g, f).ready ? 'you look ready' : 'you are not ready: where says why'}`;
+  if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`)) return `${n}: get past the keeper to the way down (stairs: ${name}, ${far} ${word})`;
+  return `${n}: find the way down (stairs: unknown / ${word})`;
+}

@@ -14,8 +14,7 @@ import { MODS } from '../core/mods';
 import { know, markAt, thinWall } from '../sight/know';
 import { does } from '../mods/describe';
 import type { Game } from '../core/types';
-import { mapCell, mapHooks } from '../world/mind';
-import { refit } from './windows';
+import { mapHooks } from '../world/mind';
 
 const ACC = '#f0a050';
 /** the hint targets still lying out there: the dawn eye and the card reader until you hold one */
@@ -86,28 +85,14 @@ function hover(c: HTMLCanvasElement): void {
   legend.innerHTML = detail
     ? `<i style="color:${ACC}">◆</i> hints · <i style="color:#b0f080">◇</i> finds · <i class="hatch"></i> unsure · <i style="color:#ffd070">●</i> marks · `
     : `<i style="color:${ACC}">◆</i> hints · <i class="hatch"></i> unsure · <i>?</i> marks · `;
+  // v2r1 ux: zoom refitted the map into the window flow ("no room to zoom" at 720, or it docked itself);
+  // the big map opens over the middle of the screen instead (src/ui/bigmap.ts)
   const zoom = document.createElement('button');
-  const big = () => mapCell.zoom ?? innerHeight >= 900;
-  zoom.textContent = big() ? 'smaller' : 'zoom';
-  addEventListener('resize', () => (zoom.textContent = big() ? 'smaller' : 'zoom'));
-  const label = () => document.querySelectorAll<HTMLButtonElement>('.map-legend .zoom').forEach((b) => (b.textContent = big() ? 'smaller' : 'zoom'));
+  const inBig = !!c.closest('#bigmap');
+  zoom.textContent = inBig ? 'close (m)' : 'big map (m)';
   zoom.className = 'zoom';
-  zoom.addEventListener('click', () => {
-    mapCell.zoom = !big();
-    label();
-    // the map redraws at its new size next frame; then it moves off anything it now covers, docking
-    // lower windows if it must; with no room even so, it goes back to the smaller size (playtest r2:
-    // the zoomed map grew over the console)
-    const win = c.closest<HTMLElement>('.win');
-    if (win)
-      setTimeout(() => {
-        if (refit(win)) return;
-        mapCell.zoom = !big();
-        label();
-        zoom.textContent = 'no room to zoom';
-        setTimeout(label, 1500);
-      }, 100);
-  });
+  zoom.title = inBig ? 'close the big map' : 'the whole map, big, in the middle of the screen';
+  zoom.addEventListener('click', () => (window as unknown as { thaw: { send(c: string): void } }).thaw.send('map'));
   const where = document.createElement('button');
   where.textContent = 'where';
   where.title = 'where the hints point, again';

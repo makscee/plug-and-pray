@@ -146,6 +146,7 @@ addEventListener(
     if (k === 'q' || k === 'e') turn(g, k === 'q' ? -1 : 1);
     else if (k === 't') tidy();
     else if (k === 'p') togglePause();
+    else if (k === 'm') thaw().send('map');
     else if (k >= '1' && k <= '4') {
       const name = Object.keys(setupsOf(g))[Number(k) - 1];
       thaw().send(name ? `setup ${name}` : 'setup');

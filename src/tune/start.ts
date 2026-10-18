@@ -6,7 +6,7 @@ import { dist, say, tickHooks } from '../core/game';
 import { open } from '../core/grid';
 import type { Game } from '../core/types';
 import { verb } from '../core/verbs';
-import { origin } from '../world/floors';
+import { bossAt, origin } from '../world/floors';
 
 export const KIT = ['pinhole-eye', 'stepper-relay', 'map-spool', 'spark-finger'];
 
@@ -28,8 +28,27 @@ export function clean(g: Game): void {
   g.player.inv = [];
 }
 
-/** home is where you landed on this floor (src/world/floors.ts) */
-const home = (g: Game): [number, number] => origin(g.floor ?? 0);
+/** v2r1 pace: the last quiet spot on this floor: no foe within 8 cells for 3 s and clear of the keeper's
+ *  room; unstuck folds you there, not back to the landing (a retreat cost 60-90 s of walking back) */
+const quiet = new WeakMap<Game, { since: number; at: [number, number] | null; floor: number }>();
+tickHooks.push((g) => {
+  const p = g.player;
+  const f = g.floor ?? 0;
+  let q = quiet.get(g);
+  if (!q || q.floor !== f) quiet.set(g, (q = { since: g.t, at: null, floor: f }));
+  const [bx, by] = bossAt(g.seed, f);
+  const calm = !g.ents.some((e) => e.enemy && dist(e, p) < 8) && Math.hypot(bx - p.x, by - p.y) > 12 && open(g, p.x, p.y);
+  if (!calm) q.since = g.t;
+  else if (g.t - q.since >= 3) q.at = [Math.floor(p.x) + 0.5, Math.floor(p.y) + 0.5];
+});
+
+/** home is the last quiet spot on this floor, else where you landed on it (src/world/floors.ts) */
+const home = (g: Game): [number, number] => {
+  const q = quiet.get(g);
+  // standing at it already (lost in a quiet place): the landing, as before
+  const ok = q?.floor === (g.floor ?? 0) && q.at && Math.hypot(q.at[0] - g.player.x, q.at[1] - g.player.y) > 4;
+  return ok ? q!.at! : origin(g.floor ?? 0);
+};
 const homing = new WeakMap<Game, number>();
 
 /** the nearest open cell centre to (x, y), searching rings out to r */
@@ -45,7 +64,7 @@ function nearestOpen(g: Game, x: number, y: number, r = 4): [number, number] | n
 }
 
 verb('unstuck', {
-  help: 'stuck or lost? unstuck: out of a wall, else home to where you landed on this floor (3 s with a foe on you)',
+  help: 'stuck or lost? unstuck: out of a wall, else back to the last quiet spot on this floor (3 s with a foe on you)',
   run(g) {
     const p = g.player;
     p.path = [];
@@ -61,7 +80,7 @@ verb('unstuck', {
     // lost: home at once when nothing is on you (playtest r2 pace); cornered: 3 s
     const close = g.ents.some((e) => e.enemy && dist(e, p) < 2);
     homing.set(g, g.t + (close ? 3 : 0));
-    say(g, close ? 'you fold up and let the god\'s veins carry you home. 3 s.' : 'you fold up and let the god\'s veins carry you home.');
+    say(g, close ? 'you fold up and let the god\'s veins carry you back to where it was quiet. 3 s.' : 'you fold up and let the god\'s veins carry you back to where it was quiet.');
   },
 });
 
@@ -73,5 +92,5 @@ tickHooks.push((g) => {
   [p.x, p.y] = home(g);
   p.path = [];
   p.move = null;
-  say(g, 'you wake where you woke. the chamber is quiet.');
+  say(g, 'you unfold where it was quiet.');
 });
