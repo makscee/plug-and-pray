@@ -2,12 +2,14 @@
 // inventory (a grid of icons), and what lies nearby (rows with icons). Click a cell in a grid: a detail
 // pane under it shows what the thing does and its buttons; double-click installs (or switches on/off).
 // A panel redraws only when what it shows changes. They stack down the right edge until dragged away.
+// v2: tiles drag (inventory → modules installs, modules → inventory takes out, within a grid reorders), a
+// module that takes two slots spans two cells, and a tile's border shows its rarity.
 
 import { dist, itemName, reach } from '../core/game';
 import { Cell, cell, veinOf } from '../core/grid';
-import { def, label, powerMax, powerUsed, working } from '../core/mods';
+import { def, label, powerMax, powerUsed, size, slotsUsed, working } from '../core/mods';
 import { instRef, VERBS } from '../core/verbs';
-import type { Game, Item, Roll } from '../core/types';
+import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { costs, does } from '../mods/describe';
 import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear } from '../world/printer';
@@ -33,10 +35,19 @@ interface GridCell {
   mod?: string;
   /** greyed: it cannot be installed now */
   dim?: boolean;
+  /** cells it spans: the slots it takes */
+  span?: number;
+  /** rarity (modules only): common, fine, rare, unique */
+  rar?: string;
+  /** it can be dragged */
+  drag?: boolean;
 }
 interface Detail {
   icon: Of;
   title: string;
+  rar?: string;
+  /** a unique's own name, under its title */
+  sub?: string;
   lines: string[];
   buttons: Btn[];
 }
@@ -47,6 +58,7 @@ interface Row {
   tip?: string;
   buttons: Btn[];
   dim?: boolean;
+  rar?: string;
 }
 
 const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].when!(g));
@@ -65,6 +77,26 @@ export function pips(used: number, max: number): string {
 }
 
 const modLines = (m: { mod: string; roll?: Roll }) => [does(m), costs(m), def(m).text];
+/** a module's rarity and a unique's own name (src/core/types.ts, from the rarity pass; common when absent) */
+const rarOf = (m: object): string => (m as { rarity?: string }).rarity ?? 'common';
+const titleOf = (m: object): string | undefined => (m as { title?: string }).title;
+
+/** the install (or swap in) button for a carried module, and why it is greyed */
+export function installBtn(g: Game, it: Item & { kind: 'mod' }): Btn {
+  const p = g.player;
+  const d = def(it);
+  const free = slotsUsed(g) + size(it) <= p.slots;
+  const spare = powerMax(g) - powerUsed(g);
+  // playtest r3: a full board greyed install out; it offers the swap, saying what gives way
+  const room = !free || d.power > spare ? makeRoom(g, it, false) : null;
+  const out = room && typeof room !== 'string' && room.remove ? [room.remove, ...(room.more ?? [])] : [];
+  const gives = room && typeof room !== 'string' ? [...out.map((o) => `takes out ${label(o)}`), ...room.off.map((o) => `turns off ${label(o)}`)].join(', ') : '';
+  const left = p.slots - slotsUsed(g);
+  return room && typeof room !== 'string' ? { label: 'swap in', cmd: `swap in ${label(it)}`, note: gives || 'swap in' }
+    : !free ? { label: 'install', note: size(it) > 1 ? `it takes ${size(it)} slots, ${left} free: printers sell slots` : 'no free slot: printers sell slots' }
+    : d.power > spare ? { label: 'install', cmd: `install ${label(it)}`, note: `it stays off: needs ${d.power}⚡︎, ${spare} free` }
+    : { label: 'install', cmd: `install ${label(it)}` };
+}
 
 export class Panels {
   g: Game;
@@ -72,12 +104,22 @@ export class Panels {
   keys = new Map<string, string>();
   /** the selected cell per panel */
   sel = new Map<string, string>();
+  /** the inventory's items by cell, for a drop */
+  items = new Map<string, Item>();
+  /** a tile being dragged: from which grid, which cell, where it started, its ghost once it moves */
+  drag: { id: string; key: string; x0: number; y0: number; dx: number; dy: number; ghost?: HTMLElement; from?: DOMRect } | null = null;
+  /** a drag just ended: the click it ends in is not a click */
+  dragged = false;
 
   constructor(g: Game, send: Send) {
     this.g = g;
     this.send = send;
     for (const [id, title] of [['modules', 'modules'], ['inv', 'inventory'], ['near', 'nearby']])
       windows.open(id, title, [innerWidth - PANEL_W - 16, windows.TOP]).el.classList.add('panel', 'panel-' + id);
+    addEventListener('pointermove', (e) => this.dragMove(e));
+    addEventListener('pointerup', (e) => this.dragEnd(e));
+    addEventListener('pointercancel', () => this.dragEnd(null));
+    addEventListener('click', (e) => this.dragged && (e.stopPropagation(), e.preventDefault()), true);
   }
 
   frame(): void {
@@ -92,7 +134,7 @@ export class Panels {
 
   head(g: Game): string {
     const p = g.player;
-    return `<div class="res-row"><span>slots ${p.installed.length}/${p.slots}</span>${pips(p.installed.length, p.slots)}</div>` +
+    return `<div class="res-row"><span>slots ${slotsUsed(g)}/${p.slots}</span>${pips(slotsUsed(g), p.slots)}</div>` +
       `<div class="res-row"><span>power ${powerUsed(g)}/${powerMax(g)}</span>${pips(powerUsed(g), powerMax(g))}</div>`;
   }
 
@@ -120,15 +162,17 @@ export class Panels {
     const p = g.player;
     const cells: GridCell[] = p.installed.map((i) => {
       const state = !i.on ? 'off' : working(g, i) ? 'on' : 'warm';
-      return { sel: 'u' + i.uid, icon: { mod: i.mod, roll: i.roll }, title: `${label(i)} · ${state}`, state, mod: i.mod, dbl: `${i.on ? 'off' : 'on'} ${instRef(g, i)}` };
+      return { sel: 'u' + i.uid, icon: { mod: i.mod, roll: i.roll }, title: `${label(i)} · ${state}`, state, mod: i.mod, dbl: `${i.on ? 'off' : 'on'} ${instRef(g, i)}`, span: size(i), rar: rarOf(i), drag: true };
     });
-    for (let k = p.installed.length; k < p.slots; k++) cells.push({ sel: 'empty' + k, title: 'an empty socket' });
+    for (let k = slotsUsed(g); k < p.slots; k++) cells.push({ sel: 'empty' + k, title: 'an empty socket' });
     const s = this.sel.get('modules');
     const inst = p.installed.find((i) => 'u' + i.uid === s);
     if (!inst) return [cells, null];
     return [cells, {
       icon: { mod: inst.mod, roll: inst.roll },
       title: label(inst),
+      rar: rarOf(inst),
+      sub: titleOf(inst),
       lines: [!inst.on ? 'off' : working(g, inst) ? 'on' : 'warming up', ...modLines(inst)],
       buttons: [{ label: inst.on ? 'off' : 'on', cmd: `${inst.on ? 'off' : 'on'} ${instRef(g, inst)}` }, { label: 'remove', cmd: `remove ${instRef(g, inst)}` }],
     }];
@@ -136,8 +180,7 @@ export class Panels {
 
   inv(g: Game): [GridCell[], Detail | null] {
     const p = g.player;
-    const free = p.installed.length < p.slots;
-    const spare = powerMax(g) - powerUsed(g);
+    this.items.clear();
     const seen = new Map<string, number>();
     const cells: GridCell[] = [];
     let detail: Detail | null = null;
@@ -147,36 +190,30 @@ export class Panels {
       const n = (seen.get(name) ?? 0) + 1;
       seen.set(name, n);
       const sel = `${name}#${n}`;
+      this.items.set(sel, it);
       const drop: Btn = { label: 'drop', cmd: `drop ${dropName(it)}` };
       let c: GridCell;
       let buttons: Btn[];
       let lines: string[];
       if (it.kind === 'mod') {
-        const d = def(it);
-        // playtest r3: a full board greyed install out; it offers the swap, saying what gives way
-        const room = !free || d.power > spare ? makeRoom(g, it, false) : null;
-        const gives = room && typeof room !== 'string' ? [...(room.remove ? [`takes out ${label(room.remove)}`] : []), ...room.off.map((o) => `turns off ${label(o)}`)].join(', ') : '';
-        const install: Btn = room && typeof room !== 'string' ? { label: 'swap in', cmd: `swap in ${label(it)}`, note: gives || 'swap in' }
-          : !free ? { label: 'install', note: 'no free slot: printers sell slots' }
-          : d.power > spare ? { label: 'install', cmd: `install ${label(it)}`, note: `it stays off: needs ${d.power}⚡︎, ${spare} free` }
-          : { label: 'install', cmd: `install ${label(it)}` };
+        const install = installBtn(g, it);
         const scrap = scrapOf(it);
         const recycle: Btn = Object.keys(scrap).length ? { label: 'recycle', cmd: `recycle ${label(it)}`, note: `recycle: ${fmt(scrap)}` } : { label: 'recycle', note: 'it will not break' };
         buttons = [install, { label: '?', cmd: `info ${label(it)}` }, recycle, drop];
         lines = modLines(it);
-        c = { sel, icon: it, title: `${label(it)} · ${does(it)}`, mod: it.mod, dbl: install.cmd, dim: !free };
+        c = { sel, icon: it, title: `${label(it)} · ${does(it)}`, mod: it.mod, dbl: install.cmd, dim: slotsUsed(g) + size(it) > p.slots, span: size(it), rar: rarOf(it), drag: true };
       } else if (it.kind === 'card') {
         const scripture = !it.card.startsWith('log');
         buttons = [ok(g, 'read') ? { label: 'read', cmd: 'read card' } : { label: 'read', note: 'needs a card reader' }, drop];
         lines = [scripture ? 'a shard of scripture. read it to learn where the engine lies.' : 'a machine\'s last log. read it: it points somewhere.'];
-        c = { sel, icon: it, title: 'memory card', dbl: ok(g, 'read') ? 'read card' : undefined };
+        c = { sel, icon: it, title: 'memory card', dbl: ok(g, 'read') ? 'read card' : undefined, drag: true };
       } else {
         buttons = [drop];
         lines = [`${it.n} ${it.res}. printers, reliquaries and altars take it.`];
-        c = { sel, icon: it, title: `${it.res} ×${it.n}`, badge: String(it.n) };
+        c = { sel, icon: it, title: `${it.res} ×${it.n}`, badge: String(it.n), drag: true };
       }
       cells.push(c);
-      if (sel === s) detail = { icon: it, title: it.kind === 'res' ? `${it.res} ×${it.n}` : c.title.split(' · ')[0], lines, buttons };
+      if (sel === s) detail = { icon: it, title: it.kind === 'res' ? `${it.res} ×${it.n}` : c.title.split(' · ')[0], lines, buttons, ...(it.kind === 'mod' ? { rar: rarOf(it), sub: titleOf(it) } : {}) };
     }
     return [cells, detail];
   }
@@ -192,6 +229,7 @@ export class Panels {
         icon: it,
         name: it.kind === 'mod' ? label(it) : itemName(it),
         tip: it.kind === 'mod' ? `${does(it)}\n${costs(it)}` : undefined,
+        rar: it.kind === 'mod' ? rarOf(it) : undefined,
         buttons: [...(it.kind === 'mod' ? [{ label: '?', cmd: `info ${label(it)}` }] : []), { label: 'take', cmd: `take ${itemName(it)}` }],
       });
     }
@@ -204,7 +242,7 @@ export class Panels {
         if (!it || it.kind !== 'mod') return void rows.push({ name: `${k + 1}. sold`, buttons: [], dim: true });
         const price = priceAt(shop, k, it);
         rows.push({
-          icon: it, name: label(it), tip: `${does(it)}\n${costs(it)}`,
+          icon: it, name: label(it), tip: `${does(it)}\n${costs(it)}`, rar: rarOf(it),
           buttons: [{ label: '?', cmd: `info ${label(it)}` }, affords(g, price) ? { label: 'buy', cmd: `buy ${k + 1}`, note: fmt(price) } : { label: 'buy', note: `${fmt(price)}: short` }],
         });
       });
@@ -232,11 +270,136 @@ export class Panels {
     return rows.length ? rows : [{ name: 'nothing here.', buttons: [], dim: true }];
   }
 
+  // ---- drag and drop (v2 asks): a tile lifts once the pointer moves 5 px; a click stays a click
+
+  dragMove(e: PointerEvent): void {
+    const d = this.drag;
+    if (!d) return;
+    if (!d.ghost) {
+      if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 5) return;
+      const src = windows.get(d.id)?.body.querySelector<HTMLElement>(`.cell[data-key="${CSS.escape(d.key)}"]`);
+      if (!src) return void (this.drag = null);
+      d.from = src.getBoundingClientRect();
+      const ghost = src.cloneNode(true) as HTMLElement;
+      ghost.classList.remove('sel', 'lifted');
+      ghost.classList.add('drag-ghost');
+      ghost.style.width = d.from.width + 'px';
+      ghost.style.height = d.from.height + 'px';
+      document.body.append(ghost);
+      d.ghost = ghost;
+      document.body.classList.add('dragging');
+      this.keys.delete(d.id);
+      this.frame();
+    }
+    d.ghost.style.left = e.clientX - d.dx + 'px';
+    d.ghost.style.top = e.clientY - d.dy + 'px';
+    // the grid under the pointer lights up: green where it goes, red where it cannot
+    const at = this.dropAt(e.clientX, e.clientY);
+    const why = at ? this.dropWhy(d.id, d.key, at.id) : null;
+    for (const id of ['modules', 'inv']) {
+      const g = windows.get(id)?.body.querySelector('.grid');
+      g?.classList.toggle('drop-ok', at?.id === id && why === null);
+      g?.classList.toggle('drop-no', at?.id === id && why !== null);
+    }
+  }
+
+  dragEnd(e: PointerEvent | null): void {
+    const d = this.drag;
+    this.drag = null;
+    if (!d?.ghost) return;
+    this.dragged = true;
+    setTimeout(() => (this.dragged = false));
+    document.body.classList.remove('dragging');
+    for (const g of document.querySelectorAll('.win.panel .grid')) g.classList.remove('drop-ok', 'drop-no');
+    const at = e && this.dropAt(e.clientX, e.clientY);
+    const why = at ? this.dropWhy(d.id, d.key, at.id) : '';
+    if (at && why === null) {
+      d.ghost.remove();
+      this.drop(d.id, d.key, at.id, at.key);
+    } else {
+      // it snaps back, saying why
+      if (why && e) this.toast(why, e.clientX, e.clientY);
+      const g = d.ghost;
+      g.classList.add('snap');
+      g.style.left = d.from!.left + 'px';
+      g.style.top = d.from!.top + 'px';
+      setTimeout(() => g.remove(), 180);
+    }
+    this.keys.delete(d.id);
+    this.frame();
+  }
+
+  /** the grid panel under a point, and the cell (its key) if over one */
+  dropAt(x: number, y: number): { id: string; key?: string } | null {
+    for (const id of ['modules', 'inv']) {
+      const w = windows.get(id);
+      if (!w || w.el.classList.contains('min')) continue;
+      const r = w.el.getBoundingClientRect();
+      if (x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+      const cellEl = document.elementFromPoint(x, y)?.closest<HTMLElement>('.cell');
+      return { id, key: cellEl && w.el.contains(cellEl) ? cellEl.dataset.key : undefined };
+    }
+    return null;
+  }
+
+  /** why a tile cannot go there (null: it can) */
+  dropWhy(from: string, key: string, to: string): string | null {
+    if (from === to) return null;
+    if (from === 'modules') return this.instOf(key) ? null : 'it is gone';
+    const it = this.items.get(key);
+    if (!it || !this.g.player.inv.includes(it)) return 'it is gone';
+    if (it.kind !== 'mod') return 'only modules go in sockets';
+    const b = installBtn(this.g, it);
+    return b.cmd ? null : b.note ?? 'it will not go in';
+  }
+
+  instOf(key: string): Inst | undefined {
+    return this.g.player.installed.find((i) => 'u' + i.uid === key);
+  }
+
+  /** a drop: install, take out, or reorder within a grid */
+  drop(from: string, key: string, to: string, onto?: string): void {
+    const p = this.g.player;
+    if (from === 'inv' && to === 'modules') {
+      const it = this.items.get(key) as Item & { kind: 'mod' };
+      // the command finds the first carried one by name: this one goes first among its namesakes
+      const k = p.inv.indexOf(it);
+      const first = p.inv.findIndex((o) => o.kind === 'mod' && label(o) === label(it));
+      if (first >= 0 && first < k) [p.inv[first], p.inv[k]] = [p.inv[k], p.inv[first]];
+      const b = installBtn(this.g, it);
+      return this.send(b.cmd!);
+    }
+    if (from === 'modules' && to === 'inv') {
+      const inst = this.instOf(key);
+      if (inst) this.send(`remove ${instRef(this.g, inst)}`);
+      return;
+    }
+    // within a grid: it moves to the tile it was dropped on (the end, on empty space)
+    const list: (Item | Inst)[] = to === 'inv' ? p.inv : p.installed;
+    const a = to === 'inv' ? this.items.get(key) : this.instOf(key);
+    const b = onto ? (to === 'inv' ? this.items.get(onto) : this.instOf(onto)) : undefined;
+    if (!a || a === b || !list.includes(a)) return;
+    // onto a later tile it lands after it, onto an earlier one before it: either way, at its index
+    const at = b && list.includes(b) ? list.indexOf(b) : list.length - 1;
+    list.splice(list.indexOf(a), 1);
+    list.splice(at, 0, a);
+  }
+
+  toast(text: string, x: number, y: number): void {
+    const t = document.createElement('div');
+    t.className = 'drag-why';
+    t.textContent = text;
+    t.style.left = Math.max(8, Math.min(innerWidth - 268, x - 130)) + 'px';
+    t.style.top = Math.max(8, y - 44) + 'px';
+    document.body.append(t);
+    setTimeout(() => t.remove(), 2400);
+  }
+
   /** a grid panel: head, cells, then the selected cell's detail */
   grid(id: string, cells: GridCell[], detail: Detail | null, head = '', empty = '', setups: Btn[] = []): void {
     const w = windows.get(id);
     if (!w) return;
-    const k = head + JSON.stringify([cells, detail, empty, setups]) + (this.sel.get(id) ?? '');
+    const k = head + JSON.stringify([cells, detail, empty, setups]) + (this.sel.get(id) ?? '') + (this.drag?.ghost && this.drag.id === id ? this.drag.key : '');
     if (this.keys.get(id) === k) return;
     this.keys.set(id, k);
     // a selection whose thing is gone clears
@@ -267,11 +430,27 @@ export class Panels {
     gridEl.className = 'grid';
     for (const c of cells) {
       const b = document.createElement('button');
-      b.className = 'cell' + (c.icon ? '' : ' socket') + (c.state ? ' st-' + c.state : '') + (c.dim ? ' dim' : '') + (this.sel.get(id) === c.sel ? ' sel' : '');
+      b.className = 'cell' + (c.icon ? '' : ' socket') + (c.state ? ' st-' + c.state : '') + (c.dim ? ' dim' : '') + (this.sel.get(id) === c.sel ? ' sel' : '') +
+        (c.rar ? ' rar-' + c.rar : '') + (c.span && c.span > 1 ? ' wide' : '') + (this.drag?.ghost && this.drag.id === id && this.drag.key === c.sel ? ' lifted' : '');
       b.title = c.title;
       b.dataset.key = c.sel;
       if (c.mod) b.dataset.mod = c.mod;
-      if (c.icon) b.append(img(c.icon, SCALE));
+      // a module that takes n slots is one tile n cells wide, with a pip per slot under its icon
+      if (c.span && c.span > 1) {
+        b.style.gridColumn = `span ${c.span}`;
+        b.style.width = `${c.span * 36 + (c.span - 1) * 4}px`;
+      }
+      if (c.icon) {
+        const i = img(c.icon, SCALE);
+        i.draggable = false;
+        b.append(i);
+      }
+      if (c.span && c.span > 1) {
+        const s = document.createElement('span');
+        s.className = 'span-pips';
+        s.innerHTML = '<b></b>'.repeat(c.span);
+        b.append(s);
+      }
       if (c.badge) {
         const s = document.createElement('span');
         s.className = 'badge';
@@ -286,6 +465,11 @@ export class Panels {
           this.frame();
         });
         if (c.dbl) b.addEventListener('dblclick', () => this.send(c.dbl!));
+        if (c.drag) b.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0) return;
+          const r = b.getBoundingClientRect();
+          this.drag = { id, key: c.sel, x0: e.clientX, y0: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top };
+        });
       } else b.disabled = true;
       gridEl.append(b);
     }
@@ -301,10 +485,17 @@ export class Panels {
     top.className = 'dtop';
     top.append(img(d.icon, 3));
     const t = document.createElement('span');
-    t.className = 'name';
+    t.className = 'name' + (d.rar ? ' rar-' + d.rar : '');
     t.textContent = d.title;
     top.append(t);
     el.append(top);
+    // its rarity under the name, and a unique's own name
+    if (d.rar && (d.rar !== 'common' || d.sub)) {
+      const r = document.createElement('div');
+      r.className = 'rar-line rar-' + d.rar;
+      r.textContent = d.rar + (d.sub && !d.title.includes(d.sub) ? ` · ${d.sub}` : '');
+      el.append(r);
+    }
     d.lines.forEach((l, k) => {
       const p = document.createElement('div');
       p.className = k === d.lines.length - 1 && d.lines.length > 2 ? 'flavour-line' : 'does';
@@ -353,7 +544,7 @@ export class Panels {
       if (r.icon) row.append(img(r.icon, SCALE));
       if (r.name) {
         const s = document.createElement('span');
-        s.className = 'name';
+        s.className = 'name' + (r.rar ? ' rar-' + r.rar : '');
         s.textContent = r.name;
         if (r.tip) s.title = r.tip;
         row.append(s);

@@ -4,7 +4,7 @@
 // Playtest r1: those buttons, listen's and a `go` into a wall all follow the pilot's pathfinder over
 // open floor, so a button walks the first straight leg of a real way there, never into a wall.
 
-import { active, def, label, param } from '../core/mods';
+import { active, def, label, param, slotsUsed } from '../core/mods';
 import { cells, dist, say, tickHooks } from '../core/game';
 import { canRead, carriesReader } from '../world/vectors';
 import { bossDown, FLOORS, floorOf, LAST, STAIRS, stairsAt } from '../world/floors';
@@ -180,7 +180,7 @@ function after(g: Game): Line[] {
   if (v) out.push(toCell(g, v.x, v.y, `the ${v.what}`));
   // a loose module of a kind you don't wear yet (a pinhole swapped out for the dawn eye is no reason)
   const loose = p.inv.some((i) => i.kind === 'mod' && !p.installed.some((o) => def(o).family === def(i).family));
-  if (loose && p.installed.length >= p.slots) {
+  if (loose && slotsUsed(g) >= p.slots) {
     const pr = g.ents.filter((e) => e.kind === 'printer' && !e.data?.shop).sort((a, b) => dist(a, p) - dist(b, p))[0];
     out.push(pr ? toCell(g, pr.x, pr.y, 'slots are full; a printer sells slots', 'print') : ['slots are full; a printer sells slots.']);
   }
@@ -207,7 +207,7 @@ export function readFix(g: Game): Line {
   const p = g.player;
   const out: Line = [];
   const room = makeRoom(g, { mod: 'card-reader' }, false);
-  const out1 = typeof room === 'string' && p.installed.length >= p.slots ? lightest(g) : undefined;
+  const out1 = typeof room === 'string' && slotsUsed(g) >= p.slots ? lightest(g) : undefined;
   if (typeof room !== 'string') out.push({ text: 'swap in card reader', cmd: 'swap in card reader' }, ', then read free. ');
   else if (out1) out.push({ text: `take out ${label(out1)}, install the reader`, cmd: `remove ${label(out1)}; install card reader` }, ', then read free. ');
   const b = g.ents.filter((e) => e.kind === 'item' && e.item?.kind === 'res' && e.item.res === 'bone').sort((a, c) => dist(a, p) - dist(c, p))[0];

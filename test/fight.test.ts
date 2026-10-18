@@ -44,7 +44,7 @@ describe('fight', () => {
   it('shoot is refused without an aimed weapon and cools between shots', () => {
     const g = armed('spark-finger');
     exec(g, 'shoot');
-    expect(text(g)).toContain('nothing installed');
+    expect(text(g)).toContain('nothing aimed is on');
     const h = armed('nail-psalm');
     exec(h, 'shoot');
     exec(h, 'shoot');

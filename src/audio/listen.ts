@@ -87,7 +87,7 @@ export function listen(e: Ear, g: Game): Play[] {
   return out;
 }
 
-const CUE: Record<string, string> = { take: 'take', install: 'install', remove: 'remove', hit: 'hit', hurt: 'hurt', kill: 'kill', die: 'die' };
+const CUE: Record<string, string> = { take: 'take', install: 'install', remove: 'remove', hit: 'hit', miss: 'miss', noweapon: 'dud', hurt: 'hurt', kill: 'kill', die: 'die' };
 
 function state(g: Game, i: { on: boolean; readyAt: number }): 'off' | 'warm' | 'on' {
   return !i.on ? 'off' : g.t >= i.readyAt ? 'on' : 'warm';

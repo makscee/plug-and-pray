@@ -16,6 +16,7 @@ import './report';
 import './eye';
 import './warn';
 import './death';
+import './unarmed';
 
 const near = (a: Entity, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
