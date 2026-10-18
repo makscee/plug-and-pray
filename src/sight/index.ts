@@ -4,7 +4,7 @@
 // takes noise (static, torn rows), lag (ghost trails, s) and blur (px). Scanners and lamps live
 // next door (scanner.ts, lamp.ts).
 
-import { say } from '../core/game';
+import { ENEMIES, say } from '../core/game';
 import { Cell, cell, ensure } from '../core/grid';
 import { active, family, MODS, param } from '../core/mods';
 import type { Game } from '../core/types';
@@ -13,6 +13,7 @@ import { frameHooks } from '../ui';
 import { view } from '../ui/views';
 import { near, see, shoot, type Mode } from './scene';
 import { eyeRange } from '../mods/sense';
+import { engaged } from './foes';
 import './lamp';
 import './scanner';
 import { clean } from '../tune/start';
@@ -237,7 +238,14 @@ view('camera', (el, inst, g) => {
   canvas.className = 'eye';
   const label = document.createElement('div');
   label.className = 'facing';
-  el.append(label, canvas);
+  // the frame flashes red when you are hit; an arrow on the edge points at what is after you
+  const frame = document.createElement('div');
+  frame.style.cssText = 'position:relative;line-height:0';
+  const arrow = document.createElement('div');
+  arrow.className = 'foe-arrow';
+  arrow.style.cssText = 'position:absolute;display:none;color:#ff5a3c;font-size:22px;line-height:1;padding:2px 4px;background:#000a;pointer-events:none;white-space:nowrap';
+  frame.append(canvas, arrow);
+  el.append(label, frame);
   const ctx = canvas.getContext('2d')!;
   const img = ctx.createImageData(res, res);
   const prev = new Float32Array(res * res * 4);
@@ -249,6 +257,10 @@ view('camera', (el, inst, g) => {
       const warm = inst.on && g.t >= inst.readyAt;
       const f = !inst.on ? 'off' : !warm ? 'warming up…' : 'facing ' + ['north', 'east', 'south', 'west'][facing(g.player.dir)];
       if (label.textContent !== f) label.textContent = f;
+      const hurt = g.t - g.player.hurtAt < 0.3;
+      canvas.style.outline = hurt ? '3px solid #e03828' : '';
+      canvas.style.outlineOffset = hurt ? '-3px' : '';
+      pointAt(g, arrow, param<number>(inst, 'fov', 60), MODES[param<string>(inst, 'filter', 'color')] === 'heat');
       if (!warm) {
         // static instead of black: faint when off, brighter as the warm-up runs out
         const d = MODS[inst.mod]?.warm || 1;
@@ -288,6 +300,37 @@ view('camera', (el, inst, g) => {
   };
   void g;
 });
+
+/** the edge arrow: the nearest enemy after you outside this eye's view: left, right or behind */
+function pointAt(g: Game, el: HTMLElement, fov: number, heat: boolean): void {
+  const p = g.player;
+  // its bearing from your facing, -pi..pi, positive to the right
+  const bearing = (e: { x: number; y: number }) => {
+    const a = Math.atan2(e.x - p.x, -(e.y - p.y)) - p.dir;
+    return Math.atan2(Math.sin(a), Math.cos(a));
+  };
+  const half = (fov / 2) * (Math.PI / 180);
+  const foe = engaged(g, 7, heat).find((e) => Math.abs(bearing(e)) > half);
+  let text = '';
+  let pos = '';
+  if (foe) {
+    const rel = bearing(foe);
+    const name = (ENEMIES[foe.enemy!.type]?.name ?? 'it').replace(/^(a|an|the) /, '').split(' ').pop();
+    if (Math.abs(rel) > Math.PI * 0.75) [text, pos] = [`▼ ${name} behind`, 'left:50%;bottom:4px;transform:translateX(-50%)'];
+    else if (rel > half) [text, pos] = [`${name} ▶`, 'right:4px;top:50%;transform:translateY(-50%)'];
+    else [text, pos] = [`◀ ${name}`, 'left:4px;top:50%;transform:translateY(-50%)'];
+  }
+  const key = text + pos;
+  if (el.dataset.key === key) return;
+  el.dataset.key = key;
+  el.textContent = text;
+  el.style.display = text ? 'block' : 'none';
+  el.style.left = el.style.right = el.style.top = el.style.bottom = el.style.transform = '';
+  if (pos) for (const kv of pos.split(';')) {
+    const [k, v] = kv.split(':');
+    el.style.setProperty(k, v);
+  }
+}
 
 /** test runs only (?still): put a module in your inventory, so a play-through can try every eye */
 verb('conjure', {

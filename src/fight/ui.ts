@@ -1,6 +1,8 @@
 // The fight on screen: an hp bar always on top, and a red flash when you are hurt.
 import { ENEMIES } from '../core/game';
-import { powerMax, powerUsed } from '../core/mods';
+import { active, param, powerMax, powerUsed } from '../core/mods';
+import type { Game } from '../core/types';
+import { engaged } from '../sight/foes';
 import { frameHooks } from '../ui';
 import { pips } from '../ui/panels';
 import { hpText } from './report';
@@ -30,12 +32,14 @@ frameHooks.push((g) => {
   const p = g.player;
   const text = `${hpText(p.hp)}/${p.maxHp}`;
   const [su, pu, pm] = [p.installed.length, powerUsed(g), powerMax(g)];
-  const key = `${text} ${su}/${p.slots} ${pu}/${pm}`;
+  const fight = fightLine(g);
+  const key = `${text} ${su}/${p.slots} ${pu}/${pm} ${fight}`;
   if (b.dataset.text !== key) {
     b.dataset.text = key;
     // hp, then the two resources every choice spends: slots and power
     b.innerHTML = `hp <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
-      `<span class="sep">·</span>slots ${su}/${p.slots} ${pips(su, p.slots)}<span class="sep">·</span>power ${pu}/${pm} ${pips(pu, pm)}`;
+      `<span class="sep">·</span>slots ${su}/${p.slots} ${pips(su, p.slots)}<span class="sep">·</span>power ${pu}/${pm} ${pips(pu, pm)}` +
+      (fight ? `<span class="sep">·</span><span class="fight" style="color:#ff6a50">${fight}</span>` : '');
   }
   b.dataset.low = String(p.hp <= p.maxHp * 0.3);
   if (seenGame !== g) {
@@ -49,6 +53,23 @@ frameHooks.push((g) => {
     f.classList.add('on');
   }
 });
+
+/** the fight at a glance: what is on you, its hp, and when your next blow lands */
+export function fightLine(g: Game): string {
+  const foe = engaged(g, 6)[0];
+  if (!foe?.enemy) return '';
+  const max = Number(foe.enemy.data.maxHp ?? foe.enemy.hp) || 1;
+  const hp = Math.max(0, foe.enemy.hp);
+  const n = Math.min(10, Math.ceil(max));
+  const filled = Math.round((hp / max) * n);
+  const bar = '▮'.repeat(filled) + '▯'.repeat(Math.max(0, n - filled));
+  const more = engaged(g, 6).length - 1;
+  const name = (ENEMIES[foe.enemy.type]?.name ?? 'something').replace(/^(a|an|the) /, '');
+  const autos = active(g, 'weapon').filter((i) => param(i, 'aim', 'auto') === 'auto');
+  const wait = autos.length ? Math.max(0, Math.min(...autos.map((i) => ((i.data.readyAt as number) ?? 0) - g.t))) : null;
+  const blow = wait === null ? 'no weapon on' : wait <= 0.05 ? 'your blow ready' : `your blow ${wait.toFixed(1)}s`;
+  return `⚔ ${name} ${bar}${more > 0 ? ` +${more}` : ''} · ${blow}`;
+}
 
 // ?scene=fight stages a fight in the start chamber for judging: lens, stepper, nail psalm, frost coat
 // and mirror ward on, a seraph lamp down the row, three mites and an ossuary walker coming.
