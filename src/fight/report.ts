@@ -58,9 +58,14 @@ tickHooks.push((g) => {
       t.missed = (t.missed ?? 0) + 1;
     }
   }
-  const t = tallies.get(g);
-  if (t && g.t - t.start >= GATHER) flush(g);
+  // v2r4 run: the line's hp lagged the real one (a bolt hook later in the tick hit after it was told): the
+  // gathered line is told by a hook put last, once every module has added its own
+  if (!last) tickHooks.push((last = (g2) => {
+    const t = tallies.get(g2);
+    if (t && g2.t - t.start >= GATHER) flush(g2);
+  }));
 });
+let last: ((g: Game) => void) | null = null;
 
 // last of the hurt hooks (registered after the body's): gather what got through
 hurtHooks.push((g, n, from) => {

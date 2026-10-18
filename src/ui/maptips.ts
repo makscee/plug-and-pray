@@ -152,7 +152,7 @@ export function infoAt(g: Game, x: number, y: number): string[] {
   if (k === 'through') return [c === Cell.floor ? 'open, past the stone' : 'stone, past the stone', 'seen through a wall: that eye can miss what lies here. not known to be empty.'];
   if (thinWall(g, x, y, (a, b) => cell(g, a, b) === Cell.floor)) return ['a thin wall', 'one cell thick, with open space past it: dig, or break a hollow one.'];
   const v = veinOf(c);
-  if (v) return [`${v} vein`, 'a leech needle or a bone auger beside it drains it.'];
+  if (v) return [`${v} vein`, 'a leech needle or a bone auger beside it drains it. no tool? an altar grinds 4 bone into 1 glass.'];
   return c === Cell.floor ? ['floor', 'seen: nothing here.'] : ['wall'];
 }
 

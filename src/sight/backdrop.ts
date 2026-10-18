@@ -29,6 +29,7 @@ import { near, shoot } from './scene';
 import { HOLLOW } from './marks';
 import { secrets } from '../world/secrets';
 import { bossRoom } from '../world/floors';
+import { bossesNear } from '../fight/bosses';
 import { addBlur, addLag, addNoise, blank, creases, FILTERS, foeOutside, heatRamp, MODES, staticFrame } from './index';
 import { baseLook, fovAcross, plan, rowsOf, shownLayers, turnLayers, type Layer } from './layers';
 import { bigOn, reins } from '../body/fps';
@@ -134,7 +135,8 @@ frameHooks.push((g) => {
   const fading = mode !== 'map' && performance.now() < b.fadeUntil;
   b.mapBox.hidden = mode !== 'map' && !fading;
   // a boss wakes: the map comes back out of the dock (it outranks everything in a boss fight)
-  const boss = document.body.classList.contains('boss-on');
+  // (v2r4 run: the body's class can still be the last life's on a wake-again: ask this game too)
+  const boss = document.body.classList.contains('boss-on') && bossesNear(g).some((e) => e.enemy!.data.noticed);
   if (boss && !b.boss) {
     requestAnimationFrame(mapBack);
     // v2r2 fight: on floors 1 and 2 a coarse eye can hide the keeper: the big map comes up once, its radar dots the fight

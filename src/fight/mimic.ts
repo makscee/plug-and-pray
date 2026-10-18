@@ -15,7 +15,7 @@ export function wake(g: Game, e: Entity): void {
   delete e.item;
   e.data = { ...e.data, mimic: false };
   g.events.push({ type: 'mimic', at: [e.x, e.y] });
-  say(g, `the ${dressed ? itemName(dressed) : 'thing'} on the floor opens a mouth. a mimic.`);
+  say(g, `the ${dressed ? itemName(dressed).replace(/^the /, '') : 'thing'} on the floor opens a mouth. a mimic.`);
 }
 
 tickHooks.push((g) => {

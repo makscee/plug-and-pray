@@ -124,7 +124,13 @@ export function switchOn(g: Game, inst: Inst): string | null {
   if (powerUsed(g) + d.power > powerMax(g)) return `not enough power: ${d.name} needs ${d.power}, ${powerMax(g) - powerUsed(g)} free`;
   inst.on = true;
   inst.readyAt = g.t + d.warm;
+  delete inst.data.powerOff;
   g.events.push({ type: 'warm', data: inst.uid });
+  // v2r4 run: power back (a heart-shard in): what went off for want of power comes back on, as much as fits
+  if (d.family === 'power') {
+    const back = g.player.installed.filter((i) => !i.on && i.data.powerOff !== undefined && !switchOn(g, i));
+    if (back.length) g.log.push([`power back: ${back.map((i) => label(i)).join(', ')} on again.`]);
+  }
   return null;
 }
 
@@ -132,10 +138,13 @@ export function switchOff(g: Game, inst: Inst): void {
   inst.on = false;
   // a power module going off may leave others over the cap: switch off the newest until it fits
   const on = g.player.installed.filter((i) => i.on);
+  const lost: Inst[] = [];
   while (powerUsed(g) > powerMax(g) && on.length) {
     const last = on.pop()!;
-    if (def(last).family !== 'power') last.on = false;
+    if (def(last).family !== 'power') (last.on = false), (last.data.powerOff = g.t), lost.push(last);
   }
+  // (v2r4 run: this was silent, and the survey spool stayed off after more power came in)
+  if (lost.length) g.log.push([`not enough power: ${lost.map((i) => label(i)).join(', ')} off. more power turns ${lost.length > 1 ? 'them' : 'it'} back on.`]);
 }
 
 export function tickMods(g: Game, dt: number): void {

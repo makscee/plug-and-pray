@@ -237,11 +237,23 @@ verb('install', {
   },
 });
 
+/** walking legs (not a pilot): the stepper, a servo, the gyro heart */
+const walkLegs = (i: Inst) => def(i).family === 'gait' && ['go', 'keys', 'free'].some((k) => param(i, k, false));
+/** v2r4 run: the stepper relay is your legs, and taking it out turned `go` into `crawl` with no word: the last
+ *  legs that are on ask first (`remove X anyway`, or `then` to run after, as a drag-swap does) */
+export function lastLegs(g: Game, inst: Inst): boolean {
+  return inst.on && walkLegs(inst) && !g.player.installed.some((i) => i !== inst && i.on && walkLegs(i));
+}
+
 verb('remove', {
   help: 'take a module out of its slot',
   run(g, args) {
+    const anyway = args[args.length - 1] === 'anyway';
+    if (anyway) args = args.slice(0, -1);
     const inst = findInst(g, args, (i) => i.on);
     if (!inst) return say(g, 'nothing installed by that name.');
+    if (!anyway && lastLegs(g, inst))
+      return say(g, [`⚠ the ${label(inst).replace(/^the /, '')} is your legs: without it go and map clicks stop, and you crawl a cell at a time. `, { text: `remove ${label(inst)} anyway`, cmd: `remove ${instRef(g, inst)} anyway` }]);
     switchOff(g, inst);
     g.player.installed = g.player.installed.filter((i) => i !== inst);
     addItem(g, { kind: 'mod', mod: inst.mod, ...traits(inst) });
