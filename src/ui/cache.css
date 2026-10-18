@@ -46,3 +46,6 @@
 .toast-name { font-size: 24px; line-height: 1.05; color: var(--t-title); }
 .toast-line { font-size: 17px; color: var(--acc); }
 @keyframes toast { 0% { opacity: 0; transform: translate(-50%, -12px); } 10% { opacity: 1; transform: translateX(-50%); } 85% { opacity: 1; } 100% { opacity: 0; } }
+/* v4 inv: the reliquary's one-line intro and a pick's level badge */
+.kit-intro { font-size: 18px; color: var(--t-head); font-style: italic; margin: 2px 0 0 !important; }
+.kit-up { font-size: 16px; color: var(--acc); white-space: nowrap; }

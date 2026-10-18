@@ -15,6 +15,7 @@ import { route, walkThen } from '../mods/pilot';
 import { hollowBeside, secrets } from '../world/secrets';
 import { walks } from '../mods/gait';
 import { foundEye } from '../world/printer';
+import { cacheOf, cacheProp, NEAR, wasOpened } from '../world/cache';
 import type { Entity, Game, Line } from '../core/types';
 
 const told = new WeakSet<Game>();
@@ -250,6 +251,8 @@ tickHooks.push((g) => {
   if (lines.length) say(g, 'you hear:', ...lines, ['the walls bend; ', { text: 'listen', cmd: 'listen' }, ' finds the way; the map marks them; ', { text: 'where', cmd: 'where' }, ' says it again.']);
 });
 
+/** v4 inv: reliquaries `where` has named */
+const kitTold = new WeakMap<Game, Set<number>>();
 // playtest r2: the hint was said once and could not be asked again
 verb('where', {
   help: 'what to head for next: your first eye, the card reader, a card to read, the way down, the nearest vector',
@@ -257,6 +260,16 @@ verb('where', {
     const lines = hintLines(g);
     if (lines.length) say(g, 'you hear:', ...lines);
     // playtest r3: past the dawn eye it went silent, with a card that points at the shard in the bag
+    // v4 inv: an unopened reliquary on this floor, named once
+    const kit = cacheProp(g);
+    let told = kitTold.get(g);
+    if (!told) kitTold.set(g, (told = new Set()));
+    if (kit && !wasOpened(g) && !cacheOf(g).done && cacheOf(g).offer.length && !told.has(kit.id)) {
+      told.add(kit.id);
+      const [d, n] = way.long(g, kit.x, kit.y);
+      const near = dist(kit, g.player) <= NEAR;
+      say(g, ['a reliquary of the old machines waits where you landed: its kit, two free. ', near ? { text: 'open', cmd: 'open' } : { text: `go ${d} ${n}`, cmd: `go ${d} ${n}` }]);
+    }
     const more = after(g);
     if (more.length) return say(g, ...more);
     if (!lines.length) say(g, 'nothing left the wake hint points at.');

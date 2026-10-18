@@ -338,3 +338,11 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .win.panel .cell .badge.lvl { font-size: 18px; font-weight: bold; right: 1px; bottom: -1px; color: var(--t-meta); }
 .win.panel .cell .badge.lvl-2, .win.panel .cell .badge.lvl-3 { font-size: 22px; color: var(--acc); }
 .res-row .bag-over { color: var(--warn); }
+/* v4 inv: a module's kind as a corner mark (src/ui/panels.ts famOf); an installed module that is off says "off" */
+.win.panel .cell .fam { position: absolute; left: 0; top: 0; width: 0; height: 0; border-style: solid; border-width: 9px 9px 0 0; border-color: var(--fam, var(--dim)) transparent transparent transparent; pointer-events: none; }
+.fam-eye { --fam: var(--info); } .fam-map { --fam: #e8e0d0; } .fam-legs, .fam-pilot, .fam-digger { --fam: var(--good); }
+.fam-weapon { --fam: var(--danger); } .fam-power, .fam-slot-board { --fam: var(--warn); } .fam-radar, .fam-scanner { --fam: #b07cf0; }
+.fam-lamp { --fam: var(--acc); } .fam-body { --fam: #e07aa8; }
+.win.panel .cell.st-off { border-style: dashed; background: #050404; }
+.win.panel .cell.st-off img { opacity: 0.3; filter: grayscale(1); }
+.win.panel .cell .off-tag { position: absolute; right: 1px; top: -1px; font-size: 12px; line-height: 1; color: var(--warn); text-shadow: 1px 1px 0 #000; pointer-events: none; }
