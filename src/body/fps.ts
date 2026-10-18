@@ -244,6 +244,9 @@ tickHooks.push((g, dt) => {
     s.dashUntil = -99;
     return;
   }
+  // the look is yours in the reins: a walk left over (a `go`, a map click, the pilot) moves you but never turns you
+  // (v2-touchpad: the arrows' turn was undone each tick by a walk from before the reins)
+  g.player.faceLock = Math.max(g.player.faceLock ?? 0, g.t + 0.1);
   if (s.move) slide(g, s.move[0], s.move[1], dt);
   if (g.t < s.dashUntil) slide(g, s.dashV[0], s.dashV[1], dt);
 });
@@ -277,7 +280,7 @@ family('mind', {
 /** said once per run: taking the reins and letting go teach their keys the first time only */
 const taught = new WeakMap<Game, Set<string>>();
 verb('big', {
-  help: 'the reins: take them (the mouse looks, a click shoots, wasd walks) or give the cursor back (key tab)',
+  help: 'the reins: take them (the mouse or q/e looks, a click or space shoots, wasd walks) or give the cursor back (key tab)',
   when: (g) => !!reins(g),
   whenFail: () => "no reins on. the saint's reins (floor 3) give you the eye to turn with the mouse.",
   run(g) {
@@ -294,7 +297,7 @@ verb('big', {
     const k = s.big ? 'on' : 'off';
     if (t.has(k)) return;
     t.add(k);
-    say(g, s.big ? 'you take the reins. the mouse turns you, a click shoots, wasd walks the way you look. tab gives the cursor back.' : 'you let the reins go: the cursor is yours, for the windows. tab takes them again.');
+    say(g, s.big ? 'you take the reins. the mouse or trackpad turns you (q e or ← → too), a click or space shoots, wasd walks the way you look. tab gives the cursor back.' : 'you let the reins go: the cursor is yours, for the windows. tab takes them again.');
   },
 });
 
