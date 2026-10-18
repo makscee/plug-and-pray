@@ -497,12 +497,12 @@ boss({
   ],
 });
 boss({
-  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 80, damage: 2.1, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
+  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 110, damage: 2.4, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
   hint: 'she calls mites and stomps. thin the mites, keep off her stomp, bite her between.',
   turn: ['the mite queen shrieks. the brood comes faster.'],
   phases: [
-    [brood({ type: 'mite', n: 2, cap: 2, windup: 1, rest: 1.5 }), slam({ r: 1.5, windup: 1.2, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.5 cells. step back.' }), volley({ n: 1, spread: 0, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
-    [brood({ type: 'mite', n: 2, cap: 3, windup: 0.9, rest: 1.2 }), slam({ r: 1.6, windup: 1.2, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, move: 'spits acid' })],
+    [brood({ type: 'mite', n: 2, cap: 3, windup: 1, rest: 1.5 }), slam({ r: 1.5, windup: 1.2, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.5 cells. step back.' }), volley({ n: 3, spread: 0.5, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
+    [brood({ type: 'mite', n: 3, cap: 4, windup: 0.9, rest: 1.2 }), slam({ r: 1.6, windup: 1.2, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, times: 2, every: 0.6, move: 'spits acid' })],
   ],
 });
 boss({
@@ -527,7 +527,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 3.4, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 3.9, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it plays chords of slow notes at you, and moves between its pipes. its pedal note shakes the floor round it.',
   turn: ['the organ pulls out every stop. mimics drop from its pipes.'],
   phases: [
@@ -547,7 +547,7 @@ boss({
 
 // floor 2, the ossuary: FPS, bullet patterns
 boss({
-  id: 'boss-abbot', floor: 2, name: 'the high abbot', hp: 180, damage: 3, speed: 0.7, walk: 'close', armour: 0.8, r: 0.6, at: [0.5],
+  id: 'boss-abbot', floor: 2, name: 'the high abbot', hp: 200, damage: 3.5, speed: 0.7, walk: 'close', armour: 0.8, r: 0.6, at: [0.5],
   hint: 'bone shrugs off small hits. it sweeps round itself and throws fans of bone; later, a spiral.',
   turn: ['the high abbot lifts its crozier. bones begin to wheel round it.'],
   phases: [
@@ -575,8 +575,9 @@ boss({
 });
 
 // floor 3, the furnace: improved FPS, heavier patterns
+// (v2-balance3, v2r3 fight: the shortest fights of the run at 32-35 s; hp ×1.33-1.65 and softer blows: 40-45 s at about 82%)
 boss({
-  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 460, damage: 4.2, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 690, damage: 3, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it pours out turning arms of fire and crosses of light. later the floor under you catches.',
   turn: ['the burning saint flares. fire runs to where you stand.'],
   phases: [
@@ -585,7 +586,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-hammer', floor: 3, name: 'the hammer twin', hp: 210, damage: 3.5, speed: 1.3, walk: 'close', armour: 0.6, r: 0.6, at: [0.5], mate: 'boss-bellows',
+  id: 'boss-hammer', floor: 3, name: 'the hammer twin', hp: 345, damage: 3.5, speed: 1.3, walk: 'close', armour: 0.6, r: 0.6, at: [0.5], mate: 'boss-bellows',
   hint: 'two of them: the hammer charges and slams, the bellows blows fire from afar. kill one and the other rages.',
   turn: ['the hammer twin glows white. it rages.'],
   phases: [
@@ -594,7 +595,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-bellows', floor: 3, name: 'the bellows twin', hp: 190, damage: 3.2, speed: 1.1, walk: 'keep', keep: 5, r: 0.6, at: [0.5], mate: 'boss-hammer',
+  id: 'boss-bellows', floor: 3, name: 'the bellows twin', hp: 315, damage: 3.2, speed: 1.1, walk: 'keep', keep: 5, r: 0.6, at: [0.5], mate: 'boss-hammer',
   hint: 'two of them: the hammer charges and slams, the bellows blows fire from afar. kill one and the other rages.',
   turn: ['the bellows twin wheezes. its fire comes in streams.'],
   phases: [
@@ -603,7 +604,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-worm', floor: 3, name: 'the slag worm', hp: 330, damage: 3.2, speed: 0.8, walk: 'drift', r: 0.7, at: [0.5],
+  id: 'boss-worm', floor: 3, name: 'the slag worm', hp: 440, damage: 3, speed: 0.8, walk: 'drift', r: 0.7, at: [0.5],
   hint: 'it digs in and comes up under you in a ring of slag. hit it while it is up; it spits triplets.',
   turn: ['the slag worm boils. where it comes up, slag stays.'],
   phases: [
@@ -612,9 +613,9 @@ boss({
   ],
 });
 
-// floor 4: the heart, every run the same; each phase is a floor's way of fighting
+// floor 4: the heart, every run the same; each phase is a floor's way of fighting (v2-balance3: hp 500 → 660)
 boss({
-  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 500, damage: 4.1, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
+  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 660, damage: 4.1, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
   hint: 'the heart of the engine. it fights the way every floor did: brood and toll, then lines and peals, then spirals and fire.',
   turn: ['the heart beats faster. light runs down its lines; the floor rings under you.', 'the heart burns white. fire pours out in arms, and the floor catches.'],
   phases: [
