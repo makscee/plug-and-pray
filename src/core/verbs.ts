@@ -60,11 +60,29 @@ export function addItem(g: Game, it: Item): void {
   g.player.inv.push(it);
 }
 
+/** verbs help and the actions bar never list (test runs only) */
+const HIDDEN = new Set(['conjure']);
+/** verbs a key does (t, p): help lists them, the actions bar does not */
+const KEYED = new Set(['tidy', 'pause']);
+
 verb('help', {
-  help: 'what you can do',
-  run(g) {
-    const ok = Object.keys(VERBS).filter((v) => !VERBS[v].when || VERBS[v].when!(g));
+  help: 'the goal, the keys and what you can do: help, help go',
+  run(g, [v]) {
+    if (v) {
+      const d = VERBS[v];
+      if (!d || HIDDEN.has(v)) return say(g, [`${v}: no such verb. `, { text: 'help', cmd: 'help' }]);
+      return say(g, `${v}: ${d.help}${d.when && !d.when(g) ? ' (nothing installed can do it now)' : ''}`);
+    }
+    // the verbs first, the goal and the keys last, so a short console shows those
+    const ok = Object.keys(VERBS).filter((v) => !HIDDEN.has(v) && (!VERBS[v].when || VERBS[v].when!(g)));
     say(g, ok.flatMap((v, k) => (k ? ['  ', { text: v, cmd: v }] : [{ text: v, cmd: v }])) as Line);
+    say(
+      g,
+      ['help <verb> tells one: ', { text: 'help go', cmd: 'help go' }],
+      'the goal: three elites guard three shards of scripture, in the nave, the ossuary and the furnace.',
+      'read them with a card reader: together they point to the Thaw Engine. reach it and wake the god.',
+      'keys: arrows or wasd walk · q e turn · t tidies windows · p pauses · 1-4 setups · esc leaves the console, enter comes back',
+    );
   },
 });
 
@@ -166,6 +184,16 @@ verb('status', {
   },
 });
 
+/** the first leg toward (x, y): a direction and up to 9 cells. A straight axis here; tune/hints.ts
+ * swaps in the pilot's pathfinder over open floor, so the button walks round walls */
+export const way = {
+  leg(g: Game, x: number, y: number): [string, number] {
+    const [dx, dy] = [x - g.player.x, y - g.player.y];
+    const ax = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n';
+    return [ax, Math.max(1, Math.min(9, Math.round(Math.max(Math.abs(dx), Math.abs(dy)))))];
+  },
+};
+
 verb('listen', {
   help: 'what you hear around you',
   run(g) {
@@ -182,8 +210,8 @@ verb('listen', {
       const ang = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
       const side = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(ang / 45) % 8];
       const what = e.enemy ? 'something moving' : e.kind === 'printer' ? 'a machine humming' : 'something lying still';
-      const ax = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n';
-      const n = Math.max(1, Math.round(Math.max(Math.abs(dx), Math.abs(dy))));
+      // the first open leg of a path there, not a straight axis into a wall (playtest r1)
+      const [ax, n] = way.leg(g, e.x, e.y);
       const cmd = r < 1.6 && e.kind === 'item' ? 'take' : goes ? `go ${ax} ${n}` : `crawl ${ax}`;
       say(g, [`${what}, ${how}${r < 1.6 ? '' : ', ' + side}.  `, { text: cmd, cmd }]);
     }
@@ -219,7 +247,7 @@ export function actions(g: Game): [string, Action[]][] {
     else move.push(a(`crawl ${d}`));
   }
   if (ok(g, 'stop') && p.path.length > 1) move.push(a('stop'));
-  const other = Object.keys(VERBS).filter((v) => !ARGS.has(v) && v !== 'stop' && ok(g, v)).map((v) => a(v));
+  const other = Object.keys(VERBS).filter((v) => !ARGS.has(v) && !HIDDEN.has(v) && !KEYED.has(v) && v !== 'stop' && ok(g, v)).map((v) => a(v));
   const groups: [string, Action[]][] = [['move', move], ['other', other]];
   return groups.filter(([, xs]) => xs.length);
 }
