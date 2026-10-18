@@ -1,5 +1,5 @@
 /* v2r2 fun (src/ui/choice.ts): a set piece's deal, in the door card's frame but gold, not red */
-.choice-card { border-color: #b08830; }
+.choice-card { border-color: #b08830; width: min(420px, calc(100vw - 32px)); }
 .choice-card .door-name { color: #f0c870; }
 .choice-card .door-btns { flex-wrap: wrap; gap: 8px 14px; }
 .choice-card .choice-price { color: var(--dim); }

@@ -274,6 +274,12 @@ tickHooks.push((g) => {
   s.add(a.id);
 });
 
+/** the nearest altar on floor f you have seen or stood at (the door card names one, or says none is seen) */
+export function altarSeen(g: Game, f = floorOf(g)): Entity | undefined {
+  const used = altarsUsed.get(g);
+  return g.ents.filter((e) => e.data?.altar && floorAt(e.x) === f && (used?.has(e.id) || g.seen.has(`${Math.floor(e.x)},${Math.floor(e.y)}`))).sort((a, b) => dist(a, g.player) - dist(b, g.player))[0];
+}
+
 /** past the wake hint: a card to read, the nearest vector, a printer when slots are full */
 function after(g: Game): Line[] {
   const p = g.player;
@@ -305,8 +311,7 @@ function after(g: Game): Line[] {
   // v2r5 run: hurt after a retreat, `where` no longer named the altar you had used
   const hurt = p.hp < p.maxHp * 0.7;
   if (unready || hurt || (res('glass') < 1 && res('bone') >= 4)) {
-    const used = altarsUsed.get(g);
-    const al = g.ents.filter((e) => e.data?.altar && floorAt(e.x) === f && (used?.has(e.id) || g.seen.has(`${Math.floor(e.x)},${Math.floor(e.y)}`))).sort((a, b) => dist(a, p) - dist(b, p))[0];
+    const al = altarSeen(g, f);
     const why = unready ? 'an altar tempers, mends and adds hp' : hurt ? 'an altar mends you' : 'an altar grinds 4 bone into 1 glass';
     out.push(al ? toCell(g, al.x, al.y, why, 'offer') : [`${why}; none seen on this floor yet: `, { text: 'listen', cmd: 'listen' }, ' hears them.']);
   }

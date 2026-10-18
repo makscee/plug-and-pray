@@ -79,6 +79,10 @@ describe('v2r2 ux: the first eye', () => {
     expect(s.done).toBe(true);
     expect(text(g)).toMatch(/cracked wall gives/);
     expect(eyeOf(g).data?.sealed).toBeUndefined();
+    // v2r6 newcomer: typed `go in` steps into the niche, as its link does
+    exec(g, 'go in');
+    expect(text(g)).not.toMatch(/not at a keeper's door/);
+    expect(g.player.path.at(-1)).toEqual([s.x + 0.5, s.y + 0.5]);
     [g.player.x, g.player.y] = [s.x + 0.5, s.y + 0.5];
     exec(g, 'take');
     expect(g.player.inv.some((i) => i.kind === 'mod' && i.mod === 'pinhole-eye')).toBe(true);

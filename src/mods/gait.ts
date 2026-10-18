@@ -33,6 +33,9 @@ export const walkPace = (g: Game): number => {
 /** the keeper's door (src/tune/door.ts): standing at it, and `go in` */
 export const doorIn: { at: (g: Game) => boolean; run: (g: Game) => void } = { at: () => false, run: (g) => void say(g, 'go in where? there is no door here.') };
 
+/** an opened niche beside you (src/world/secrets.ts): `go in` steps into it, as its link does */
+export const nicheIn: { run: (g: Game) => boolean } = { run: () => false };
+
 /** queue up to k cells in direction d, stopping before a wall */
 export function walk(g: Game, d: string, k: number): number {
   const v = DIRS[d];
@@ -55,7 +58,8 @@ verb('go', {
   help: 'walk: go n 3 (n e s w, up to 9 cells); at a keeper\'s door, go in',
   when: (g) => walks(g) || doorIn.at(g),
   run(g, [d, k]) {
-    if (d === 'in') return doorIn.run(g);
+    // v2r6 newcomer: `go in` typed at the eye's niche said "not at a keeper's door" while its link worked
+    if (d === 'in') return doorIn.at(g) || !nicheIn.run(g) ? doorIn.run(g) : undefined;
     if (!d || !DIRS[d[0]]) return say(g, 'go where? n e s w');
     g.player.pace = walkPace(g);
     const n = walk(g, d[0], Math.min(9, Math.max(1, Number(k) || 1)));
