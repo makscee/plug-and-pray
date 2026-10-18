@@ -40,12 +40,16 @@ export function does(m: Modish): string {
       if (p('dig')) return `digger · dig: eats the wall in front, every ${n(p<number>('cooldown'))} s`;
       return 'legs';
     case 'weapon':
-      return `weapon · ${n(p<number>('damage'))} dmg every ${n(p<number>('cooldown'))} s · ${p<string>('aim') === 'aimed' ? `shoot, ${n(p<number>('range'))} cells` : `hits whatever comes within ${n(p<number>('range'))} cells`}`;
+      return `weapon · ${n(p<number>('damage'))} dmg every ${n(p<number>('cooldown'))} s · ${p<string>('aim') === 'aimed' ? `shoot, ${n(p<number>('range'))} cells` : `hits ${p('sweep') ? 'everything' : 'whatever comes'} within ${n(p<number>('range'))} cells`}`;
     case 'body': {
       if (p('hp')) return `body · +${n(p<number>('hp'))} max hp`;
       if (p('regen')) return `body · mend ${n(p<number>('regen'))} hp/s more`;
       if (p('armour')) return `body · takes ${n(p<number>('armour'))} off every hit`;
       if (p('ward')) return `body · throws the next hit back, then rests ${n(p<number>('recharge'))} s`;
+      if (p('haste')) return `body · weapons cool ${Math.round(p<number>('haste') * 100)}% faster`;
+      if (p('mend')) return `body · +${n(p<number>('mend'))} hp when you drop below half, every ${n(p<number>('recharge'))} s`;
+      if (p('heatproof')) return `body · keeps ${Math.round(Math.min(1, p<number>('heatproof')) * 100)}% of the furnace's heat off`;
+      if (p('thorns')) return `body · ${n(p<number>('thorns'))} dmg back at whatever strikes you up close`;
       return 'body';
     }
     case 'mind': {

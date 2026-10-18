@@ -29,7 +29,7 @@ mods([
   { id: 'vidicon-tube', name: 'vidicon tube', family: 'camera', power: 2, warm: 1.5, tier: 0, params: { res: 64, colors: 4, fps: 4, fov: 70, range: 9, lag: 0.4, filter: 'color' }, text: 'a glass tube that drags its ghosts behind it.' },
   { id: 'saints-lens', name: "saint's lens", family: 'camera', power: 4, warm: 3, tier: 2, params: { res: 200, colors: 0, fps: 15, fov: 80, range: 14, filter: 'color' }, text: 'ground from a saint, they say. it sees as he did.' },
   { id: 'stepper-relay', name: 'stepper relay', family: 'gait', power: 1, warm: 0.5, tier: 0, params: { go: true }, text: 'clicks your legs forward one cell at a time. go n 3.' },
-  { id: 'spark-finger', name: 'spark finger', family: 'weapon', power: 1, warm: 0.5, tier: 0, params: { damage: 1, cooldown: 1.2, range: 1.3, aim: 'auto' }, text: 'it bites whatever comes close.' },
+  { id: 'spark-finger', name: 'spark finger', family: 'weapon', power: 1, warm: 0.5, tier: 0, params: { damage: 1, cooldown: 1.2, range: 1.5, aim: 'auto' }, text: 'it bites whatever comes close.' },
   // sight (#1321): eyes that trade sharpness, speed and colour; scanners through walls; lamps that draw things
   { id: 'carrion-eye', name: 'carrion eye', family: 'camera', power: 1, warm: 0.5, tier: 0, params: { res: 96, fps: 12, fov: 70, range: 8, filter: '1bit', noise: 0.1 }, text: 'a crow saw the world in two colours and never blinked.' },
   { id: 'bat-psalter', name: 'bat psalter', family: 'camera', power: 1, warm: 1, tier: 0, params: { res: 64, fps: 6, fov: 90, range: 10, colors: 8, filter: 'sonar' }, text: 'it sings into the dark and reads the answer.' },
@@ -71,4 +71,16 @@ mods([
   { id: 'sleepwalker', name: 'sleepwalker', family: 'gait', power: 0, warm: 2, tier: 0, params: { pilot: true, plan: 20, pace: 1.6 }, text: 'it walks for you while you dream. slowly, not far.' },
   { id: 'waystone-log', name: 'waystone log', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'log', keep: 8, range: 8, auto: ['start', 'printer', 'reader', 'card', 'vector'] }, text: 'a pilgrim\'s tally of the places that matter.' },
   { id: 'pilgrims-rosary', name: "pilgrim's rosary", family: 'mind', power: 1, warm: 1, tier: 1, params: { what: 'log', keep: 16, range: 12, auto: ['start', 'printer', 'reader', 'card', 'vector', 'mods', 'veins'] }, text: 'a bead for every thing you passed. it forgets nothing it can hold.' },
+  // zones (balance pass): modules that change how you play deeper in. Their own keys: weapon sweep (hits all
+  // in reach); body haste (weapons cool faster), mend (hp when below half, every recharge s), heatproof (0..1 of
+  // the furnace's heat kept off), thorns (damage back at whatever strikes you up close)
+  { id: 'rivet-sling', name: 'rivet sling', family: 'weapon', power: 1, warm: 0.5, tier: 0, params: { damage: 1, cooldown: 1.6, range: 4, aim: 'auto' }, text: 'it flicks iron at anything that comes in sight.' },
+  { id: 'censer-flail', name: 'censer flail', family: 'weapon', power: 2, warm: 1, tier: 1, params: { damage: 1.5, cooldown: 1.5, range: 1.8, aim: 'auto', sweep: true }, text: 'a burning censer on a chain. it swings at all of them.' },
+  { id: 'heat-lance', name: 'heat lance', family: 'weapon', power: 3, warm: 2, tier: 2, params: { damage: 7, cooldown: 1.8, range: 8, aim: 'aimed' }, text: 'a needle of the furnace. it goes through what it finds.' },
+  { id: 'reliquary-saw', name: 'reliquary saw', family: 'weapon', power: 2, warm: 1, tier: 2, params: { damage: 3, cooldown: 0.9, range: 1.6, aim: 'auto' }, text: 'teeth taken from a hundred saints. it never tires.' },
+  { id: 'ossuary-plate', name: 'ossuary plate', family: 'body', power: 2, warm: 1.5, tier: 2, params: { armour: 1 }, text: 'a breastplate of knitted bone. heavy. good.' },
+  { id: 'overclock-coil', name: 'overclock coil', family: 'body', power: 3, warm: 2, tier: 1, params: { haste: 0.4 }, text: 'it runs your weapons hot. it drinks for it.' },
+  { id: 'suture-moth', name: 'suture moth', family: 'body', power: 1, warm: 1, tier: 1, params: { mend: 4, recharge: 18 }, text: 'a moth that sews. it waits until you are torn.' },
+  { id: 'rime-hood', name: 'rime hood', family: 'body', power: 1, warm: 1, tier: 1, params: { heatproof: 1 }, text: 'frost that keeps a head cool where nothing else can.' },
+  { id: 'thorn-mantle', name: 'thorn mantle', family: 'body', power: 1, warm: 1, tier: 1, params: { thorns: 1 }, text: 'whatever bites you bleeds for it.' },
 ]);

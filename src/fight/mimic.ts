@@ -3,13 +3,15 @@ import { itemName, reach, say, tickHooks } from '../core/game';
 import { VERBS } from '../core/verbs';
 import type { Entity, Game } from '../core/types';
 import { ENEMIES } from '../core/game';
+import { ZONES, zoneAt } from '../world/zones';
 
 export const WAKE = 1.1;
 
 export function wake(g: Game, e: Entity): void {
   const dressed = e.item;
   e.kind = 'enemy';
-  e.enemy = { type: 'mimic', hp: ENEMIES.mimic.hp, readyAt: g.t + 0.6, data: { noticed: true, dressed } };
+  const z = ZONES[zoneAt(e.x, e.y)].foe;
+  e.enemy = { type: 'mimic', hp: ENEMIES.mimic.hp * z.hp, readyAt: g.t + 0.6, data: { noticed: true, dressed, mult: z.damage } };
   delete e.item;
   e.data = { ...e.data, mimic: false };
   g.events.push({ type: 'mimic', at: [e.x, e.y] });

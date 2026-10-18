@@ -9,10 +9,11 @@ import { hash, rng, type Rng } from '../core/rng';
 import { RES, type Chunk, type Game, type Item } from '../core/types';
 import { floors, rooms } from './gen';
 import { nextLog } from './vectors';
+import { ZONES, zoneFar } from './zones';
 
 /** a module for a chunk this far out (in chunks): tiers open up with distance; uniques never roll */
 export function lootMod(r: Rng, far: number): Item {
-  const maxTier = far < 2 ? 0 : far < 4 ? 1 : 2;
+  const maxTier = ZONES[zoneFar(far)].tier;
   const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique');
   const m = r.pick(pool);
   const item: Item = { kind: 'mod', mod: m.id };
@@ -77,7 +78,7 @@ export function fill(g: Game, c: Chunk): void {
   const loot = r.int(1, 2) + (far >= 4 ? 1 : 0);
   for (let k = 0; k < loot; k++) {
     const [x, y] = cellIn(r, c, g.seed);
-    spawn(g, { kind: 'item', x, y, item: r.chance(0.55) ? lootMod(r, far) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 3) } });
+    spawn(g, { kind: 'item', x, y, item: r.chance(0.55) ? lootMod(r, far) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 2) } });
   }
   // enemies: the fight slice's own chunk hook (src/fight/spawn.ts)
 }

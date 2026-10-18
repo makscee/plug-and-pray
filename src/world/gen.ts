@@ -6,6 +6,7 @@
 import { CHUNK, Cell, setGenerator } from '../core/grid';
 import { hash, rng, type Rng } from '../core/rng';
 import type { Chunk } from '../core/types';
+import { zoneOf } from './zones';
 
 const door = (seed: number, axis: number, cx: number, cy: number) => 2 + (hash(seed, axis, cx, cy) % (CHUNK - 4));
 
@@ -129,7 +130,7 @@ export function generate(seed: number, cx: number, cy: number): Chunk {
     const kind = vr.chance(Math.min(0.25, far * 0.03)) ? 3 : vr.int(0, 2);
     set(x, y, Cell.vein + kind);
   }
-  return { cx, cy, cells };
+  return { cx, cy, cells, zone: zoneOf(cx, cy) };
 }
 
 /** floor cells of a chunk, local; deterministic order */

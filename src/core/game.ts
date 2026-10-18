@@ -29,6 +29,10 @@ export function enemy(type: string, d: EnemyDef): void {
 export const tickHooks: ((g: Game, dt: number) => void)[] = [];
 
 export const START_HP = 10;
+/** how close a melee foe (and your touch weapons) must be: a diagonal neighbour counts */
+export const REACH = 1.5;
+/** how far from its post a guard follows you */
+export const LEASH = 7;
 
 export function newGame(seed: number): Game {
   const g: Game = {
@@ -105,6 +109,33 @@ export function strike(g: Game, e: Entity, n: number): void {
 /** drops and the like when an enemy dies */
 export const killHooks: ((g: Game, e: Entity) => void)[] = [];
 
+/** the centre of the first cell on a shortest open path from (ax, ay) to (bx, by), searching a few hundred cells */
+export function nextCell(g: Game, ax: number, ay: number, bx: number, by: number, max = 400): [number, number] | null {
+  const sx = Math.floor(ax), sy = Math.floor(ay), tx = Math.floor(bx), ty = Math.floor(by);
+  const k = (x: number, y: number) => x * 100003 + y;
+  const prev = new Map<number, number>([[k(sx, sy), -1]]);
+  const q: [number, number][] = [[sx, sy]];
+  for (let h = 0; h < q.length && q.length < max; h++) {
+    const [x, y] = q[h];
+    if (x === tx && y === ty) {
+      // walk back to the step after the start
+      let cur: [number, number] = [x, y];
+      for (;;) {
+        const pk = prev.get(k(cur[0], cur[1]))!;
+        if (pk === k(sx, sy) || pk === -1) return [cur[0] + 0.5, cur[1] + 0.5];
+        cur = [Math.round(pk / 100003), pk - Math.round(pk / 100003) * 100003];
+      }
+    }
+    for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + ox, ny = y + oy;
+      if (prev.has(k(nx, ny)) || !open(g, nx + 0.5, ny + 0.5)) continue;
+      prev.set(k(nx, ny), k(x, y));
+      q.push([nx, ny]);
+    }
+  }
+  return null;
+}
+
 /** the default enemy: drawn to you along open cells once it noticed you, strikes when adjacent */
 export function chase(g: Game, e: Entity, dt: number): void {
   const d = ENEMIES[e.enemy!.type];
@@ -114,10 +145,24 @@ export function chase(g: Game, e: Entity, dt: number): void {
     if (r < d.sense + lit(g) && clear(g, e.x, e.y, p.x, p.y)) e.enemy!.data.noticed = true;
     else return;
   }
-  if (r > 1.1) {
+  // a guard (an elite on its post) does not follow you far: past its leash it walks back
+  const post = e.enemy!.data.post as [number, number] | undefined;
+  const home = post && Math.hypot(p.x - post[0], p.y - post[1]) > LEASH;
+  if (home && Math.hypot(e.x - post[0], e.y - post[1]) < 0.3) return;
+  let to: { x: number; y: number } = home ? { x: post[0], y: post[1] } : p;
+  // round walls: head for the next cell on a short path, not straight at you (a straight line jams on corners)
+  if (Math.floor(e.x) !== Math.floor(to.x) || Math.floor(e.y) !== Math.floor(to.y)) {
+    const d = e.enemy!.data;
+    if (!d.stepAt || g.t >= (d.stepAt as number)) {
+      d.step = nextCell(g, e.x, e.y, to.x, to.y);
+      d.stepAt = g.t + 0.4;
+    }
+    if (d.step) to = { x: (d.step as [number, number])[0], y: (d.step as [number, number])[1] };
+  }
+  if (home || r > 1.1) {
     // step toward the player's cell, preferring the longer axis, sliding along walls
-    const dx = p.x - e.x;
-    const dy = p.y - e.y;
+    const dx = to.x - e.x;
+    const dy = to.y - e.y;
     const step = d.speed * dt;
     const tryMove = (mx: number, my: number) => {
       const nx = e.x + mx;
@@ -134,7 +179,9 @@ export function chase(g: Game, e: Entity, dt: number): void {
     if (Math.abs(dx) > Math.abs(dy)) {
       if (!tryMove(sx, 0)) tryMove(0, sy || step);
     } else if (!tryMove(0, sy)) tryMove(sx || step, 0);
-  } else if (g.t >= e.enemy!.readyAt) {
+  }
+  // within a diagonal step it strikes too (a corner can stop it closing the last bit)
+  if (!home && dist(e, p) <= REACH && g.t >= e.enemy!.readyAt) {
     e.enemy!.readyAt = g.t + d.cooldown;
     hurt(g, d.damage, e);
   }

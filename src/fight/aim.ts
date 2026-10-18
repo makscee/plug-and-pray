@@ -5,6 +5,7 @@ import { active, def, families, param } from '../core/mods';
 import { verb } from '../core/verbs';
 import type { Game, Inst } from '../core/types';
 import { fire } from './shots';
+import { haste } from '../mods/weapon';
 
 const aimed = (g: Game): Inst[] => active(g, 'weapon').filter((i) => param<string>(i, 'aim', 'auto') === 'aimed');
 
@@ -25,7 +26,7 @@ verb('shoot', {
     const fx = Math.sin(p.dir);
     const fy = -Math.cos(p.dir);
     for (const i of ready) {
-      i.data.readyAt = g.t + param<number>(i, 'cooldown', 1);
+      i.data.readyAt = g.t + param<number>(i, 'cooldown', 1) / haste(g);
       fire(g, { x: p.x + fx * 0.3, y: p.y + fy * 0.3, vx: fx * SHOT_SPEED, vy: fy * SHOT_SPEED, dmg: param<number>(i, 'damage', 1), range: param<number>(i, 'range', 6), src: null, foe: false });
       g.events.push({ type: 'shoot', data: i.uid });
     }

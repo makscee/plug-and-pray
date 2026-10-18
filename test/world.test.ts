@@ -81,7 +81,7 @@ describe('the world', () => {
     expect(text(g)).toContain('print slot');
     exec(g, 'print slot');
     expect(text(g)).toContain('wants');
-    g.player.inv.push({ kind: 'res', res: 'bone', n: 10 }, { kind: 'res', res: 'copper', n: 5 }, { kind: 'res', res: 'glass', n: 3 });
+    g.player.inv.push({ kind: 'res', res: 'bone', n: 10 }, { kind: 'res', res: 'copper', n: 5 }, { kind: 'res', res: 'glass', n: 8 });
     exec(g, 'print slot');
     expect(g.player.slots).toBe(4);
     const before = g.player.inv.filter((i) => i.kind === 'mod').length;

@@ -1,6 +1,6 @@
 // The fight slice: the enemy roster and their behaviours, shots in flight, aimed weapons, hp and
 // the body modules, drops and the console's account of a fight. src/fight/ui.ts is the screen side.
-import { chase, ENEMIES, enemy, hurt, say } from '../core/game';
+import { chase, ENEMIES, enemy, hurt, REACH, say } from '../core/game';
 import { clear } from '../core/grid';
 import type { Entity, Game } from '../core/types';
 import { fire } from './shots';
@@ -13,6 +13,9 @@ import './drops';
 import './report';
 
 const near = (a: Entity, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/** orb speed (cells/s) for the lamp kind: the furnace's burn faster */
+const ORB: Record<string, number> = { seraph: 2.2, pyre: 3.6, saint: 4 };
 
 /** the seraph lamp stays put; when you stand in its row or column it sends a slow orb down the line */
 function seraph(g: Game, e: Entity): void {
@@ -28,14 +31,15 @@ function seraph(g: Game, e: Entity): void {
     e.enemy!.data.noticed = true;
     say(g, 'a seraph lamp turns its light on you.');
   }
-  fire(g, { x: e.x, y: e.y, vx: vx * 2.2, vy: vy * 2.2, dmg: d.damage, range: d.sense + 2, src: e, foe: true });
+  const speed = ORB[e.enemy!.type] ?? 2.2;
+  fire(g, { x: e.x, y: e.y, vx: vx * speed, vy: vy * speed, dmg: d.damage, range: d.sense + 2, src: e, foe: true });
 }
 
 /** the walker: slow, heavy; it winds up before it hits, so you can step away */
 function walker(g: Game, e: Entity, dt: number): void {
   const p = g.player;
   const en = e.enemy!;
-  if (near(e, p) <= 1.1 && g.t >= en.readyAt && !en.data.windup) {
+  if (near(e, p) <= REACH && g.t >= en.readyAt && !en.data.windup) {
     en.data.windup = g.t + 0.8;
     say(g, 'the ossuary walker lifts its arm.');
     return;
@@ -44,7 +48,7 @@ function walker(g: Game, e: Entity, dt: number): void {
     if (g.t < (en.data.windup as number)) return;
     en.data.windup = 0;
     en.readyAt = g.t + ENEMIES[en.type].cooldown;
-    if (near(e, p) <= 1.3) hurt(g, ENEMIES[en.type].damage, e);
+    if (near(e, p) <= REACH + 0.2) hurt(g, ENEMIES[en.type].damage, e);
     else say(g, 'its arm comes down on nothing.');
     return;
   }
@@ -56,3 +60,10 @@ enemy('seraph', { name: 'a seraph lamp', hp: 3, speed: 0, damage: 1.5, cooldown:
 enemy('walker', { name: 'an ossuary walker', hp: 6, speed: 0.7, damage: 2, cooldown: 2.5, sense: 7, ai: walker });
 enemy('hum', { name: 'the hum', hp: 4, speed: 1.1, damage: 1, cooldown: 2, sense: 5, hidden: true });
 enemy('mimic', { name: 'a mimic', hp: 3, speed: 1.4, damage: 1.5, cooldown: 1.6, sense: 8 });
+// zones (balance pass): the furnace's lamp, and one elite per zone guarding its shard (src/world/vectors.ts)
+enemy('pyre', { name: 'a pyre seraph', hp: 3, speed: 0, damage: 1.5, cooldown: 2.4, sense: 9, ai: seraph });
+enemy('warden', { name: 'the choir warden', hp: 8, speed: 1.7, damage: 1.5, cooldown: 1.3, sense: 7 });
+enemy('abbot', { name: 'the bone abbot', hp: 16, speed: 0.8, damage: 4, cooldown: 2.2, sense: 8, ai: walker });
+enemy('saint', { name: 'the furnace saint', hp: 20, speed: 0, damage: 3.5, cooldown: 1.8, sense: 10, ai: seraph });
+/** the elite that guards each zone's shard (zone 3's also guards the engine) */
+export const ELITE = ['', 'warden', 'abbot', 'saint'];

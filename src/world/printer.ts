@@ -11,6 +11,7 @@ import { hash, rng } from '../core/rng';
 import { addItem, findInst, findItem, verb } from '../core/verbs';
 import type { Entity, Game, Item, Line, Res } from '../core/types';
 import { lootMod } from './spawn';
+import { ZONES, zoneFar } from './zones';
 
 export const MAX_SLOTS = 8;
 export type Cost = Partial<Record<Res, number>>;
@@ -24,14 +25,14 @@ export const PRICES = {
 };
 
 export function slotCost(g: Game): Cost {
-  const n = g.player.slots - 3;
-  const c: Cost = { bone: 3 + 2 * n, copper: 2 + n };
-  if (g.player.slots >= 5) c.glass = 2;
-  if (g.player.slots >= 6) c.ichor = 1;
+  // balance pass: the run starts with 6 slots, so the price starts there
+  const n = Math.max(0, g.player.slots - 6);
+  const c: Cost = { bone: 6 + 3 * n, glass: 4 + 2 * n, copper: 2 + n };
+  if (n >= 1) c.ichor = n;
   return c;
 }
 
-export const tierAt = (far: number) => (far < 2 ? 0 : far < 4 ? 1 : 2);
+export const tierAt = (far: number) => ZONES[zoneFar(far)].tier;
 export function modCost(far: number): Cost {
   return PRICES.print[tierAt(far)];
 }
