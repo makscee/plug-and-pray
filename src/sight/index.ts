@@ -122,8 +122,19 @@ export const FILTERS: Record<string, Filter> = {
     // a pulse runs out from you, 5 cells a second, and starts again past the range
     const pulse = (t * 5) % (range + 2);
     const rim = creases(px, res, range);
+    // nose to a wall: a flat face has no creases and no bands, so it came back one flat grey (playtest r2).
+    // The song bounces straight back instead: rings run out from the middle across whatever is that close
+    const mid = near(px, (res >> 1) * res + (res >> 1));
+    const close = mid > 0 && (1 - mid) * range < 1;
     for (let i = 0; i < res * res; i++) {
       const n = near(px, i);
+      if (close && n && (1 - n) * range < 1.3 && px[i * 4 + 2] < HOLLOW) {
+        const r = Math.hypot((i % res) - res / 2, ((i / res) | 0) - res / 2) / res;
+        if (Math.sin(r * 38 - t * 10) > 0.35) {
+          px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = Math.round(((Math.round(0.85 * (levels - 1)) / (levels - 1)) * 255));
+          continue;
+        }
+      }
       if (!n) {
         px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = 0;
         continue;

@@ -7,12 +7,12 @@
 import { CHUNK, chunkHook, open } from '../core/grid';
 import { dist, say, spawn, spawnEnemy, tickHooks } from '../core/game';
 import { ELITE } from '../fight';
-import { zoneAt, zoneOf } from './zones';
+import { ZONES, zoneAt, zoneOf } from './zones';
 import { active, def, param } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import { verb } from '../core/verbs';
 import type { Chunk, Game, Vector } from '../core/types';
-import { CARDS, LOGS, SHARDS } from './cards';
+import { CARDS, LOGS, OPENERS, SHARDS } from './cards';
 import { spot } from './gen';
 import { lootMod } from './spawn';
 import { foe } from '../fight/spawn';
@@ -71,7 +71,9 @@ const L = (g: Game): Lore => {
 
 /** the next unread log for a card lying in the world */
 export function nextLog(g: Game): string {
-  return LOGS[L(g).spawned++ % LOGS.length].id;
+  const k = L(g).spawned++;
+  if (k === 0) return rng(hash(g.seed, 67)).pick(OPENERS).id;
+  return LOGS[k % LOGS.length].id;
 }
 
 /** "74 cells, bearing 128 (se)" from the player to (x, y) */
@@ -198,7 +200,18 @@ verb('read', {
       const [ex, ey] = engineAt(g);
       const fromStart = Math.round(Math.hypot(ex - 8.5, ey - 8.5) / 10) * 10;
       const deg = Math.round(((Math.atan2(ex - g.player.x, -(ey - g.player.y)) * 180) / Math.PI + 360) % 360);
-      if (n === 1) say(g, `  the engine: about ${fromStart} cells from where you woke.`);
+      if (n === 1) {
+        // r2 hook: the first shard says which way too, and where the next one lies (what next after shard 1)
+        const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(deg / 45) % 8];
+        say(g, `  the engine: about ${fromStart} cells from where you woke, bearing near ${Math.round(deg / 45) * 45} (${word}) from here.`);
+        const k = [0, 1, 2].find((k) => !L(g).pointed.includes(k) && !holds(g, SHARDS[k].id));
+        if (k !== undefined) {
+          L(g).pointed.push(k);
+          const [x, y] = shardAt(g, k);
+          g.vectors.push({ card: it.card, x, y, what: 'scripture shard', found: false });
+          say(g, [`  the next shard lies in ${ZONES[zoneAt(x, y)].name}. vector: ${bearing(g, x, y)}. `, { text: 'vectors', cmd: 'vectors' }]);
+        }
+      }
       else if (n === 2) say(g, `  the engine: about ${fromStart} cells out, bearing near ${Math.round(deg / 45) * 45} from here.`);
       else {
         const v: Vector = { card: it.card, x: ex, y: ey, what: 'thaw engine', found: false };
@@ -233,7 +246,9 @@ tickHooks.push((g) => {
     if (v.found || dist(v, g.player) > 1.6) continue;
     v.found = true;
     g.events.push({ type: 'vector', at: [v.x, v.y] });
-    say(g, [`the vector ends here: the ${v.what}. `, { text: 'take', cmd: 'take' }]);
+    // a wall the eyes named (src/world/finds.ts) is broken or read, not taken
+    const act = v.what === 'hollow wall' ? 'break' : v.what === 'scratched wall' || v.what === 'warm prints' ? '' : 'take';
+    say(g, [`the vector ends here: the ${v.what}. `, ...(act ? [{ text: act, cmd: act }] : [])]);
   }
   if (!g.ended && g.player.installed.some((i) => def(i).id === 'thaw-engine')) {
     g.ended = 'thaw';

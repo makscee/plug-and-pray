@@ -23,10 +23,18 @@ export const LOGS: Card[] = [
   { id: 'log-last', lines: ['nobody reads these. i write anyway.', 'i was warm once. we all were.', 'if you are reading: you are not alone.', 'you are only the last. go on.'] },
 ];
 
+/** the first card a run finds: one of these per seed (r2: every seed opened on the surveyor, so a replay felt the same by minute 1) */
+export const OPENERS: Card[] = [
+  LOGS[0],
+  { id: 'log-lamplighter', lines: ['lamplighter, ninth of the choir.', 'i lit the nave for the last mass.', 'the dark came in anyway, singing.', 'my lamps still burn ahead. go and see.'] },
+  { id: 'log-mason', lines: ['mason unit. i was mending a rib.', 'the rib mended me instead. it is warm.', 'some walls here are only shells.', 'i hid my tools ahead. go and see.'] },
+  { id: 'log-cartographer', lines: ['cartographer, first descent.', 'the halls move when no one looks.', 'so i looked. i never stopped looking.', 'my last mark is ahead. go and see.'] },
+];
+
 export const SHARDS: Card[] = [
   { id: 'shard-1', shard: 1, lines: ['THE FIRST SHARD.', 'in the beginning the god was warm,', 'and the warmth went out of the god,', 'and the engine of thaw was set aside.', 'reckon its distance from your waking:'] },
   { id: 'shard-2', shard: 2, lines: ['THE SECOND SHARD.', 'and the machines came down to the cold,', 'and the cold took them one by one,', 'yet the engine kept its bearing.', 'turn your face toward it:'] },
   { id: 'shard-3', shard: 3, lines: ['THE THIRD SHARD.', 'whoso holds the three holds the way.', 'set the engine in thy breast,', 'and the heart shall beat, and be warm.', 'go now. the way is whole:'] },
 ];
 
-export const CARDS: Record<string, Card> = Object.fromEntries([...LOGS, ...SHARDS].map((c) => [c.id, c]));
+export const CARDS: Record<string, Card> = Object.fromEntries([...LOGS, ...OPENERS, ...SHARDS].map((c) => [c.id, c]));

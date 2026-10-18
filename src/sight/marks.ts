@@ -34,39 +34,28 @@ const hand = () =>
     c.fillRect(1, 9, 3, 2);
   }));
 
-/** scripture: three rows of runes cut pale through a dark slab, the strokes picked by the salt */
+/** scripture: two rows of three runes cut thick and white through a black slab, the strokes picked by the salt.
+ *  Thick on purpose (playtest r2): at 96 px and three cells a hair-thin stroke fell between pixels, and the
+ *  black & white dither of the wall around it swallowed the rest. Pure black and white survive any dither */
 const scriptTex = new Map<number, THREE.Texture>();
 function script(salt: number): THREE.Texture {
   let t = scriptTex.get(salt);
   if (t) return t;
   const r = rng(hash(salt, 5));
-  t = canvasTex(32, 24, (c) => {
-    const strokes: [number, number, number, number][] = [];
-    for (let row = 0; row < 3; row++)
-      for (let k = 0; k < 5; k++) {
-        const x = 2 + k * 6, y = 2 + row * 7;
-        // a rune: a stave and one or two branches
-        strokes.push([x + 2, y, x + 2, y + 5]);
-        for (let b = r.int(1, 2); b > 0; b--) strokes.push([x + 2, y + r.int(0, 3), x + (r.chance(0.5) ? 0 : 4), y + r.int(0, 5)]);
-      }
-    const line = (w: number, col: string) => {
-      c.strokeStyle = col;
-      c.lineWidth = w;
-      c.lineCap = 'square';
-      for (const [a, b, cc, d] of strokes) {
-        c.beginPath();
-        c.moveTo(a + 0.5, b + 0.5);
-        c.lineTo(cc + 0.5, d + 0.5);
-        c.stroke();
-      }
-    };
-    // a soot-dark slab the strokes are cut through, ragged at the edge: black & white reads it as a tablet
+  t = canvasTex(24, 18, (c) => {
     c.fillStyle = '#000';
-    for (let y = 0; y < 24; y++) {
-      const a = r.int(0, 2), b = r.int(0, 2);
-      c.fillRect(a, y, 32 - a - b, 1);
-    }
-    line(1, '#fff');
+    c.fillRect(0, 0, 24, 18);
+    c.fillStyle = '#fff';
+    for (let row = 0; row < 2; row++)
+      for (let k = 0; k < 3; k++) {
+        const x = 2 + k * 7, y = 2 + row * 8;
+        // a rune: a stave two pixels thick and one or two branches off it
+        c.fillRect(x + 2, y, 2, 6);
+        const b = r.int(0, 5);
+        if (b & 1) c.fillRect(x, y + r.int(0, 1) * 2, 2, 2);
+        if (b & 2) c.fillRect(x + 4, y + r.int(1, 2) * 2, 2, 2);
+        if (b < 2 || b & 4) c.fillRect(x + (r.chance(0.5) ? 0 : 4), y + 4, 2, 2);
+      }
   });
   scriptTex.set(salt, t);
   return t;
@@ -123,7 +112,7 @@ function cut(u: { snap: U }, t: THREE.Texture): THREE.Material {
 /** black & white: the strokes pale, their rims dark, on the wall */
 function scratch(t: THREE.Texture): THREE.Material {
   let m = scratchMats.get(t);
-  if (!m) scratchMats.set(t, (m = new THREE.MeshBasicMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide })));
+  if (!m) scratchMats.set(t, (m = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide, fog: false })));
   return m;
 }
 /** sonar: the shell's distance as usual, flagged in blue so the filter makes it ring */
@@ -162,13 +151,13 @@ export function addMarks(g: Game, group: THREE.Group, mode: Mode, filter: string
         const [nx, ny] = path[k + 1];
         const a = Math.atan2(nx - x, -(ny - y));
         const side = k % 2 ? 0.16 : -0.16;
-        const o = new THREE.Mesh(flat, warm(hand(), 0.12 + (0.22 * k) / s.trail.length));
-        // a print never shrinks below a smudge a cheap eye can show
-        const sz = 0.3 * Math.max(1, Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) / 2.5);
+        const o = new THREE.Mesh(flat, warm(hand(), Math.round((0.45 + (0.2 * k) / s.trail.length) * 20) / 20));
+        // a print never shrinks below a few pixels a cheap eye can show, and burns near white (playtest r2: 1-2 px specks)
+        const sz = 0.34 * Math.max(1, Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) / 2.5);
         o.scale.set(sz, sz, 1);
-        // flat on the floor, fingers along the way
-        o.rotation.set(-Math.PI / 2, -a, 0, 'YXZ');
-        o.position.set(x + 0.5 + Math.cos(a) * side, 0.06, y + 0.5 + Math.sin(a) * side);
+        // on the floor, fingers along the way, tipped up toward the eye: flat, a far print was one pixel row (playtest r2)
+        o.rotation.set(-Math.PI / 2 + 0.6, Math.atan2(p.x - x - 0.5, p.y - y - 0.5), 0, 'YXZ');
+        o.position.set(x + 0.5 + Math.cos(a) * side, 0.1, y + 0.5 + Math.sin(a) * side);
         o.renderOrder = 2;
         group.add(o);
       }
@@ -178,15 +167,15 @@ export function addMarks(g: Game, group: THREE.Group, mode: Mode, filter: string
         for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
           const h = hash(s.salt, x, y, dx * 3 + dy);
           if (h % 3 === 0 || cell(g, x + dx, y + dy) === Cell.floor) continue;
-          const sz = 0.3 * Math.max(1, Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) / 2.5);
-          const o = onWall(new THREE.Mesh(flat, warm(hand(), 0.16 + (0.22 * k) / s.trail.length)), x + dx, y + dy, -dx, -dy, sz, sz);
+          const sz = 0.36 * Math.max(1, Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) / 2.5);
+          const o = onWall(new THREE.Mesh(flat, warm(hand(), Math.round((0.35 + (0.2 * k) / s.trail.length) * 20) / 20)), x + dx, y + dy, -dx, -dy, sz, sz);
           o.position.y = 0.22 + ((h >> 4) % 40) / 100;
           o.rotateZ((((h >> 8) % 90) - 45) / 60);
           o.renderOrder = 2;
           group.add(o);
         }
       }
-      const o = new THREE.Mesh(flat, warm(plate(), Math.round((0.4 + 0.08 * Math.sin(g.t * 4)) * 20) / 20));
+      const o = new THREE.Mesh(flat, warm(plate(), Math.round((0.6 + 0.08 * Math.sin(g.t * 4)) * 20) / 20));
       o.scale.set(0.6, 0.6, 1);
       o.rotation.x = -Math.PI / 2;
       o.position.set(s.x + 0.5, 0.05, s.y + 0.5);
@@ -196,7 +185,7 @@ export function addMarks(g: Game, group: THREE.Group, mode: Mode, filter: string
       if (cell(g, s.x, s.y) === Cell.floor) continue;
       const t = script(s.salt);
       const mat = mode === 'depth' ? cut(u, t) : scratch(t);
-      group.add(onWall(new THREE.Mesh(flat, mat), s.x, s.y, s.fx, s.fy, 0.8, 0.6));
+      group.add(onWall(new THREE.Mesh(flat, mat), s.x, s.y, s.fx, s.fy, 0.92, 0.7));
     } else if (s.kind === 'hollow' && filter === 'sonar' && !s.done) {
       group.add(onWall(new THREE.Mesh(flat, hollow(u)), s.x, s.y, s.fx, s.fy, 1, 1));
     }
