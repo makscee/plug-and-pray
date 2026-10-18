@@ -26,7 +26,7 @@ chunkHook((g: Game, c: Chunk) => {
 
 // an elite gives up a unique beside its usual module
 killHooks.push((g, e) => {
-  if (!e.enemy?.data.elite) return;
+  if (!e.enemy?.data.elite || e.enemy.data.boss) return; // bosses deal their own (src/fight/bosses.ts)
   const it = dealUnique(g);
   spawn(g, { kind: 'item', x: e.x, y: e.y + 0.3, item: it, data: { relic: true } });
   if (it.kind === 'mod') say(g, `✦ it leaves a relic with its own name: ${label(it)}.`);

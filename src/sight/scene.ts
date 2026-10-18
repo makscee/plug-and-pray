@@ -182,9 +182,11 @@ const itemGeo = new THREE.OctahedronGeometry(0.12);
 const shotGeo = new THREE.IcosahedronGeometry(0.1, 0);
 const ORB: Look = { geo: shotGeo, color: 0xffe0a0, glow: 0xffd070, y: 0.4, heat: 1 };
 const NAIL: Look = { geo: shotGeo, color: 0xd0e0ff, glow: 0xa0c0ff, y: 0.35, heat: 0.6 };
+const MARK: Look = { geo: new THREE.OctahedronGeometry(0.07), color: 0xff3020, glow: 0xff2010, y: 0.04, heat: 0.9 };
 
 function lookOf(e: Entity): Look | null {
   if (e.data?.shot) return e.data.foe ? ORB : NAIL; // the fight slice's projectiles
+  if (e.data?.mark) return MARK; // a boss's wind-up: where it will hit (src/fight/bosses.ts)
   if (e.enemy) return null; // enemies are sprites (spriteOf)
   if (e.kind === 'printer') return { geo: printerGeo, color: 0x5a4a40, glow: 0x803010, y: 0.45, heat: 0.4 };
   // an altar: a low stained block with a red glow (it had no shape, so no eye ever saw one)
@@ -342,7 +344,7 @@ function addSprite(g: Game, e: Entity, mode: Mode, showHidden: boolean, xray = f
   const winding = typeof d.windup === 'number' && g.t < d.windup;
   const wide = winding && d.wide ? 1.5 : 1;
   const rear = winding && type === 'mite' ? 1.3 : 1;
-  o.scale.set(size * wide, size * rear, 1);
+  o.scale.set(size * wide * (sh.def.wide ?? 1), size * rear, 1);
   o.position.set(e.x, sh.def.lift + (size * rear) / 2 + bob, e.y);
   o.rotation.y = -g.player.dir;
   o.renderOrder = mode === 'heat' || through ? 2 : 1;

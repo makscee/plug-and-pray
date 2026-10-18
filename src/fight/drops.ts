@@ -22,6 +22,8 @@ export const DROPS: Record<string, [Res, number, number]> = {
 };
 
 killHooks.push((g, e) => {
+  // a boss's brood leaves nothing: no farming the mite queen (src/fight/bosses.ts)
+  if (e.enemy!.data.summoner) return;
   const type = e.enemy!.type;
   const r = rng(hash(g.seed, 31, e.id));
   const drop = (item: Item, k: number) => spawn(g, { kind: 'item', x: e.x + (k ? 0.3 : 0), y: e.y, item });
