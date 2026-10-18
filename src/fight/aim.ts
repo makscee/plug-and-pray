@@ -3,14 +3,14 @@
 // It first turns you to the nearest foe you perceive within reach (v2r2 fight: a foe 16° off at 3 cells
 // counted as in front, and every shot passed it by). The gyro heart turns `player.dir`
 // to the mouse. Their windows carry a shoot button.
-import { dist, say } from '../core/game';
+import { dist, ENEMIES, REACH, say, tickHooks } from '../core/game';
 import { clear } from '../core/grid';
 import { active, def, families, param } from '../core/mods';
 import { verb } from '../core/verbs';
 import type { Entity, Game, Inst, Line } from '../core/types';
-import { fire } from './shots';
+import { bolted, compass, fire } from './shots';
 import { COPY, haste } from '../mods/weapon';
-import { canHit } from '../mods/sense';
+import { canHit, perceives } from '../mods/sense';
 import { offFacing, toward, turned } from './eye';
 
 export const aimed = (g: Game): Inst[] => active(g, 'weapon').filter((i) => param<string>(i, 'aim', 'auto') === 'aimed');
@@ -84,15 +84,47 @@ verb('shoot', {
       return cooling(g, `${def(soon).name}: still cooling.`);
     }
     // the gyro heart aims with the mouse: leave it be
-    if (!active(g, 'gait').some((x) => param(x, 'free', false))) aimAt(g, Math.max(...fire1.map((i) => param<number>(i, 'range', 6))));
+    const range = Math.max(...fire1.map((i) => param<number>(i, 'range', 6)));
+    if (!active(g, 'gait').some((x) => param(x, 'free', false))) aimAt(g, range);
+    if (!targets(g, range).length) whyNot(g, range);
     const fx = Math.sin(p.dir);
     const fy = -Math.cos(p.dir);
     for (const i of fire1) {
       // the copies cool together: one shot per module
       const until = g.t + shotCooldown(g, i);
       for (const c of aimed(g).filter((x) => x.mod === i.mod)) c.data.readyAt = until;
-      fire(g, { x: p.x + fx * 0.3, y: p.y + fy * 0.3, vx: fx * SHOT_SPEED, vy: fy * SHOT_SPEED, dmg: param<number>(i, 'damage', 1), range: param<number>(i, 'range', 6), src: null, foe: false });
+      fire(g, { x: p.x + fx * 0.3, y: p.y + fy * 0.3, vx: fx * SHOT_SPEED, vy: fy * SHOT_SPEED, dmg: param<number>(i, 'damage', 1), range: param<number>(i, 'range', 6), src: null, foe: false, name: def(i).name });
       g.events.push({ type: 'shoot', data: i.uid });
     }
   },
+});
+
+const nameOf = (e: Entity) => (ENEMIES[e.enemy!.type]?.name ?? 'it').replace(/^(a|an|the) /, '');
+const told = new WeakMap<Game, number>();
+/** v2r5 run: `shoot` with nothing to aim at only ever said "you miss": the nearest foe in reach that a wall
+ *  hides, or that your eyes do not see, is named with the way to it */
+function whyNot(g: Game, range: number): void {
+  if (g.t - (told.get(g) ?? -99) < 2.5) return;
+  const p = g.player;
+  const e = g.ents
+    .filter((e) => e.enemy && !ENEMIES[e.enemy.type]?.hidden && !e.enemy.data.mimic && dist(e, p) <= range)
+    .sort((a, b) => dist(a, p) - dist(b, p))[0];
+  if (!e) return;
+  told.set(g, g.t);
+  const w = compass(g, e);
+  if (!clear(g, p.x, p.y, e.x, e.y) && canHit(g, e)) return say(g, `stone stands between you and the ${nameOf(e)}: step out of its line.`);
+  if (!perceives(g, e)) say(g, ['nothing in sight to aim at: ', { text: `turn ▶ ${nameOf(e)}`, cmd: `face ${w}` }]);
+}
+
+/** v2r5 run: an unseen seraph's orbs hit you with nothing on screen: the way they came from, once in a while */
+const cued = new WeakMap<Game, number>();
+tickHooks.push((g) => {
+  const b = bolted.get(g);
+  const p = g.player;
+  if (!b || b.t !== g.t || p.hurtAt !== g.t || g.ended) return;
+  if (b.from.enemy && g.ents.includes(b.from) && (perceives(g, b.from) || dist(b.from, p) <= REACH)) return;
+  if (g.t - (cued.get(g) ?? -99) < 3) return;
+  cued.set(g, g.t);
+  const at = g.ents.includes(b.from) ? b.from : { x: p.x - b.vx, y: p.y - b.vy };
+  say(g, `a bolt from the ${compass(g, at)}.`);
 });

@@ -108,8 +108,14 @@ function toward(g: Game, mod: string, sound: string): Line | null {
   return line;
 }
 
-/** the last leg `where` gave, per game: toward which cell, which way, from where */
-const lastLeg = new WeakMap<Game, { key: string; dir: string; at: [number, number] }>();
+/** the last leg `where` gave, per game and per target cell: which way, from where (v2r5 run: one entry per
+ *  game, and each of `where`'s 3-5 lines overwrote it, so the guard never saw a ping-pong) */
+export const lastLeg = new WeakMap<Game, Map<string, { dir: string; at: [number, number] }>>();
+const legsOf = (g: Game) => {
+  let m = lastLeg.get(g);
+  if (!m) lastLeg.set(g, (m = new Map()));
+  return m;
+};
 const BACK: Record<string, string> = { n: 's', s: 'n', e: 'w', w: 'e' };
 /** the first straight leg of a way over floor you have mapped, or null when the map knows no way there */
 function knownLeg(g: Game, x: number, y: number): [string, number] | null {
@@ -126,29 +132,43 @@ function knownLeg(g: Game, x: number, y: number): [string, number] | null {
 
 /** "<sound>, 21 cells se. first: [go s 5]": the leg is the start of a real way there (playtest r3: the
  * straight word and the leg read as a disagreement, and an axis leg walked into a dead end) */
-function toCell(g: Game, x: number, y: number, sound: string, act = 'take'): Line {
+export function toCell(g: Game, x: number, y: number, sound: string, act = 'take'): Line {
   const p = g.player;
   const [dx, dy] = [x - p.x, y - p.y];
   // r4: on it or beside it, the leg ping-ponged (go n 1, go s 1); say what to do here instead
   if (Math.abs(Math.floor(x) - Math.floor(p.x)) + Math.abs(Math.floor(y) - Math.floor(p.y)) <= 1) return [`${sound}: here. `, { text: act, cmd: act }];
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
   let [ax, n] = way.long(g, x, y);
+  // v2r5 run: the only way runs through a sleeping keeper's room: say so, never a leg into its door
+  if (!way.whole && way.block(g, Math.floor(x), Math.floor(y))) {
+    const block = way.block;
+    way.block = () => null;
+    way.long(g, x, y);
+    const through = way.whole;
+    way.block = block;
+    if (through) {
+      const here: [number, number] = [Math.floor(p.x) + 0.5, Math.floor(p.y) + 0.5];
+      const run = openRuns(g, here[0], here[1]).sort((a, b) => b[1] - a[1])[0];
+      const go: Line = run ? [{ text: `go ${run[0]} ${run[1]}`, cmd: walks(g) ? `go ${run[0]} ${run[1]}` : `crawl ${run[0]}` }] : [];
+      return [`${sound}, ${cells(Math.round(Math.hypot(dx, dy)))} ${word}: past the keeper. go in, or explore `, ...go, ' for another way.'];
+    }
+  }
   // v2r4 run: behind unmapped wall it said go e 3, then go w 3 from there: a leg that turns straight back on the
   // last one for the same place goes by mapped floor instead, or says to explore
   const key = `${Math.floor(x)},${Math.floor(y)}`;
   const here: [number, number] = [Math.floor(p.x), Math.floor(p.y)];
-  const last = lastLeg.get(g);
-  if (last?.key === key && last.dir === BACK[ax] && (last.at[0] !== here[0] || last.at[1] !== here[1])) {
+  const last = legsOf(g).get(key);
+  if (last && last.dir === BACK[ax] && (last.at[0] !== here[0] || last.at[1] !== here[1])) {
     const known = knownLeg(g, x, y);
     if (!known || known[0] === ax) {
       const runs = openRuns(g, here[0] + 0.5, here[1] + 0.5).filter(([d]) => d !== ax && d !== last.dir).sort((a, b) => b[1] - a[1]);
       const [ex, en] = runs[0] ?? [last.dir, 3];
-      lastLeg.set(g, { key, dir: ex, at: here });
+      legsOf(g).set(key, { dir: ex, at: here });
       return [`${sound}, ${cells(Math.round(Math.hypot(dx, dy)))} ${word}. no known way yet: explore `, { text: `go ${ex} ${en}`, cmd: walks(g) ? `go ${ex} ${en}` : `crawl ${ex}` }, ' and the map fills.'];
     }
     [ax, n] = known;
   }
-  lastLeg.set(g, { key, dir: ax, at: here });
+  legsOf(g).set(key, { dir: ax, at: here });
   // v2r2 fun: with a pilot as legs, its goto where it knows the way; the gyro heart walks `go` too
   const cmd = VERBS.goto?.when?.(g) && g.seen.has(`${Math.floor(x)},${Math.floor(y)}`) ? `goto ${Math.floor(x)} ${Math.floor(y)}` : walks(g) ? `go ${ax} ${n}` : `crawl ${ax}`;
   return [`${sound}, ${cells(Math.round(Math.hypot(dx, dy)))} ${word}. first: `, { text: cmd, cmd }];
@@ -241,6 +261,19 @@ verb('where', {
   },
 });
 
+/** the altars you have stood at, per game: `where` keeps naming them */
+const altarsUsed = new WeakMap<Game, Set<number>>();
+const altarLook = new WeakMap<Game, number>();
+tickHooks.push((g) => {
+  if (g.t < (altarLook.get(g) ?? 0)) return;
+  altarLook.set(g, g.t + 0.5);
+  const a = g.ents.find((e) => e.data?.altar && dist(e, g.player) < 1.6);
+  if (!a) return;
+  let s = altarsUsed.get(g);
+  if (!s) altarsUsed.set(g, (s = new Set()));
+  s.add(a.id);
+});
+
 /** past the wake hint: a card to read, the nearest vector, a printer when slots are full */
 function after(g: Game): Line[] {
   const p = g.player;
@@ -269,9 +302,12 @@ function after(g: Game): Line[] {
   const res = (r: string) => p.inv.reduce((n, i) => n + (i.kind === 'res' && i.res === r ? i.n : 0), 0);
   const f = floorOf(g);
   const unready = !bossDown(g) && !!keeperDoor.of(g, f) && !keeperDoor.ready(g, f);
-  if (unready || (res('glass') < 1 && res('bone') >= 4)) {
-    const al = g.ents.filter((e) => e.data?.altar && floorAt(e.x) === f && g.seen.has(`${Math.floor(e.x)},${Math.floor(e.y)}`)).sort((a, b) => dist(a, p) - dist(b, p))[0];
-    const why = unready ? 'an altar tempers, mends and adds hp' : 'an altar grinds 4 bone into 1 glass';
+  // v2r5 run: hurt after a retreat, `where` no longer named the altar you had used
+  const hurt = p.hp < p.maxHp * 0.7;
+  if (unready || hurt || (res('glass') < 1 && res('bone') >= 4)) {
+    const used = altarsUsed.get(g);
+    const al = g.ents.filter((e) => e.data?.altar && floorAt(e.x) === f && (used?.has(e.id) || g.seen.has(`${Math.floor(e.x)},${Math.floor(e.y)}`))).sort((a, b) => dist(a, p) - dist(b, p))[0];
+    const why = unready ? 'an altar tempers, mends and adds hp' : hurt ? 'an altar mends you' : 'an altar grinds 4 bone into 1 glass';
     out.push(al ? toCell(g, al.x, al.y, why, 'offer') : [`${why}; none seen on this floor yet: `, { text: 'listen', cmd: 'listen' }, ' hears them.']);
   }
   // a loose module of a kind you don't wear yet (a pinhole swapped out for the dawn eye is no reason)

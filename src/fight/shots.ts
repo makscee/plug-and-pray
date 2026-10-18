@@ -19,10 +19,13 @@ export interface ShotData {
   /** its look (src/fight/bolts.ts: bolt, slag, ...) and how close it must pass to hit; old shots have neither */
   kind?: string;
   r?: number;
+  /** your weapon's name, for the miss line ("your nail psalm strikes stone") */
+  name?: string;
 }
 
-export function fire(g: Game, o: { x: number; y: number; vx: number; vy: number; dmg: number; range: number; src: Entity | null; foe: boolean; kind?: string; r?: number }): Entity {
+export function fire(g: Game, o: { x: number; y: number; vx: number; vy: number; dmg: number; range: number; src: Entity | null; foe: boolean; kind?: string; r?: number; name?: string }): Entity {
   const data: ShotData = { shot: true, vx: o.vx, vy: o.vy, dmg: o.dmg, left: o.range, foe: o.foe, src: o.src?.id ?? 0, type: o.src?.enemy?.type };
+  if (o.name) data.name = o.name;
   if (o.kind) data.kind = o.kind;
   if (o.r) data.r = o.r;
   return spawn(g, { kind: 'prop', x: o.x, y: o.y, data: data as unknown as Record<string, unknown> });
@@ -31,6 +34,9 @@ export function fire(g: Game, o: { x: number; y: number; vx: number; vy: number;
 export const shots = (g: Game): Entity[] => g.ents.filter((e) => e.kind === 'prop' && e.data?.shot);
 
 const HIT = 0.45;
+
+/** the last foe shot that reached you: when, whose, which way it flew (src/fight/aim.ts names an unseen one's way) */
+export const bolted = new WeakMap<Game, { t: number; from: Entity; vx: number; vy: number }>();
 
 export function tickShots(g: Game, dt: number): void {
   for (const s of shots(g)) {
@@ -44,12 +50,14 @@ export function tickShots(g: Game, dt: number): void {
       d.left -= (speed * dt) / n;
       if (!open(g, s.x, s.y) || d.left <= 0) {
         gone = true;
-        // your shot struck nothing: a soft whiff, never the hit sound (Maks 10-18)
-        if (!d.foe) g.events.push({ type: 'miss', at: [s.x, s.y] });
+        // your shot struck nothing: a soft whiff, never the hit sound (Maks 10-18); v2r5 run: on a wall or a
+        // pillar it says so (a pillar in the line read as "you miss ×2" for a minute)
+        if (!d.foe) g.events.push({ type: 'miss', at: [s.x, s.y], data: !open(g, s.x, s.y) ? { stone: true, name: d.name } : undefined });
       }
       else if (d.foe) {
         if (Math.hypot(s.x - g.player.x, s.y - g.player.y) < (d.r ?? HIT)) {
           const from = g.ents.find((e) => e.id === d.src) ?? { id: d.src, kind: 'enemy' as const, x: s.x, y: s.y, enemy: { type: d.type ?? 'seraph', hp: 0, readyAt: 0, data: {} } };
+          bolted.set(g, { t: g.t, from, vx: d.vx, vy: d.vy });
           hurt(g, d.dmg, from);
           gone = true;
         }

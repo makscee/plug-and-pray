@@ -297,6 +297,11 @@ verb('status', {
 /** the first leg toward (x, y): a direction and up to 9 cells. A straight axis here; tune/hints.ts
  * swaps in the pilot's pathfinder over open floor, so the button walks round walls */
 export const way = {
+  /** cells a walk toward (tx, ty) must not cross, or null: src/tune/door.ts shuts a sleeping keeper's room
+   *  (v2r5 run: `where` routed through it and every walk stopped at its door) */
+  block: (_g: Game, _tx: number, _ty: number): ((x: number, y: number) => boolean) | null => null,
+  /** whether the last `long` found a way (false: it fell back to a straight leg) */
+  whole: true,
   leg(g: Game, x: number, y: number): [string, number] {
     const [dx, dy] = [x - g.player.x, y - g.player.y];
     const ax = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n';
@@ -306,27 +311,33 @@ export const way = {
    * (playtest r2 pace: the pathfinder's staircase gave 1-cell legs that turned back on themselves) */
   long(g: Game, x: number, y: number): [string, number] {
     const [sx, sy, tx, ty] = [Math.floor(g.player.x), Math.floor(g.player.y), Math.floor(x), Math.floor(y)];
+    way.whole = true;
     if (sx === tx && sy === ty) return way.leg(g, x, y);
-    // steps to the target over open floor, from the target out (bounded around both ends)
-    const pad = 12;
+    // steps to the target over open floor, from the target out (bounded around both ends); round a shut room wider
+    const no = way.block(g, tx, ty);
+    const pad = no ? 24 : 12;
     const [x0, x1, y0, y1] = [Math.min(sx, tx) - pad, Math.max(sx, tx) + pad, Math.min(sy, ty) - pad, Math.max(sy, ty) + pad];
     const steps = new Map<string, number>([[tx + ',' + ty, 0]]);
     let ring: [number, number][] = [[tx, ty]];
-    for (let d = 1; ring.length && !steps.has(sx + ',' + sy) && d < 120; d++) {
+    for (let d = 1; ring.length && !steps.has(sx + ',' + sy) && d < (no ? 200 : 120); d++) {
       const next: [number, number][] = [];
       for (const [cx, cy] of ring)
         for (const [ex, ey] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const [nx, ny] = [cx + ex, cy + ey];
           const k = nx + ',' + ny;
           if (steps.has(k) || nx < x0 || nx > x1 || ny < y0 || ny > y1) continue;
-          if (!(nx === sx && ny === sy) && !open(g, nx + 0.5, ny + 0.5)) continue;
+          if (!(nx === sx && ny === sy) && (!open(g, nx + 0.5, ny + 0.5) || no?.(nx, ny))) continue;
           steps.set(k, d);
           next.push([nx, ny]);
         }
       ring = next;
     }
     const total = steps.get(sx + ',' + sy);
-    if (total === undefined) return way.leg(g, x, y);
+    if (total === undefined) {
+      const leg = way.leg(g, x, y);
+      way.whole = false;
+      return leg;
+    }
     let best: [string, number] | null = null;
     for (const dir of ['n', 'e', 's', 'w']) {
       const [ex, ey] = DIRS[dir];
