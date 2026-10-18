@@ -491,7 +491,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 80, damage: 1.7, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
+  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 80, damage: 1.9, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
   hint: 'she calls mites and stomps. thin the mites, keep off her stomp, bite her between.',
   turn: ['the mite queen shrieks. the brood comes faster.'],
   phases: [
@@ -500,7 +500,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-bell', floor: 0, name: 'the bell', hp: 92, damage: 2.3, speed: 0.5, walk: 'drift', r: 0.6, at: [0.5],
+  id: 'boss-bell', floor: 0, name: 'the bell', hp: 92, damage: 2.5, speed: 0.5, walk: 'drift', r: 0.6, at: [0.5],
   hint: 'its toll stuns whoever stands in the ring round it. stand a step from it (inside the ring, outside the clapper) or well off.',
   turn: ['the bell cracks. now its toll echoes: the inner ring, then the outer.'],
   phases: [
@@ -521,7 +521,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 2.6, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 3, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it plays chords of slow notes at you, and moves between its pipes. its pedal note shakes the floor round it.',
   turn: ['the organ pulls out every stop. mimics drop from its pipes.'],
   phases: [
@@ -550,7 +550,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-hydra', floor: 2, name: 'the ossuary hydra', hp: 250, damage: 2.3, speed: 0.5, walk: 'drift', r: 0.7, at: [0.5],
+  id: 'boss-hydra', floor: 2, name: 'the ossuary hydra', hp: 250, damage: 2.6, speed: 0.5, walk: 'drift', r: 0.7, at: [0.5],
   hint: 'three heads spit in turn, then all at once. it grows a head at half.',
   turn: ['the ossuary hydra grows a fourth head.'],
   phases: [
@@ -570,7 +570,7 @@ boss({
 
 // floor 3, the furnace: improved FPS, heavier patterns
 boss({
-  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 460, damage: 4.8, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 460, damage: 4.2, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it pours out turning arms of fire and crosses of light. later the floor under you catches.',
   turn: ['the burning saint flares. fire runs to where you stand.'],
   phases: [
@@ -579,7 +579,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-hammer', floor: 3, name: 'the hammer twin', hp: 210, damage: 4, speed: 1.3, walk: 'close', armour: 0.6, r: 0.6, at: [0.5], mate: 'boss-bellows',
+  id: 'boss-hammer', floor: 3, name: 'the hammer twin', hp: 210, damage: 3.5, speed: 1.3, walk: 'close', armour: 0.6, r: 0.6, at: [0.5], mate: 'boss-bellows',
   hint: 'two of them: the hammer charges and slams, the bellows blows fire from afar. kill one and the other rages.',
   turn: ['the hammer twin glows white. it rages.'],
   phases: [
@@ -588,7 +588,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-bellows', floor: 3, name: 'the bellows twin', hp: 190, damage: 3.6, speed: 1.1, walk: 'keep', keep: 5, r: 0.6, at: [0.5], mate: 'boss-hammer',
+  id: 'boss-bellows', floor: 3, name: 'the bellows twin', hp: 190, damage: 3.2, speed: 1.1, walk: 'keep', keep: 5, r: 0.6, at: [0.5], mate: 'boss-hammer',
   hint: 'two of them: the hammer charges and slams, the bellows blows fire from afar. kill one and the other rages.',
   turn: ['the bellows twin wheezes. its fire comes in streams.'],
   phases: [
@@ -608,7 +608,7 @@ boss({
 
 // floor 4: the heart, every run the same; each phase is a floor's way of fighting
 boss({
-  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 500, damage: 4.6, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
+  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 500, damage: 4.1, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
   hint: 'the heart of the engine. it fights the way every floor did: brood and toll, then lines and peals, then spirals and fire.',
   turn: ['the heart beats faster. light runs down its lines; the floor rings under you.', 'the heart burns white. fire pours out in arms, and the floor catches.'],
   phases: [
