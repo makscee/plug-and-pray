@@ -17,10 +17,11 @@ export const FURNACE_KIT = ['heat-lance', 'reliquary-saw', 'heart-shard', 'saint
 
 /** a module for a chunk this far out (in chunks): tiers open up with distance; uniques never roll.
  *  60% of rolls come from the zone's own tier (the furnace: its own kit), so each zone brings new modules */
-export function lootMod(r: Rng, far: number): Item {
+export function lootMod(r: Rng, far: number, family?: string): Item {
   const z = zoneFar(far);
   const maxTier = ZONES[z].tier;
-  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique' && (z === 3 || !FURNACE_KIT.includes(m.id)));
+  // r2 econ: an aimed print (`print weapon`) rolls within one family
+  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique' && (z === 3 || !FURNACE_KIT.includes(m.id)) && (!family || m.family === family));
   const own = pool.filter((m) => (z === 3 ? FURNACE_KIT.includes(m.id) : m.tier === maxTier));
   const m = r.pick(maxTier >= 1 && own.length && r.chance(0.6) ? own : pool);
   const item: Item = { kind: 'mod', mod: m.id };

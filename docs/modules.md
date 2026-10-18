@@ -40,7 +40,7 @@ gives three rules.
 | swarms of mites | nave | hit many at once | choir bell (2, rings everything in 2.4), censer flail (2, sweep and warmth), thorn mantle (1) |
 | seraph lamps down a line | nave, ossuary | reach them or dodge | rivet sling (1, auto 4 cells, needs an eye), nail psalm (1, aimed), clock of hours (2, foresight), gyro heart (2) |
 | mimics | nave on | know before you reach | lodestone (1, wakes them at 8 cells), bat psalter (sonar wakes them in its range) |
-| **dark** | ossuary | sight without light | bat psalter (2, sonar, loud), lattice eye (3, outlines, full range in the dark), carrion eye (1, needs half the light), or a lamp plus a colour eye |
+| **dark** | ossuary | sight without light | bat psalter (2, sonar, loud), lattice eye (3, outlines, full range in the dark), carrion eye (2, needs half the light), or a lamp plus a colour eye |
 | **cold**: no mending | ossuary | warmth | any lamp (halo 1, censer of embers 1, cold star 2), censer flail (its glow), lead lung (mends at half) |
 | the hum: hidden | ossuary, furnace | find it | bat psalter, ember iris (2, heat), bone-listener (1), heat choir (1); aimed nails hit it blind |
 | armour: walkers, the abbot | ossuary | big single hits | bone lance (2, 5 dmg aimed), reliquary saw (3), heat lance (3); fast weak weapons lose most of each hit |

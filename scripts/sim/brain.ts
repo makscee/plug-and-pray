@@ -10,6 +10,7 @@ import { active, def, MODS, param, powerMax, powerUsed } from '../../src/core/mo
 import { exec } from '../../src/core/verbs';
 import type { Entity, Game, Res, Roll } from '../../src/core/types';
 import * as printer from '../../src/world/printer';
+import { offeringOf } from '../../src/end/timeline';
 import * as zones from '../../src/world/zones';
 import * as altar from '../../src/world/altar';
 import { dpsOf } from '../../src/world/zonemath';
@@ -366,7 +367,10 @@ export function play(seed: number, o: Opts): Run {
     if (g.ents.some((e) => e.kind === 'item' && dist(e, P) < 1.6)) return 'take';
     // install / remove toward the best loadout
     const zt = targetZone();
-    const wantReader = g.cards.length < 4 || P.inv.some((i) => i.kind === 'card');
+    // r2 decide: a carried reader reads for a bone; installing it is for when bone runs out
+    const handReader = P.inv.some((i) => i.kind === 'mod' && i.mod === 'card-reader') && resOf(g, 'bone') >= 1;
+    if (handReader && P.inv.some((i) => i.kind === 'card') && !active(g, 'mind').some((i) => param(i, 'what', '') === 'reader')) return 'read card';
+    const wantReader = !handReader && (g.cards.length < 4 || P.inv.some((i) => i.kind === 'card'));
     if (P.inv.some((i) => i.kind === 'mod' && i.mod === 'thaw-engine')) {
       if (P.installed.length < P.slots) return 'install thaw engine';
       const out = P.installed.find((i) => MODS[i.mod].family !== 'gait');
@@ -478,7 +482,9 @@ export function play(seed: number, o: Opts): Run {
   /** the zone of the next thing to reach: shard k or the engine */
   function nextTarget(): { x: number; y: number; what: string } | null {
     // the nearest one it is ready for, else the one in the shallowest zone
-    const vs = g.vectors.filter((v) => !v.found && (v.what === 'scripture shard' || v.what === 'thaw engine'));
+    // a shard vector reached while its card still lies there (it fled the elite) is still the target
+    const open = (v: { x: number; y: number; found: boolean }) => !v.found || g.ents.some((e) => e.item?.kind === 'card' && dist(e, v) < 1.6);
+    const vs = g.vectors.filter((v) => open(v) && (v.what === 'scripture shard' || v.what === 'thaw engine'));
     const ok = vs.filter((v) => ready(zones.zoneAt(v.x, v.y))).sort((a, b) => dist(a, P) - dist(b, P));
     return ok[0] ?? vs.sort((a, b) => zones.zoneAt(a.x, a.y) - zones.zoneAt(b.x, b.y) || dist(a, P) - dist(b, P))[0] ?? null;
   }
@@ -522,6 +528,12 @@ export function play(seed: number, o: Opts): Run {
         if (P.slots < pr.MAX_SLOTS) out.push({ cmd: 'print slot', ok: afford(pr.slotCost(g)) });
         // a module only with plenty to spare
         const mc = pr.modCost((m.data?.far as number) ?? 0);
+        // r2 econ: an aimed print first, at the family whose best piece on is weakest (weapon, body, eye)
+        const zone = Math.max(targetZone(), zoneHere());
+        const best = (f: string) => Math.max(0, ...P.installed.filter((i) => MODS[i.mod].family === f).map((i) => worth(g, i, zone, false)));
+        const fam = (['weapon', 'body', 'camera'] as const).slice().sort((a, b) => best(a) - best(b))[0];
+        const ac = pr.aimedCost((m.data?.far as number) ?? 0);
+        if (!process.env.R2_NOAIM) out.push({ cmd: `print ${fam === 'camera' ? 'eye' : fam}`, ok: afford(Object.fromEntries(Object.entries(ac).map(([k, v]) => [k, (v as number) * 2]))) });
         out.push({ cmd: 'print module', ok: afford(Object.fromEntries(Object.entries(mc).map(([k, v]) => [k, (v as number) * 2]))) });
       }
     }
@@ -706,6 +718,7 @@ export function play(seed: number, o: Opts): Run {
   run.t = Math.round(g.t);
   run.kills = g.stats.kills;
   run.resEnd = resAll(g);
+  (run as any).offered = offeringOf(g) ?? null; // r2 econ: what the Engine took (it empties your resources)
   (run as any).resBy = Object.fromEntries((['bone', 'glass', 'copper', 'ichor'] as Res[]).map((r) => [r, resOf(g, r)]));
   (run as any).core = P.core;
   (run as any).flesh = P.flesh ?? 0;

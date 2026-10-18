@@ -86,6 +86,8 @@ for (const [res, c] of Object.entries(VEIN)) {
   veins[res] = new THREE.InstancedMesh(wallGeo, ps1(new THREE.MeshLambertMaterial({ map: tx.vein, color: 0x806868, emissive: c, emissiveMap: tx.glow, emissiveIntensity: 0.55 })), N);
   scene.add(veins[res]);
 }
+/** a vein's stone in its resource's colour, for colour eyes (the plain stone is 0x806868) */
+const VEIN_TINT: Record<string, number> = Object.fromEntries(Object.entries(VEIN).map(([r, c]) => [r, new THREE.Color(0x806868).lerp(new THREE.Color(c), 0.7).getHex()]));
 /** what lies past an eye's range: a dim haze, not black, so far reads as far and never as a dead eye */
 const HAZE = 0x181210;
 const haze = new THREE.Color(HAZE);
@@ -484,6 +486,13 @@ export function shoot(g: Game, s: Shot): Uint8Array {
     l.distance = lamp.radius * 1.6;
     l.position.set(p.x, 0.75, p.y);
   });
+  // r2 decide: a colour eye catches the veins glinting, each in its own colour
+  const tinted = s.filter === 'color';
+  for (const [res, v] of Object.entries(veins)) {
+    const mat = v.material as THREE.MeshLambertMaterial;
+    mat.emissiveIntensity = tinted ? 0.8 + 0.2 * Math.sin(g.t * 4) : 0.55;
+    mat.color.setHex(tinted ? VEIN_TINT[res] : 0x806868);
+  }
   scene.overrideMaterial = mode === 'heat' ? coldMat : mode === 'depth' ? depthMat : null;
   // heat and depth read black as nothing there; only colour eyes see the haze
   scene.background = mode === 'color' ? haze : black;
