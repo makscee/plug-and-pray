@@ -163,7 +163,7 @@ export function pick(g: Game, k: number): string | null {
   const it = c.offer[k];
   if (!it || it.kind !== 'mod') return 'the cache holds no such thing.';
   const cost = costOf(c);
-  if (!payBone(g, cost)) return `that pick costs ${cost} bone; you carry ${boneOf(g)}. scrap the rest instead, or come back with bone.`;
+  if (!payBone(g, cost)) return `that pick costs ${cost} bone; you have ${boneOf(g)}. scrap the rest instead.`;
   c.offer.splice(k, 1);
   c.taken++;
   g.events.push({ type: 'cache-pick', data: it.mod });

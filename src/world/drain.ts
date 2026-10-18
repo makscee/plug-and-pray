@@ -29,7 +29,7 @@ verb('drain', {
   when: (g) => needles(g).length > 0,
   run(g) {
     const inst = needles(g)[0];
-    if (g.t < ((inst.data.readyAt as number) ?? 0)) return say(g, 'the needle is still cooling.');
+    if (g.t < ((inst.data.readyAt as number) ?? 0)) return say(g, 'the needle is cooling.');
     const v = veinBeside(g);
     if (!v) return say(g, 'no vein beside you.');
     const res = veinOf(cell(g, v[0], v[1]))!;
@@ -46,7 +46,7 @@ verb('drain', {
         woke++;
       }
     g.events.push({ type: 'drain', at: [v[0] + 0.5, v[1] + 0.5], data: res }, { type: 'noise', at: [g.player.x, g.player.y], data: noise });
-    say(g, `the needle drinks the vein: +${n} ${res}. it screams as it goes.` + (woke ? ' something heard.' : ''));
+    say(g, `drained: +${n} ${res}. loud.` + (woke ? ' something heard.' : ''));
   },
 });
 

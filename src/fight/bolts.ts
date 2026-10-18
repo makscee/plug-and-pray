@@ -87,7 +87,7 @@ function told(g: Game, e: Entity): void {
   if (s.has(type)) return;
   s.add(type);
   const what = type === 'walker' ? `${ENEMIES[type].name} spits slag` : `${ENEMIES[type].name} fires bolts`;
-  say(g, `⚠ ${what} at you. watch the glow and step aside: strafe (a/d) or put a wall between.`);
+  say(g, `⚠ ${what} at you: strafe (a/d) or hide behind a wall.`);
   g.events.push({ type: 'warn', at: [e.x, e.y] });
 }
 

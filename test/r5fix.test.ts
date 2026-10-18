@@ -19,7 +19,7 @@ describe('r5 fixes', () => {
     const g = newGame(1);
     g.player.inv.push({ kind: 'mod', mod: 'card-reader' }, { kind: 'card', card: 'log-cantor' });
     exec(g, 'where');
-    expect(text(g)).toContain('wants a bone');
+    expect(text(g)).toContain('needs bone');
     expect(cmds(g)).not.toContain('read card');
     const swap = cmds(g).find((c) => c.startsWith('swap in card reader'));
     expect(swap).toBeTruthy();

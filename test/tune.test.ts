@@ -37,7 +37,7 @@ describe('tuning (#1328)', () => {
     exec(g, 'install stepper');
     for (let k = 0; k < 20; k++) tick(g, 0.1);
     const all = JSON.stringify(g.log);
-    expect(all).toContain('a card reader and a memory card lie together');
-    expect(all.split('a card reader and a memory card lie together').length).toBe(2);
+    expect(all).toContain('a card reader and a card: take both');
+    expect(all.split('a card reader and a card: take both').length).toBe(2);
   });
 });

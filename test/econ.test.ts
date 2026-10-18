@@ -66,7 +66,7 @@ describe('rolls, attune and the economy (r1 econ)', () => {
       expect(param<number>(ward, 'recharge')).toBeLessThan(before);
     }
     exec(g, 'temper mirror ward');
-    expect(text(g)).toContain('as true as it gets');
+    expect(text(g)).toContain('is fully tempered');
   });
 
   it('copper early: 2 at the start, tier-0 recycling pays copper, the first reliquary has a copper-free relic', () => {

@@ -331,12 +331,12 @@ function open(g: Game, s: Secret, how: string): void {
   if (s.eye) {
     g.events.push({ type: 'dig', at: [s.x + 0.5, s.y + 0.5] }, { type: 'reveal', at: [px + 0.5, py + 0.5], data: 'hollow' });
     for (const e of g.ents) if (e.data?.sealed) delete e.data.sealed;
-    return say(g, [`the cracked wall gives. in the niche behind it a bead of black glass looks back: an eye. `, { text: 'go in', cmd: `go ${sideOf(g, s)} 1` }, ' then ', { text: 'take', cmd: 'take' }]);
+    return say(g, [`the cracked wall gives. an eye lies in the niche. `, { text: 'go in', cmd: `go ${sideOf(g, s)} 1` }, ' then ', { text: 'take', cmd: 'take' }]);
   }
   const r = rng(hash(g.seed, 94, s.x, s.y));
   const got = pay(g, s, px + 0.5, py + 0.5, [{ kind: 'res', res: r.pick(['copper', 'glass'] as const), n: r.int(2, 3) }, ...(r.chance(0.5) ? [{ kind: 'res' as const, res: 'ichor' as const, n: 1 }] : [])]);
   g.events.push({ type: 'dig', at: [s.x + 0.5, s.y + 0.5] }, { type: 'reveal', at: [px + 0.5, py + 0.5], data: 'hollow' });
-  say(g, [`${how} a niche no door ever reached. in it: ${got}. `, { text: 'go in', cmd: `go ${sideOf(g, s)} 2` }]);
+  say(g, [`${how} a hidden niche. in it: ${got}. `, { text: 'go in', cmd: `go ${sideOf(g, s)} 2` }]);
 }
 
 // v2r6 newcomer: `go in` at an opened niche does what its link does (src/mods/gait.ts)
@@ -368,7 +368,7 @@ verb('break', {
     if (!active(g, 'weapon').length) return 'break: nothing on you can break a wall. any weapon can.';
     const p = g.player;
     const s = secrets(g).filter((o) => o.kind === 'hollow' && o.found && !o.done && dist({ x: o.x + 0.5, y: o.y + 0.5 }, p) < 12).sort((a, b) => dist({ x: a.x, y: a.y }, p) - dist({ x: b.x, y: b.y }, p))[0];
-    if (!s) return g.floor === 0 ? 'break: face a wall one cell thick with floor behind it, or find a hollow wall (a sonar eye hears them).' : 'break: no hollow wall known here. a sonar eye hears them.';
+    if (!s) return g.floor === 0 ? 'break: face a thin wall (1 cell), or find a hollow one with a sonar eye.' : 'break: no hollow wall known here. a sonar eye finds them.';
     return ['no hollow wall beside you: ', ...standFor(g, s)];
   },
   run(g) {
@@ -399,11 +399,11 @@ const taught = new WeakMap<Game, Set<string>>();
 
 /** what an eye shows that others don't, told the first time an eye with that filter is warm */
 const TEACH: Record<string, string> = {
-  heat: 'shows what is warm: handprints on the floor where the dead machines crawled, and mimics breathing.',
-  sonar: 'hears walls as echoes. a wall that rings hollow is a shell: break it, there is a niche behind.',
-  '1bit': 'sees in black and white what colour hides: scripture scratched into the walls, and mimics breathing.',
-  edge: 'traces every scratch: scripture cut into the walls shows as lines.',
-  color: 'sees colour true: veins of glass, copper and ichor glint in the walls, and it names them. a needle or an auger drains them (no tool: an altar grinds 4 bone into 1 glass).',
+  heat: 'shows warm things: handprints that lead to caches, and breathing mimics.',
+  sonar: 'hears hollow walls: break one for the niche behind.',
+  '1bit': 'reads scripture scratched on walls, and spots breathing mimics.',
+  edge: 'reads scripture scratched on walls.',
+  color: 'spots veins of glass, copper and ichor. a needle or auger drains them.',
 };
 const KINDS: Record<string, Kind> = { heat: 'hands', sonar: 'hollow', '1bit': 'script', edge: 'script' };
 /** the eye filters that show a hidden layer (the UI keeps such an eye's window open) */
@@ -421,14 +421,14 @@ function layerHere(g: Game, f: string): string {
         const v = veinOf(cell(g, x, y));
         if (v && v !== 'bone' && !named.get(g)?.has(`${x},${y}`)) k++;
       }
-    return k ? `glints here: ${n(k, 'vein', 'veins')} of glass, copper or ichor within 2 chunks.` : 'hides nothing from it here: no veins of glass, copper or ichor within 2 chunks.';
+    return k ? `sees ${n(k, 'vein', 'veins')} nearby.` : 'finds no veins nearby.';
   }
   const k = secrets(g).filter((s) => s.kind === KINDS[f] && !s.done && Math.hypot(s.x - p.x, s.y - p.y) < R).length;
   // v2r3 ux: "is scratched here: no walls of scripture" said yes and no at once
-  if (!k) return `hides nothing from it here: no ${f === 'sonar' ? 'hollow shells' : f === 'heat' ? 'handprints' : 'scripture'} within 2 chunks.`;
-  if (f === 'sonar') return `rings hollow here: ${n(k, 'shell', 'shells')} within 2 chunks.`;
-  if (f === 'heat') return `runs warm here: ${n(k, 'trail', 'trails')} of handprints within 2 chunks.`;
-  return `is scratched here: ${n(k, 'wall', 'walls')} of scripture within 2 chunks.`;
+  if (!k) return `finds no ${f === 'sonar' ? 'hollow walls' : f === 'heat' ? 'handprints' : 'scripture'} nearby.`;
+  if (f === 'sonar') return `hears ${n(k, 'hollow wall', 'hollow walls')} nearby.`;
+  if (f === 'heat') return `sees ${n(k, 'trail', 'trails')} of handprints nearby.`;
+  return `sees ${n(k, 'wall', 'walls')} of scripture nearby.`;
 }
 
 tickHooks.push((g) => {
@@ -461,7 +461,7 @@ tickHooks.push((g) => {
         s.found = true;
         g.events.push({ type: 'reveal', at: [s.x + 0.5, s.y + 0.5], data: 'hands' });
         eye.data.flashAt = g.t;
-        say(g, `the ${eyeName(eye)} shows handprints on the floor, still warm. they crawl somewhere. follow them.`);
+        say(g, `the ${eyeName(eye)} shows warm handprints. follow them to a cache.`);
       }
       // the plate pays out to the heat eye, or to whoever the scratches sent here
       if (Math.floor(p.x) === s.x && Math.floor(p.y) === s.y) {
@@ -469,7 +469,7 @@ tickHooks.push((g) => {
         const r = rng(hash(g.seed, 95, s.x, s.y));
         const got = pay(g, s, s.x + 0.5, s.y + 0.5, [{ kind: 'res', res: r.pick(['bone', 'glass', 'copper'] as const), n: r.int(3, 4) }, { kind: 'res', res: 'copper', n: r.int(1, 2) }]);
         g.events.push({ type: 'reveal', at: [s.x + 0.5, s.y + 0.5], data: 'cache' });
-        say(g, [`the prints end at a floor plate, warm from a hundred hands. under it: ${got}. `, { text: 'take', cmd: 'take' }]);
+        say(g, [`the prints end at a floor plate. under it: ${got}. `, { text: 'take', cmd: 'take' }]);
       }
     } else if (s.kind === 'script') {
       const eye = eyesFor(g, 'script').find((i) => inView(g, i, ...faceAt(s), 3.5));
@@ -498,8 +498,8 @@ tickHooks.push((g) => {
       g.events.push({ type: 'reveal', at: faceAt(s), data: 'hollow' });
       eye.data.flashAt = g.t;
       // r2 decide: name the cell to stand on ("the wall to the s" pointed one cell off)
-      if (hollowBeside(g) === s) say(g, [`the ${eyeName(eye)}'s song comes back hollow: the wall beside you is a shell. `, { text: 'break', cmd: 'break' }, ' it (any weapon), or dig.']);
-      else say(g, [`the ${eyeName(eye)}'s song comes back hollow: a wall is a shell. `, ...standFor(g, s), ' then ', { text: 'break', cmd: 'break' }, ' it (any weapon), or dig.']);
+      if (hollowBeside(g) === s) say(g, [`the ${eyeName(eye)}: the wall beside you is hollow. `, { text: 'break', cmd: 'break' }, ' it with any weapon, or dig.']);
+      else say(g, [`the ${eyeName(eye)}: a hollow wall. `, ...standFor(g, s), ' then ', { text: 'break', cmd: 'break' }, ' it with any weapon, or dig.']);
     }
   }
   veins(g);
@@ -515,7 +515,7 @@ tickHooks.push((g) => {
     told.add(e.id);
     g.events.push({ type: 'reveal', at: [e.x, e.y], data: 'breath' });
     eye.data.flashAt = g.t;
-    say(g, `the ${eyeName(eye)} sees the ${e.item ? itemName(e.item).replace(/^the /, '') : 'thing'} on the floor rise and fall. it breathes. a mimic, waiting for a hand.`);
+    say(g, `the ${eyeName(eye)}: the ${e.item ? itemName(e.item).replace(/^the /, '') : 'thing'} on the floor breathes. a mimic.`);
   }
 });
 

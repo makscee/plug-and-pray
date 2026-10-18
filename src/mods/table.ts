@@ -29,10 +29,10 @@ mods([
   { id: 'ledger', name: 'tithe ledger', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'ledger', tithe: 2 }, text: 'a clerk of the dead counts every kill: twice as many pay out.' },
   { id: 'clock-of-hours', name: 'clock of hours', family: 'mind', power: 2, warm: 1.5, tier: 1, params: { what: 'clock', range: 8, ahead: 1 }, text: 'it ticks a second ahead of the world.' },
   { id: 'dawn-eye', name: 'dawn eye', family: 'camera', power: 2, warm: 0.5, tier: 0, params: { res: 96, colors: 0, fps: 8, fov: 75, range: 9, filter: 'color' }, text: 'a clear colour eye. honest, but it needs light to see far.' },
-  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 1, warm: 1, tier: 0, params: { res: 48, colors: 5, fps: 12, fov: 60, range: 8, filter: 'gray' }, text: 'a bead of black glass. grey and close, but you walk and look through it.' }, // v4 (Maks 10-18: "eye should be an upgrade"): was 3 power, 3 fps, 6 cells
+  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 1, warm: 1, tier: 0, params: { res: 48, colors: 5, fps: 12, fov: 60, range: 8, filter: 'gray' }, text: 'a bead of black glass. it sees in grey.' }, // v4 (Maks 10-18: "eye should be an upgrade"): was 3 power, 3 fps, 6 cells
   { id: 'vidicon-tube', name: 'vidicon tube', family: 'camera', power: 1, warm: 1.5, tier: 0, params: { res: 64, colors: 4, fps: 4, fov: 70, range: 8, lag: 0.4, filter: 'color' }, text: 'a glass tube that drags its ghosts behind it.' },
   { id: 'saints-lens', name: "saint's lens", family: 'camera', power: 4, warm: 3, tier: 2, params: { size: 2, res: 200, colors: 0, fps: 15, fov: 80, range: 14, filter: 'color' }, text: 'ground from a saint, they say. it sees as he did.' },
-  { id: 'stepper-relay', name: 'stepper relay', family: 'gait', power: 1, warm: 0.5, tier: 0, params: { go: true }, text: 'your legs: clicks you forward one cell at a time. go n 3. without legs you crawl.' },
+  { id: 'stepper-relay', name: 'stepper relay', family: 'gait', power: 1, warm: 0.5, tier: 0, params: { go: true }, text: 'your legs: one cell at a time.' },
   { id: 'spark-finger', name: 'spark finger', family: 'weapon', power: 1, warm: 0.5, tier: 0, params: { damage: 1, cooldown: 1.2, range: 1.8, aim: 'auto' }, text: 'it bites whatever comes close.' },
   // sight (#1321): eyes that trade sharpness, speed and colour; scanners through walls; lamps that draw things
   { id: 'carrion-eye', name: 'carrion eye', family: 'camera', power: 2, warm: 0.5, tier: 0, params: { res: 96, fps: 12, fov: 70, range: 8, filter: '1bit', noise: 0.1 }, text: 'a crow saw the world in two colours and never blinked.' }, // r2 decide: was 1 power; it reads scripture, its reach costs
@@ -49,8 +49,8 @@ mods([
   // sure as it can tell (spread: cells it may be off; names: it says what). Without the right one, those stay unmarked
   // v2-view: the start's only sight (Maks 10-18: "on the very start you only have a map ... radar could render on top")
   { id: 'thread-bell', name: 'thread bell', family: 'scanner', power: 0, warm: 0.5, tier: 0, params: { finds: 'life', range: 9, every: 1.5, spread: 0.6 }, text: 'a little bell on a thread. it shivers when a heart comes near.' },
-  { id: 'sounding-knell', name: 'sounding knell', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'thing', range: 26, every: 8, spread: 3, loud: 2 }, text: 'a knell rung into the stone. what rings back is "something", somewhere near there.' },
-  { id: 'hollow-tap', name: 'hollow tap', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'cache', range: 14, every: 4 }, text: 'a little hammer that taps the walls. it hears where they are hollow, not what is inside.' },
+  { id: 'sounding-knell', name: 'sounding knell', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'thing', range: 26, every: 8, spread: 3, loud: 2 }, text: 'a knell rung into the stone.' },
+  { id: 'hollow-tap', name: 'hollow tap', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'cache', range: 14, every: 4 }, text: 'a little hammer that hears hollow walls.' },
   { id: 'vein-fork', name: 'vein fork', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'vein', range: 22, every: 5, names: true }, text: 'a tuning fork that hums the note of ore, and knows which ore.' },
   { id: 'pulse-choir', name: 'pulse choir', family: 'scanner', power: 2, warm: 1, tier: 1, params: { finds: 'life', range: 22, every: 2, spread: 1.5 }, text: 'it hears every heart within a long throw. not whose.' },
   { id: 'plumb-line', name: 'plumb line', family: 'scanner', power: 1, warm: 2, tier: 1, params: { finds: 'deep', range: 999, every: 10, names: true }, text: 'a weight on a thread. it leans toward the way down, and toward what keeps it.' },
@@ -67,9 +67,9 @@ mods([
   // v2 maps (src/world/mind.ts): each draws what your eyes and scanners know, in more detail a tier up.
   // detail 0 three inks, no clicks; 1 veins and finds in their own inks, a click walks you there; 2 a picture
   // for every thing and a note on hover; 3 the known halls in glass, with the things in them
-  { id: 'map-spool', name: 'map spool', family: 'mind', power: 1, warm: 1, tier: 0, params: { what: 'map', span: 33, detail: 0 }, text: 'a reel of tape that remembers what your eyes saw. on floor 1 a click on it walks you.' },
-  { id: 'survey-spool', name: 'survey spool', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 37, detail: 1, click: true }, text: 'a surveyor\'s reel: veins and finds in their own inks. click it and your legs go there.' },
-  { id: 'illuminated-atlas', name: 'illuminated atlas', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 33, detail: 2, click: true }, text: 'a monk\'s map: every thing a little picture, and a note when you point at it.' },
+  { id: 'map-spool', name: 'map spool', family: 'mind', power: 1, warm: 1, tier: 0, params: { what: 'map', span: 33, detail: 0 }, text: 'a reel of tape that remembers what you saw.' },
+  { id: 'survey-spool', name: 'survey spool', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 37, detail: 1, click: true }, text: 'a surveyor\'s reel in many inks.' },
+  { id: 'illuminated-atlas', name: 'illuminated atlas', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 33, detail: 2, click: true }, text: 'a monk\'s map in little pictures.' },
   { id: 'glass-diorama', name: 'glass diorama', family: 'mind', power: 3, warm: 2, tier: 2, params: { what: 'map', span: 23, detail: 3, click: true }, text: 'the halls you know, in glass, small enough to hold, with every thing in them.' },
   { id: 'drowned-compass', name: 'drowned compass', family: 'mind', power: 0, warm: 1, tier: 1, params: { what: 'compass' }, text: 'it pulls toward what the cards promised.' },
   { id: 'ninth-eye', name: 'the ninth eye', family: 'camera', power: 3, warm: 2, tier: 3, params: { res: 160, colors: 0, fps: 10, fov: 100, range: 16, filter: 'color' }, text: 'eight were made for the god. this one stayed.' },
@@ -78,9 +78,9 @@ mods([
   { id: 'nail-psalm', name: 'nail psalm', family: 'weapon', power: 1, warm: 1, tier: 0, params: { damage: 1, cooldown: 0.6, range: 8, aim: 'aimed' }, text: 'a verse that ends in a nail. shoot.' }, // r1 econ: was 2 / 0.8; bone armour (1.2) eats most of it. v2-balance3: 1.2 made it the best per power
   { id: 'ember-spit', name: 'ember spit', family: 'weapon', power: 1, warm: 0.5, tier: 1, params: { damage: 0.6, cooldown: 0.38, range: 6, aim: 'aimed' }, text: 'it coughs sparks as fast as you ask.' },
   { id: 'bone-lance', name: 'bone lance', family: 'weapon', power: 2, warm: 2, tier: 1, params: { damage: 6, cooldown: 1.8, range: 5, aim: 'aimed' }, text: 'a rib sharpened by a patient god.' }, // v2-balance3: was 2.2 s; about 1.65 dps per power, as the nail psalm and ember spit,
-  { id: 'choir-bell', name: 'choir bell', family: 'weapon', power: 1, warm: 1.5, tier: 1, params: { damage: 1.5, cooldown: 1.4, range: 2, aim: 'auto', sweep: true }, text: 'it rings at everything near at once: a swarm hears it together.' }, // v2 variety: was 2 power / 1.6 s, and never worth its power on the cradle. v2-balance3: range 2.4 made standing off the cradle's slams free
+  { id: 'choir-bell', name: 'choir bell', family: 'weapon', power: 1, warm: 1.5, tier: 1, params: { damage: 1.5, cooldown: 1.4, range: 2, aim: 'auto', sweep: true }, text: 'it rings at everything near at once.' }, // v2 variety: was 2 power / 1.6 s, and never worth its power on the cradle. v2-balance3: range 2.4 made standing off the cradle's slams free
   { id: 'lead-lung', name: 'lead lung', family: 'body', power: 1, warm: 1, tier: 0, params: { regen: 0.3 }, text: 'heavy breath. you mend faster, and still mend in the cold.' },
-  { id: 'frost-coat', name: 'frost coat', family: 'body', power: 1, warm: 1.5, tier: 1, params: { armour: 0.5 }, text: 'rime that takes the edge off every blow. a cradle mite\'s bite does not get through.' },
+  { id: 'frost-coat', name: 'frost coat', family: 'body', power: 1, warm: 1.5, tier: 1, params: { armour: 0.5 }, text: 'rime that softens every blow.' },
   { id: 'mirror-ward', name: 'mirror ward', family: 'body', power: 2, warm: 2, tier: 1, params: { ward: true, recharge: 8 }, text: 'it gives the next blow back. then it rests.' },
   { id: 'reliquary-ribs', name: 'reliquary ribs', family: 'body', power: 1, warm: 1, tier: 2, params: { hp: 5 }, text: 'a cage of holy bone around your core.' },
   // pilots and waypoint logs (playtest 3): pilot gaits walk a seen path to a point (plan: longest path, pace,
@@ -88,8 +88,8 @@ mods([
   { id: 'wayfinder-moth', name: 'wayfinder moth', family: 'gait', power: 1, warm: 1, tier: 0, params: { pilot: true, plan: 40, pace: 2.5 }, text: 'a moth that remembers every lamp. goto a waypoint, or click a surveyor\'s map.' },
   { id: 'psalm-of-roads', name: 'psalm of roads', family: 'gait', power: 2, warm: 1.5, tier: 1, params: { pilot: true, plan: 120, pace: 3.2, avoid: true }, text: 'a hymn for long roads. it walks you far, around what it sees.' },
   { id: 'sleepwalker', name: 'sleepwalker', family: 'gait', power: 0, warm: 2, tier: 0, params: { pilot: true, plan: 20, pace: 1.6 }, text: 'it walks for you while you dream. slowly, not far.' },
-  { id: 'waystone-log', name: 'waystone log', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'log', keep: 8, range: 8, auto: ['start', 'printer', 'reader', 'card', 'vector'] }, text: 'a pilgrim\'s tally of the places that matter.' },
-  { id: 'pilgrims-rosary', name: "pilgrim's rosary", family: 'mind', power: 1, warm: 1, tier: 1, params: { what: 'log', keep: 16, range: 12, auto: ['start', 'printer', 'reader', 'card', 'vector', 'mods', 'veins'] }, text: 'a bead for every thing you passed. it forgets nothing it can hold.' },
+  { id: 'waystone-log', name: 'waystone log', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'log', keep: 8, range: 8, auto: ['start', 'printer', 'reader', 'card', 'vector'] }, text: 'a pilgrim\'s tally of places.' },
+  { id: 'pilgrims-rosary', name: "pilgrim's rosary", family: 'mind', power: 1, warm: 1, tier: 1, params: { what: 'log', keep: 16, range: 12, auto: ['start', 'printer', 'reader', 'card', 'vector', 'mods', 'veins'] }, text: 'a bead for every place.' },
   // zones (balance pass): modules that change how you play deeper in. Their own keys: weapon sweep (hits all
   // in reach); body haste (weapons cool faster), mend (hp when below half, every recharge s), heatproof (0..1 of
   // the furnace's heat kept off), thorns (damage back at whatever strikes you up close)
@@ -104,10 +104,10 @@ mods([
   { id: 'thorn-mantle', name: 'thorn mantle', family: 'body', power: 1, warm: 1, tier: 1, params: { thorns: 1 }, text: 'whatever bites you bleeds for it.' },
   // v2 scopes (floors 3 and 4's kits): good wide eyes, nothing more (v2-view: the reins below give the true fps).
   // Their own key: wide (px across; res is px high), and then fov is degrees across
-  { id: 'pilgrim-scope', name: 'pilgrim scope', family: 'camera', power: 2, warm: 1.5, tier: 3, params: { res: 108, wide: 192, colors: 0, fps: 30, fov: 90, range: 10, filter: 'color' }, text: 'a soldier-saint\'s eye: wide, sharp and quick.' },
-  { id: 'martyr-scope', name: 'martyr scope', family: 'camera', power: 3, warm: 1.5, tier: 3, params: { res: 180, wide: 320, colors: 0, fps: 30, fov: 110, range: 13, filter: 'color' }, text: 'it saw its death coming and stepped aside. wider still, and sharper.' },
+  { id: 'pilgrim-scope', name: 'pilgrim scope', family: 'camera', power: 2, warm: 1.5, tier: 3, params: { res: 108, wide: 192, colors: 0, fps: 30, fov: 90, range: 10, filter: 'color' }, text: 'a soldier-saint\'s eye.' },
+  { id: 'martyr-scope', name: 'martyr scope', family: 'camera', power: 3, warm: 1.5, tier: 3, params: { res: 180, wide: 320, colors: 0, fps: 30, fov: 110, range: 13, filter: 'color' }, text: 'it saw its death coming.' },
   // v2-view (Maks 10-18 ~10:50): true fps comes with the reins, not an eye. Taken (tab), the mouse looks, a click
   // shoots, wasd walks the way you look; tab again gives the cursor back. Their own keys: big (the mark: 1, 2), speed (cells/s)
-  { id: 'saints-reins', name: "saint's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 1, speed: 2.6 }, text: 'gut and gold thread, with a socket of their own. in first person, shots land 25% harder.' },
-  { id: 'martyrs-reins', name: "martyr's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 2, speed: 2.9, rate: 0.25, fov: 20 }, text: 'the reins it died holding. held: fire 25% faster, see 20° wider, dash through blows.' }, // v2r2 fight: mk2 was only a dash
+  { id: 'saints-reins', name: "saint's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 1, speed: 2.6 }, text: 'gut and gold thread, in a socket of their own.' },
+  { id: 'martyrs-reins', name: "martyr's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 2, speed: 2.9, rate: 0.25, fov: 20 }, text: 'the reins it died holding.' }, // v2r2 fight: mk2 was only a dash
 ]);

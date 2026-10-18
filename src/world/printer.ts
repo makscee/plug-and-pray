@@ -140,7 +140,7 @@ verb('print', {
     }
     const fam = AIMED[what];
     if (what === 'module' || fam) {
-      if (madeAt(g, e) >= PRINT_CAP) return say(g, `this floor's printers are spent on modules: ${PRINT_CAP} a floor. slots and upgrades still work here.`);
+      if (madeAt(g, e) >= PRINT_CAP) return say(g, `no more modules here: ${PRINT_CAP} a floor. slots and upgrades still work.`);
       const c = fam ? aimedCost(far, madeAt(g, e)) : modCost(far, madeAt(g, e));
       if (!affords(g, c)) return say(g, `the printer wants ${fmt(c)}.${glassTip(g, c)}`);
       pay(g, c);
@@ -159,7 +159,7 @@ verb('print', {
       if (it.kind === 'mod') say(g, ['the printer spits out: ', { text: label(it), cmd: `install ${label(it)}` }]);
       return;
     }
-    say(g, what ? `no kind called ${what}.` : 'a printer. it is warm, and it waits.', ...menu(g, e));
+    say(g, what ? `no kind called ${what}.` : 'a printer:', ...menu(g, e));
   },
 });
 
@@ -173,7 +173,7 @@ tickHooks.push((g) => {
   const s = shopNear(g);
   if (s && !s.data?.greeted) {
     s.data = { ...s.data, greeted: true };
-    say(g, 'a reliquary opens its glass doors. three relics wait inside.', ...shopMenu(g, s));
+    say(g, 'a reliquary: three relics for sale.', ...shopMenu(g, s));
   }
 });
 
@@ -264,7 +264,7 @@ verb('buy', {
     const k = /^\d+$/.test(q) ? Number(q) - 1 : named;
     const it = list[k];
     if (!it) return say(g, 'the reliquary shows:', ...shopMenu(g, e));
-    if (shutEye(g, it)) return say(g, `the eye's glass stays shut. your own first eye lies out on this floor: find it, and the reliquary opens to you.`);
+    if (shutEye(g, it)) return say(g, `shut until you find your first eye on this floor.`);
     const c = priceAt(e, k, it);
     if (!affords(g, c)) return say(g, `the reliquary wants ${fmt(c)}.${glassTip(g, c)}`);
     pay(g, c);
@@ -333,7 +333,7 @@ verb('recycle', {
     const it = g.player.inv[k];
     if (!it || it.kind !== 'mod') return say(g, findInst(g, args) ? 'remove it from its slot first.' : 'no such module in your inventory.');
     const c = { ...scrapOf(it) };
-    if (!Object.keys(c).length) return say(g, 'this one will not break. it is waiting for something.');
+    if (!Object.keys(c).length) return say(g, 'this one can not be recycled.');
     // r2: your only card reader, with a card still unread: ask once (a playtester ground both and had to buy one back)
     const p = g.player;
     const readers = p.inv.filter((i) => i.kind === 'mod' && i.mod === 'card-reader').length + p.installed.filter((i) => i.mod === 'card-reader').length;
@@ -341,7 +341,7 @@ verb('recycle', {
     if (why) return say(g, why);
     if (it.mod === 'card-reader' && readers === 1 && p.inv.some((i) => i.kind === 'card') && (warned.get(g) ?? -99) < g.t - 20) {
       warned.set(g, g.t);
-      return say(g, ['that is your only card reader, and you carry a card no one has read. ', { text: 'recycle it anyway', cmd: 'recycle card reader' }]);
+      return say(g, ['your only card reader, and you have an unread card. ', { text: 'recycle it anyway', cmd: 'recycle card reader' }]);
     }
     // r2 econ: a tier-0 module grinds out a glass half the time (glass was the early lock)
     const made = (ground.get(g) ?? 0) + 1;

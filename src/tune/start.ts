@@ -67,7 +67,7 @@ function nearestOpen(g: Game, x: number, y: number, r = 4): [number, number] | n
 }
 
 verb('unstuck', {
-  help: 'stuck or lost? unstuck: out of a wall, else back to the last quiet spot on this floor (with a foe on you: 3 s, and home to where you landed)',
+  help: 'stuck? out of a wall, else back to the last quiet spot (3 s with a foe on you)',
   run(g) {
     const p = g.player;
     p.path = [];
@@ -77,7 +77,7 @@ verb('unstuck', {
       const to = nearestOpen(g, p.x, p.y);
       if (to) {
         [p.x, p.y] = to;
-        return say(g, 'you wrench yourself free, onto open floor.');
+        return say(g, 'you wrench free, onto open floor.');
       }
     }
     // lost: home at once when nothing is on you (playtest r2 pace); cornered: 3 s
@@ -85,7 +85,7 @@ verb('unstuck', {
     // fleeing a fight (a foe within 8 cells): the long way home, to mend on the walk back
     const fled = g.ents.some((e) => e.enemy && dist(e, p) < 8);
     homing.set(g, { at: g.t + (close ? 3 : 0), fled });
-    say(g, fled ? `you fold up and let the god\'s veins carry you home, far from this.${close ? ' 3 s.' : ''}` : 'you fold up and let the god\'s veins carry you back to where it was quiet.');
+    say(g, fled ? `you fold up and slip home.${close ? ' 3 s.' : ''}` : 'you fold up and slip back to a quiet spot.');
   },
 });
 
@@ -97,5 +97,5 @@ tickHooks.push((g) => {
   [p.x, p.y] = home(g, h.fled);
   p.path = [];
   p.move = null;
-  say(g, h.fled ? 'you wake where you landed. it is quiet here.' : 'you unfold where it was quiet.');
+  say(g, h.fled ? 'back where you landed. quiet.' : 'back at a quiet spot.');
 });

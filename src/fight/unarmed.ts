@@ -57,7 +57,7 @@ if (shoot) {
       return noWeaponLine(g);
     }
     const w = active(g, 'weapon')[0];
-    return `shoot: nothing aimed is on. your ${label(w)} strikes by itself whatever comes close.`;
+    return `shoot: no aimed weapon on. your ${label(w)} strikes by itself.`;
   };
 }
 
@@ -83,11 +83,11 @@ verb('attack', {
       const [far, go] = goThere(g, foe.x, foe.y, true);
       return say(g, [`nothing in reach: it is ${far}; your ${label(w)} reaches ${+reach.toFixed(1)}. `, go]);
     }
-    if (foe && !canHit(g, foe)) return say(g, `you can't see it ${d.toFixed(1)} cells off: step right next to it (${REACH} cells) and your ${label(w)} strikes.`);
+    if (foe && !canHit(g, foe)) return say(g, `you can't see it (${d.toFixed(1)} cells): step next to it to strike.`);
     // v2r4 ux: once a fight, not on every press
     if (tipped.has(g)) return say(g, `in reach: your ${label(w)} strikes by itself.`);
     tipped.add(g);
-    say(g, `your ${label(w)} strikes by itself whatever comes close. stand by it.`);
+    say(g, `your ${label(w)} strikes by itself: let foes come close.`);
   },
 });
 /** the auto weapon's tip was said in this fight (it ends when nothing is near) */

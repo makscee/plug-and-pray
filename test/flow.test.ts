@@ -56,14 +56,14 @@ describe('v2 flow', () => {
     const g = newGame(7);
     expect(goalLine(g)).toMatch(/install your kit/);
     kit(g);
-    expect(goalLine(g)).toMatch(/^floor 1: find the way down \(stairs: unknown \/ [NESW]{1,2}\)$/);
+    expect(goalLine(g)).toMatch(/^floor 1: find the stairs \(somewhere [NESW]{1,2}\)$/);
   });
 
   it('where points at the card reader that has the card beside it', () => {
     const g = newGame(7);
     kit(g);
     exec(g, 'where');
-    expect(text(g)).toMatch(/a card reader and a memory card lie together/);
+    expect(text(g)).toMatch(/a card reader and a card: take both/);
   });
 
   it('an eye finds its power from another eye first', () => {

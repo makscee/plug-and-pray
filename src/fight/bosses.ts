@@ -137,7 +137,7 @@ function stun(g: Game, secs: number): void {
   if (was && g.t < was.until + STUN_GUARD) return;
   stunned.set(g, { until: g.t + secs, x: g.player.x, y: g.player.y });
   g.player.path = [];
-  say(g, `⚠ stunned: you cannot move for ${secs} s. a move you give now waits for it.`);
+  say(g, `⚠ stunned for ${secs} s: moves wait till it ends.`);
 }
 
 /** hit what stands in the zones; `open` leaves the boss open (more damage taken) when you were clear */

@@ -40,15 +40,15 @@ export function upgradeLines(g: Game, n = 4): Line[] {
 verb('upgrade', {
   help: 'at a printer or altar: raise a module you own one level (I → II → III): upgrade nail psalm',
   when: atMachine,
-  whenFail: () => 'upgrades are made at a printer or an altar: step up to one.',
+  whenFail: () => 'upgrade at a printer or an altar.',
   run(g, args) {
-    if (!atMachine(g)) return say(g, 'upgrades are made at a printer or an altar: step up to one.');
+    if (!atMachine(g)) return say(g, 'upgrade at a printer or an altar.');
     const q = args.join(' ').replace(/^the /, '');
     const all = [...g.player.installed, ...bagMods(g)];
     const m = q ? all.find((i) => flat(label(i)) === flat(q)) ?? all.find((i) => flat(label(i)).includes(flat(q))) : undefined;
     if (!m) {
       const lines = upgradeLines(g, 8);
-      return say(g, lines.length ? 'upgrade what?' : 'nothing you own can rise further.', ...lines);
+      return say(g, lines.length ? 'upgrade what?' : 'nothing you own can be upgraded.', ...lines);
     }
     const c = upgradeCost(m);
     if (!c) return say(g, `${label(m)} is at its top level.`);

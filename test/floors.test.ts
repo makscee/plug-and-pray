@@ -80,7 +80,7 @@ describe('v2 floors', () => {
     run(g, 0.1);
     const boss = g.ents.find((e) => e.enemy?.data.boss)!;
     expect(boss).toBeTruthy();
-    expect(text(g)).toMatch(/wakes in the room before the way down/);
+    expect(text(g)).toMatch(/wakes. it guards the way down/);
     exec(g, 'descend');
     expect(g.floor).toBe(0);
     expect(text(g)).toMatch(/sealed/);
@@ -104,7 +104,7 @@ describe('v2 floors', () => {
     g.player.inv.push({ kind: 'res', res: 'bone', n: 5 });
     onBossDown(g, LAST);
     expect(g.ended).toBe('thaw');
-    expect(text(g)).toMatch(/drinks what you carry: 5/);
+    expect(text(g)).toMatch(/you carried 5/);
   });
 
   it('a boss of two (the forge twins) opens the way only when both fall', () => {

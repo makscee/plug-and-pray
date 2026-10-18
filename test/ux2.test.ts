@@ -85,6 +85,6 @@ describe('ux (playtest r2)', () => {
   it('where says the hint again', () => {
     const g = newGame(1);
     exec(g, 'where');
-    expect(text(g)).toContain('an eye glints');
+    expect(text(g)).toContain('an eye lies somewhere');
   });
 });

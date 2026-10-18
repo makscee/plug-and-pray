@@ -142,13 +142,13 @@ verb('offer', {
     if (!e) return say(g, noAltar(g));
     const p = g.player;
     if (what === 'power') {
-      if (p.core >= MAX_CORE) return say(g, 'the altar is quiet. your core can hold no more.');
+      if (p.core >= MAX_CORE) return say(g, 'your core is full.');
       const c = powerCost(g);
       if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.${glassTip(g, c, true)}`);
       pay(g, c);
       p.core++;
       g.events.push({ type: 'print', at: [e.x, e.y] });
-      return say(g, `the altar drinks it. your core runs warmer: power ${p.core} at the core.`);
+      return say(g, `+1 core power: ${p.core} now.`);
     }
     if (what === 'flesh') {
       if ((p.flesh ?? 0) >= MAX_FLESH) return say(g, 'the altar has no more to give you.');
@@ -191,7 +191,7 @@ verb('offer', {
       return say(g, 'the altar grinds the bone fine and fires it: +1 glass.');
     }
     // r4: `offer bone` says what the altar takes rather than the bare menu again
-    if (what) return say(g, `the altar takes no single ${what}. it takes these, and pays in power, flesh or mending:`, ...menu(g));
+    if (what) return say(g, `no offering called ${what}. the altar takes:`, ...menu(g));
     say(g, 'an altar. it wants an offering.', ...upgradeLines(g, 3), ...menu(g));
   },
 });
@@ -229,7 +229,7 @@ verb('temper', {
     const alike = q ? temperable(g).filter((i) => label(i).toLowerCase().includes(q)).sort((a, b) => tempered(a) - tempered(b)) : [];
     const inst = alike.find((i) => affords(g, temperCost(i))) ?? alike[0] ?? findInst(g, args);
     if (!inst) return say(g, 'temper what? an installed, attuned module.', ...menu(g));
-    if (tempered(inst) >= MAX_TEMPER) return say(g, `${label(inst)} is as true as it gets.`);
+    if (tempered(inst) >= MAX_TEMPER) return say(g, `${label(inst)} is fully tempered.`);
     if (!inst.roll || inst.roll.tag === 'cracked' || !BETTER[inst.roll.key] || !attuneKey(inst)) return say(g, `attune it first: ${def(inst).name}.`);
     const c = temperCost(inst);
     if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.${glassTip(g, c, true)}`);

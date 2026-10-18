@@ -149,13 +149,13 @@ export function whatAt(g: Game, x: number, y: number, detail = 1): string {
   if (m) return detail ? `${m.what}${m.r ? ` (somewhere within ${Math.round(m.r)} cells)` : ''}` : 'something marked here; a better map would say what';
   if (k === 'unseen') return 'unseen';
   const c = cell(g, x, y);
-  if (k === 'through') return `seen through a wall: ${c === Cell.floor ? 'open' : 'stone'}, but it may hide what that eye cannot show`;
+  if (k === 'through') return `seen through a wall: ${c === Cell.floor ? 'open' : 'stone'}, may hide things`;
   const e = g.ents.find((e) => here(e) && (e.kind === 'printer' || e.kind === 'item' || (e.enemy && !ENEMIES[e.enemy.type]?.hidden)));
   if (e?.kind === 'printer') return e.data?.shop ? 'reliquary' : 'printer';
   if (e?.enemy) return ENEMIES[e.enemy.type]?.name ?? 'something moving';
   if (e?.item && !e.data?.mimic) return detail ? itemName(e.item) : 'a thing on the floor';
   const v = veinOf(c);
-  if (thinWall(g, x, y, (a, b) => cell(g, a, b) === Cell.floor)) return 'a thin wall: something open lies past it. dig or break through';
+  if (thinWall(g, x, y, (a, b) => cell(g, a, b) === Cell.floor)) return 'a thin wall with space behind: dig or break it';
   return c === Cell.floor ? 'floor' : v && detail ? `${v} vein` : 'wall';
 }
 
@@ -175,10 +175,10 @@ export function infoAt(g: Game, x: number, y: number): string[] {
   if (m) return [m.what, ...(m.info ? [m.info] : []), `marked by the ${MODS[m.by]?.name ?? m.by}${m.ttl ? `, ${Math.round(g.t - m.at)} s ago` : ''}${m.r ? `; somewhere within ${Math.round(m.r)} cells` : ''}.`];
   if (k === 'unseen') return ['unseen', 'no eye has looked here; a radar may still mark things.'];
   const c = cell(g, x, y);
-  if (k === 'through') return [c === Cell.floor ? 'open, past the stone' : 'stone, past the stone', 'seen through a wall: that eye can miss what lies here. not known to be empty.'];
-  if (thinWall(g, x, y, (a, b) => cell(g, a, b) === Cell.floor)) return ['a thin wall', 'one cell thick, with open space past it: dig, or break a hollow one.'];
+  if (k === 'through') return [c === Cell.floor ? 'open, past the stone' : 'stone, past the stone', 'seen through a wall: may hide things.'];
+  if (thinWall(g, x, y, (a, b) => cell(g, a, b) === Cell.floor)) return ['a thin wall', 'open space behind it: dig or break through.'];
   const v = veinOf(c);
-  if (v) return [`${v} vein`, 'a leech needle or a bone auger beside it drains it. no tool? an altar grinds 4 bone into 1 glass.'];
+  if (v) return [`${v} vein`, 'drain it with a leech needle or bone auger.'];
   return c === Cell.floor ? ['floor', 'seen: nothing here.'] : ['wall'];
 }
 
@@ -257,7 +257,7 @@ mapHooks.click.push((g, x, y) => {
   const leg = firstLeg(g, x + 0.5, y + 0.5);
   // v2r5 newcomer: say why (40 s of clicks on unknown black did nothing a first-timer could read)
   if (!leg) {
-    const why = know(g, x, y) === 'unseen' ? 'no known way there: that spot is unseen. click a cell you have seen, nearer.' : 'no open way there that you know of: a wall or the unknown is in the way. click nearer.';
+    const why = know(g, x, y) === 'unseen' ? 'unseen spot: click a cell you have seen.' : 'no known way there: click nearer.';
     const last = g.log[g.log.length - 1];
     return void (last?.[0] !== why && say(g, why));
   }
@@ -273,7 +273,7 @@ mapHooks.click.push((g, x, y) => {
   if (goes) trips.set(g, { x, y, hp: p.hp, at: `${Math.floor(p.x)},${Math.floor(p.y)}`, legs: 1, log: g.log.length });
   if (toldPilot.has(g)) return;
   toldPilot.add(g);
-  say(g, 'the stepper walks it leg by leg, until you arrive or something hits you. a pilot (the wayfinder moth) walks it faster.');
+  say(g, 'walking there leg by leg; a hit stops you. a pilot walks faster.');
 });
 
 // playtest r3 (fresh A): a map click walked one leg per click. With the stepper it keeps walking leg

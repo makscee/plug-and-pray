@@ -20,7 +20,7 @@ verb('tidy', {
   help: 'lay the windows out again, none on another (key t)',
   run(g) {
     windows.tidy();
-    say(g, 'windows tidied. a title in the dock along the bottom opens that window; double-click a title to dock it.');
+    say(g, 'windows tidied. click a dock title to open; double-click to dock.');
   },
 });
 verb('pause', {
