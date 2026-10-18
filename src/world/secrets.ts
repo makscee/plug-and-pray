@@ -12,8 +12,8 @@ import { hash, rng, type Rng } from '../core/rng';
 import { goThere, verb } from '../core/verbs';
 import type { Chunk, Entity, Game, Inst, Line } from '../core/types';
 import { eyeRange } from '../mods/sense';
-import { rooms } from './gen';
-import { lootMod, opening } from './spawn';
+import { generate, rooms } from './gen';
+import { lootMod, opening, shopAt } from './spawn';
 import { bearing } from './vectors';
 import { ZONES, zoneAt, zoneOf } from './zones';
 
@@ -76,8 +76,12 @@ const inRoom = (seed: number, c: Chunk) => {
   return (x: number, y: number) => rs.some(([x0, y0, x1, y1]) => x >= x0 && x <= x1 && y >= y0 && y <= y1);
 };
 
+/** the three faces nearest a local cell: the cradle's secrets stand by its reliquary */
+const closest = (list: [number, number, number, number][], [bx, by]: [number, number]) =>
+  [...list].sort((a, b) => Math.hypot(a[0] - bx, a[1] - by) - Math.hypot(b[0] - bx, b[1] - by)).slice(0, 3);
+
 /** a shell over a niche: the wall beside a floor cell, and a wall cell behind it that touches no floor */
-function hollow(r: Rng, c: Chunk, seed: number): Omit<Secret, 'kind' | 'found' | 'done' | 'salt'> | null {
+function hollow(r: Rng, c: Chunk, seed: number, by?: [number, number]): Omit<Secret, 'kind' | 'found' | 'done' | 'salt'> | null {
   const ok = faces(c, () => true).filter(([x, y, dx, dy]) => {
     const [wx, wy, px, py] = [x + dx, y + dy, x + 2 * dx, y + 2 * dy];
     if (px < 1 || py < 1 || px > CHUNK - 2 || py > CHUNK - 2 || !W(c, px, py)) return false;
@@ -88,18 +92,19 @@ function hollow(r: Rng, c: Chunk, seed: number): Omit<Secret, 'kind' | 'found' |
   if (!ok.length) return null;
   const room = inRoom(seed, c);
   const best = ok.filter(([x, y]) => room(x, y));
-  const [x, y, dx, dy] = r.pick(best.length ? best : ok);
+  const [x, y, dx, dy] = r.pick(by ? closest(ok, by) : best.length ? best : ok);
   const [ox, oy] = [c.cx * CHUNK, c.cy * CHUNK];
   return { x: ox + x + dx, y: oy + y + dy, fx: -dx, fy: -dy, trail: [[ox + x + 2 * dx, oy + y + 2 * dy]] };
 }
 
 /** a scratched wall: any wall face, a chamber's first */
-function script(r: Rng, c: Chunk, seed: number): Omit<Secret, 'kind' | 'found' | 'done' | 'salt'> | null {
+function script(r: Rng, c: Chunk, seed: number, by?: [number, number], skip?: Secret | null): Omit<Secret, 'kind' | 'found' | 'done' | 'salt'> | null {
   const room = inRoom(seed, c);
-  const ok = faces(c, room);
-  const list = ok.length ? ok : faces(c, () => true);
+  const free = ([x, y, dx, dy]: number[]) => !skip || skip.x !== c.cx * CHUNK + x + dx || skip.y !== c.cy * CHUNK + y + dy;
+  const ok = faces(c, room).filter(free);
+  const list = ok.length ? ok : faces(c, () => true).filter(free);
   if (!list.length) return null;
-  const [x, y, dx, dy] = r.pick(list);
+  const [x, y, dx, dy] = r.pick(by ? closest(list, by) : list);
   return { x: c.cx * CHUNK + x + dx, y: c.cy * CHUNK + y + dy, fx: -dx, fy: -dy, trail: [] };
 }
 
@@ -141,23 +146,47 @@ function hands(r: Rng, c: Chunk, seed: number): Omit<Secret, 'kind' | 'found' | 
 export function hide(seed: number, c: Chunk): Secret | null {
   if (c.cx === 0 && c.cy === 0) return null;
   const r = rng(hash(seed, 91, c.cx, c.cy));
-  const [fx, fy] = opening(seed).printer;
-  const first = c.cx === fx && c.cy === fy;
-  if (!r.chance(CHANCE) && !first) return null;
+  const by = byShop(seed, c);
+  if (!r.chance(CHANCE) && !by) return null;
   const [wh, ws] = WEIGHTS[Math.max(0, zoneOf(c.cx, c.cy))];
   const roll = r();
-  const kind: Kind = first ? 'script' : roll < wh ? 'hands' : roll < wh + ws ? 'script' : 'hollow';
-  const at = (kind === 'hands' ? hands : kind === 'script' ? script : hollow)(r, c, seed);
+  const kind: Kind = by ? 'script' : roll < wh ? 'hands' : roll < wh + ws ? 'script' : 'hollow';
+  const at = by ? script(r, c, seed, by, cradleHollow(seed, c)) : (kind === 'hands' ? hands : kind === 'script' ? script : hollow)(r, c, seed);
   return at ? { kind, ...at, found: false, done: false, salt: r.int(0, 999) } : null;
 }
 
-/** the first reveal is not left to luck: the cradle printer's chunk (beside the start, `opening`) always has a
- *  scratched wall, so the first black & white or outline eye has something to read near home (a free carrion
- *  eye beside it cost the sims 7 of 40 thaws: the brain wore it into the dark) */
+/** the first reveal is not left to luck (r2 hook): the reliquary beside the start (`opening`) always sells a
+ *  layer eye (bat psalter or carrion eye, src/world/printer.ts), and a scratched wall and a hollow wall stand
+ *  by it, so whichever eye you buy has something to show within a minute of home */
+function byShop(seed: number, c: Chunk): [number, number] | undefined {
+  const [sx, sy] = opening(seed).shop;
+  if (c.cx !== sx || c.cy !== sy) return;
+  const [x, y] = shopAt(seed, c);
+  return [Math.floor(x) - c.cx * CHUNK, Math.floor(y) - c.cy * CHUNK];
+}
+/** the hollow wall by the cradle reliquary (its own rng, so the chunk's other secret stays as it was) */
+export function cradleHollow(seed: number, c: Chunk): Secret | null {
+  const by = byShop(seed, c);
+  if (!by) return null;
+  const r = rng(hash(seed, 96, c.cx, c.cy));
+  const at = hollow(r, c, seed, by);
+  return at ? { kind: 'hollow', ...at, found: false, done: false, salt: r.int(0, 999) } : null;
+}
+
+/** the layer eye the cradle reliquary keeps (src/world/printer.ts), one per seed: the bat psalter only where the
+ *  hollow wall fits by it, else the carrion eye for the scratched wall */
+export const CRADLE_EYES = ['bat-psalter', 'carrion-eye'];
+export function cradleEye(seed: number): string {
+  const [sx, sy] = opening(seed).shop;
+  const eye = rng(hash(seed, 65)).pick(CRADLE_EYES);
+  return eye === 'bat-psalter' && !cradleHollow(seed, generate(seed, sx, sy)) ? 'carrion-eye' : eye;
+}
 
 chunkHook((g, c) => {
   const s = hide(g.seed, c);
   if (s) secrets(g).push(s);
+  const h = cradleHollow(g.seed, c);
+  if (h) secrets(g).push(h);
 });
 
 // ---- finding: an eye with the right filter, on and warm, near enough and with a line to it
@@ -214,6 +243,15 @@ const VERSES = [
  *  where the dead hid things; the shards stay the cards' to tell). r2 decide: caches only, so a hollow wall still
  *  wants sonar: each eye owns one layer (carrion and lattice scripture, the bat psalter shells, heat the prints) */
 function names(g: Game, s: Secret): [number, number, string] | null {
+  // the cradle's scratched wall names the hollow wall beside it (r2 hook: the first reveal chain), and told is
+  // as good as heard there: reading it lets you break that shell
+  const [cx, cy] = [Math.floor(s.x / CHUNK), Math.floor(s.y / CHUNK)];
+  const [ox, oy] = opening(g.seed).shop;
+  const shell = cx === ox && cy === oy && secrets(g).find((o) => o.kind === 'hollow' && !o.done && Math.floor(o.x / CHUNK) === cx && Math.floor(o.y / CHUNK) === cy);
+  if (shell) {
+    shell.found = true;
+    return [shell.x + 0.5 + shell.fx, shell.y + 0.5 + shell.fy, 'hollow wall'];
+  }
   const other = secrets(g)
     .filter((o) => o.kind === 'hands' && !o.found && !o.done && Math.hypot(o.x - s.x, o.y - s.y) < CHUNK * 3)
     .sort((a, b) => Math.hypot(a.x - s.x, a.y - s.y) - Math.hypot(b.x - s.x, b.y - s.y))[0];

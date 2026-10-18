@@ -61,7 +61,7 @@ export const BETTER: Record<string, 'up' | 'down'> = {
 /** a good roll (attuned) moves a number its better way by ×1.4 or ×0.7; a bad one (cracked) the other way */
 export const rollMult = (key: string, good: boolean): number => ((BETTER[key] === 'down') === good ? 0.7 : 1.4);
 
-function cellIn(r: Rng, c: Chunk, seed: number): [number, number] {
+export function cellIn(r: Rng, c: Chunk, seed: number): [number, number] {
   const [x0, y0, x1, y1] = r.pick(rooms(seed, c.cx, c.cy));
   for (let k = 0; k < 20; k++) {
     const x = r.int(x0, x1);
@@ -71,6 +71,9 @@ function cellIn(r: Rng, c: Chunk, seed: number): [number, number] {
   const [x, y] = r.pick(floors(c));
   return [c.cx * CHUNK + x + 0.5, c.cy * CHUNK + y + 0.5];
 }
+
+/** where the reliquary by the start stands, a cell centre (the secrets beside it need it before it spawns) */
+export const shopAt = (seed: number, c: Chunk): [number, number] => cellIn(rng(hash(seed, 57, c.cx, c.cy)), c, seed);
 
 export function fill(g: Game, c: Chunk): void {
   const at = (x: number, y: number) => [c.cx * CHUNK + x + 0.5, c.cy * CHUNK + y + 0.5] as const;
@@ -104,7 +107,7 @@ export function fill(g: Game, c: Chunk): void {
   // a reliquary (shop printer) one chunk out, then now and then further out; its own rng keeps the rest of the chunk as it was
   const rs = rng(hash(g.seed, 57, c.cx, c.cy));
   if (is(c, o.shop) || (far >= 2 && rs.chance(0.1))) {
-    const [x, y] = cellIn(rs, c, g.seed);
+    const [x, y] = is(c, o.shop) ? shopAt(g.seed, c) : cellIn(rs, c, g.seed);
     spawn(g, { kind: 'printer', x, y, data: { far, shop: true } });
   }
   if (far >= 1.5 && r.chance(0.18)) {

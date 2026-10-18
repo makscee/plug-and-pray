@@ -109,3 +109,33 @@ describe('r2 econ', () => {
     expect(MODS['carrion-eye'].power).toBe(2);
   });
 });
+
+describe('r2 econ with the r2 hook', () => {
+  it('the cradle scratched wall still names the hollow wall beside it (and lets you break it)', async () => {
+    const { chunk } = await import('../src/core/grid');
+    const { opening } = await import('../src/world/spawn');
+    const { addItem } = await import('../src/core/verbs');
+    let n = 0;
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const g = newGame(seed);
+      const [sx, sy] = opening(seed).shop;
+      chunk(g, sx, sy);
+      const at = (s: { x: number; y: number }) => Math.floor(s.x / 16) === sx && Math.floor(s.y / 16) === sy;
+      const shell = secrets(g).find((s) => s.kind === 'hollow' && at(s));
+      const wall = secrets(g).find((s) => s.kind === 'script' && at(s));
+      if (!shell || !wall) continue;
+      n++;
+      g.player.slots = 8;
+      g.player.core = 12;
+      addItem(g, { kind: 'mod', mod: 'carrion-eye' });
+      exec(g, 'install carrion eye');
+      for (const i of g.player.installed) i.readyAt = g.t - 1;
+      Object.assign(g.player, { x: wall.x + 0.5 + wall.fx, y: wall.y + 0.5 + wall.fy, dir: Math.atan2(-wall.fx, wall.fy), path: [] });
+      g.ents = g.ents.filter((e) => !e.enemy);
+      for (let k = 0; k < 10; k++) tick(g, 0.05);
+      expect(text(g)).toMatch(/hollow wall/);
+      expect(shell.found).toBe(true);
+    }
+    expect(n).toBeGreaterThan(0);
+  });
+});
