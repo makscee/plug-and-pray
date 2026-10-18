@@ -37,11 +37,11 @@ export interface Floor {
 }
 
 export const FLOORS: Floor[] = [
-  { id: 0, name: 'the cradle', look: { tint: 'c8a070', fog: '100c0a', dark: 0 }, enter: 'the cradle. warm and close.', gimmick: 'thin walls: break a one-cell wall with any weapon.', foe: { hp: 1, damage: 1 }, tier: 0, need: 0, stairs: 'rope' },
-  { id: 1, name: 'the choir nave', look: { tint: 'd0b890', fog: '141018', dark: 0.15 }, enter: 'the choir nave. many hungry voices.', gimmick: 'more hollow walls: a sonar eye or listen finds them.', foe: { hp: 1.2, damage: 1.15 }, tier: 1, need: 9, stairs: 'spiral' },
-  { id: 2, name: 'the ossuary', look: { tint: '9aa8b0', fog: '080a10', dark: 0.4 }, enter: 'the ossuary. cold: no lamp, no mending.', gimmick: 'dark and cold: you mend only in light.', foe: { hp: 1.7, damage: 1.45 }, tier: 2, need: 40, stairs: 'chute' },
-  { id: 3, name: 'the furnace', look: { tint: 'ff7a40', fog: '200804', dark: 0.25 }, enter: 'the furnace. the heat burns you.', gimmick: 'heat hurts every second: a rime hood stops it.', foe: { hp: 1.85, damage: 1.5 }, tier: 2, need: 70, stairs: 'lift' },
-  { id: 4, name: 'the heart', look: { tint: 'ff5060', fog: '200408', dark: 0.2 }, enter: 'the heart. it beats around you.', gimmick: 'the last keeper waits ahead. kill it to thaw the god.', foe: { hp: 2.2, damage: 1.7 }, tier: 2, need: 95, stairs: null },
+  { id: 0, name: 'the cradle', look: { tint: 'c8a070', fog: '100c0a', dark: 0 }, enter: 'the cradle, where the god was laid. warm and close.', gimmick: 'thin walls: break a one-cell wall with any weapon.', foe: { hp: 1, damage: 1 }, tier: 0, need: 0, stairs: 'rope' },
+  { id: 1, name: 'the choir nave', look: { tint: 'd0b890', fog: '141018', dark: 0.15 }, enter: 'the choir nave. its last faithful still sing, hungry.', gimmick: 'more hollow walls: a sonar eye or listen finds them.', foe: { hp: 1.2, damage: 1.15 }, tier: 1, need: 9, stairs: 'spiral' },
+  { id: 2, name: 'the ossuary', look: { tint: '9aa8b0', fog: '080a10', dark: 0.4 }, enter: 'the ossuary, where the faithful sleep. cold: no lamp, no mending.', gimmick: 'dark and cold: you mend only in light.', foe: { hp: 1.7, damage: 1.45 }, tier: 2, need: 40, stairs: 'chute' },
+  { id: 3, name: 'the furnace', look: { tint: 'ff7a40', fog: '200804', dark: 0.25 }, enter: 'the furnace, the god\'s last fever. the heat burns you.', gimmick: 'heat hurts every second: a rime hood stops it.', foe: { hp: 1.85, damage: 1.5 }, tier: 2, need: 70, stairs: 'lift' },
+  { id: 4, name: 'the heart', look: { tint: 'ff5060', fog: '200408', dark: 0.2 }, enter: 'the heart. it beats around you, waiting for a prayer.', gimmick: 'the last keeper, its most faithful, waits ahead. kill it to thaw the god.', foe: { hp: 2.2, damage: 1.7 }, tier: 2, need: 95, stairs: null },
 ];
 export const LAST = FLOORS.length - 1;
 

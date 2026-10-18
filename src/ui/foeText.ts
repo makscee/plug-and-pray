@@ -24,13 +24,13 @@ export interface FoeText {
 }
 
 export const FOE_TEXT: Record<string, FoeText> = {
-  mite: { what: 'comes in twos and threes; rears up, then bites', tip: 'fight it: weak, and it often drops bone. step back when it rears', want: 'sweep', worth: 'fight', glyph: 'dot', colour: '#ff4a30' },
-  seraph: { what: 'a lamp that never moves; fires an orb down its row and column', tip: 'never stand in its row or column: come at it on a diagonal', want: 'reach', worth: 'either', glyph: 'diamond', colour: '#ffe070' },
+  mite: { what: 'the god\'s lice, in twos and threes; rears up, then bites', tip: 'fight it: weak, and it often drops bone. step back when it rears', want: 'sweep', worth: 'fight', glyph: 'dot', colour: '#ff4a30' },
+  seraph: { what: 'a votive lamp that never moves; fires an orb down its row and column', tip: 'never stand in its row or column: come at it on a diagonal', want: 'reach', worth: 'either', glyph: 'diamond', colour: '#ffe070' },
   pyre: { what: 'a furnace lamp: fast orbs down its lines, three bolts at once', tip: 'walk round it on a diagonal, or past it out of its lines', want: 'reach', worth: 'avoid', glyph: 'diamond', colour: '#ff6a20' },
-  walker: { what: 'slow and heavy; bone armour eats small hits; it lifts its arm before it hits', tip: 'slow: you can just walk away. fight it only with a big hitter', want: 'big', worth: 'avoid', glyph: 'square', colour: '#c8c0b0' },
+  walker: { what: 'a pilgrim in bone, slow and heavy; bone armour eats small hits; it lifts its arm before it hits', tip: 'slow: you can just walk away. fight it only with a big hitter', want: 'big', worth: 'avoid', glyph: 'square', colour: '#c8c0b0' },
   hum: { what: 'unseen; it keeps to the deep and bites from nowhere', tip: 'walk out of the ossuary and it lets you go; sonar or heat shows it', want: 'any', worth: 'avoid', glyph: 'dot', colour: '#9a7ad0' },
   mimic: { what: 'dressed as loot; it wakes and lunges when you come close', tip: 'the copper it wore is the prize: kill it fast, it is frail', want: 'any', worth: 'fight', glyph: 'triangle', colour: '#c070e0' },
-  cantor: { what: 'stands still and sings: foes near it hit half again as hard', tip: 'kill it first, between songs, then the rest', want: 'reach', worth: 'fight', glyph: 'triangle', colour: '#6cc8d4' },
+  cantor: { what: 'still praying; it sings: foes near it hit half again as hard', tip: 'kill it first, between songs, then the rest', want: 'reach', worth: 'fight', glyph: 'triangle', colour: '#6cc8d4' },
   vent: { what: 'the floor glows, then bursts on a beat', tip: 'cross on the beat after a burst', want: 'any', worth: 'avoid', glyph: 'square', colour: '#ff4020' },
   warden: { what: 'an elite: draws breath, then rushes three cells down a line', tip: 'when it draws breath, step aside; it is open after a miss', want: 'any', worth: 'fight', glyph: 'square', colour: '#ff3a28' },
   abbot: { what: 'an elite in bone: lifts an arm, or both for a sweep two cells round', tip: 'one arm: step back. both arms: get two cells away. bring a big hitter', want: 'big', worth: 'fight', glyph: 'square', colour: '#ff3a28' },
@@ -38,7 +38,7 @@ export const FOE_TEXT: Record<string, FoeText> = {
 };
 
 /** a floor's keeper (boss-*): it guards the stairs */
-export const KEEPER: FoeText = { what: 'the floor keeper: it guards the way down', tip: 'watch for the ⚠ before each move and step out of it; it is open after a miss', want: 'any', worth: 'fight', glyph: 'square', colour: '#ff3a28' };
+export const KEEPER: FoeText = { what: 'the floor keeper, the god\'s last faithful: it guards the way down', tip: 'watch for the ⚠ before each move and step out of it; it is open after a miss', want: 'any', worth: 'fight', glyph: 'square', colour: '#ff3a28' };
 
 export const foeText = (type: string): FoeText => FOE_TEXT[type] ?? (type.startsWith('boss-') ? KEEPER : { ...KEEPER, what: 'something moving', tip: 'watch it first', worth: 'either' });
 
