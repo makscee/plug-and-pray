@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import '../src/mods';
-import { hurt, newGame, tick } from '../src/core/game';
+import { hurt, newGame, spawnEnemy, tick } from '../src/core/game';
 import { exec } from '../src/core/verbs';
 import type { Game } from '../src/core/types';
 import { route } from '../src/mods/pilot';
@@ -40,12 +40,39 @@ describe('pilots and waypoints', () => {
     run(g, 3);
     expect([Math.floor(g.player.x), Math.floor(g.player.y)]).toEqual([10, 10]);
     expect(said(g, 'the pilot sets you down')).toBe(true);
+    // v2r2 fun: struck with a foe on the way, it lets go
     exec(g, 'goto 5 5');
     run(g, 0.3);
+    const m = spawnEnemy(g, 'mite', 7.5, 7.5);
+    m.enemy!.data.noticed = true;
     hurt(g, 0.1);
     run(g, 0.1);
-    expect(said(g, 'struck. the pilot lets go.')).toBe(true);
+    expect(said(g, 'the pilot lets go.')).toBe(true);
     expect(g.player.path.length).toBeLessThanOrEqual(1);
+  });
+
+  it('the pilot walks you away from a foe, struck or not; never into one', () => {
+    const g = newGame(1);
+    give(g, 'wayfinder-moth');
+    seeRoom(g);
+    [g.player.x, g.player.y] = [10.5, 10.5];
+    spawnEnemy(g, 'mite', 11.5, 11.5);
+    exec(g, 'goto 5 5');
+    expect(g.player.path.length).toBeGreaterThan(3);
+    run(g, 0.2);
+    hurt(g, 0.1);
+    run(g, 0.2);
+    expect(said(g, 'the pilot lets go')).toBe(false);
+    expect(g.player.path.length).toBeGreaterThan(1);
+    // toward one at arm's length: it will not start
+    const h = newGame(1);
+    give(h, 'wayfinder-moth');
+    seeRoom(h);
+    [h.player.x, h.player.y] = [10.5, 10.5];
+    spawnEnemy(h, 'mite', 9.5, 9.5);
+    exec(h, 'goto 5 5');
+    expect(said(h, 'will not walk you into them')).toBe(true);
+    expect(h.player.path.length).toBe(0);
   });
 
   it('a waypoint log notes where you woke and what lies near; mark adds your spot', () => {

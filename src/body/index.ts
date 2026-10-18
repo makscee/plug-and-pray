@@ -3,11 +3,12 @@
 // saved setups and the clock of hours' foresight. Keys and windows live in ./input.ts and ./views.ts.
 
 import { dist, say, tickHooks } from '../core/game';
-import { active, def, label, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits } from '../core/mods';
+import { active, def, label, param, powerMax, powerUsed, rarityOf, size, slotsUsed, switchOff, switchOn, traits, type Modish } from '../core/mods';
 import { Cell, DIRS, cell, clear, dirAngle, setCell } from '../core/grid';
 import { VERBS, addItem, findInst, findItem, instRef, verb } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
 import { walk } from '../mods/gait';
+import { MAX_CORE } from '../world/altar';
 
 const gaitWith = (g: Game, key: string) => active(g, 'gait').find((i) => param(i, key, false));
 
@@ -118,6 +119,24 @@ verb('install', {
     g.events.push({ type: 'install' });
     say(g, `the board seats itself. slots ${slotsUsed(g)}/${p.slots}.`);
   },
+});
+
+// v2r2 fun: a slot board found at the cap was dead loot. It folds into your core (+1 power), or into
+// bone once the core is full, with a line saying so
+tickHooks.push((g) => {
+  const p = g.player;
+  if (p.slots < MAX_SLOTS) return;
+  const k = p.inv.findIndex((it) => it.kind === 'mod' && param<number>(it, 'slots', 0) > 0);
+  if (k < 0) return;
+  p.inv.splice(k, 1);
+  if (p.core < MAX_CORE) {
+    p.core++;
+    say(g, `the slot board has no socket left (${MAX_SLOTS} is all the board takes). it melts into your core: +1 power, ${powerMax(g)} now.`);
+  } else {
+    addItem(g, { kind: 'res', res: 'bone', n: 4 });
+    say(g, `the slot board has no socket left, and your core is full. it folds into bone: +4 bone.`);
+  }
+  g.events.push({ type: 'install' });
 });
 
 // ---- setups: a named set of modules that are on; `setup battle` turns on exactly that set
@@ -332,7 +351,8 @@ verb('install', {
 // Eyes, power and the last legs never give way.
 
 const WEIGHT: Partial<Record<string, number>> = { weapon: 4, body: 3, lamp: 3, scanner: 2, mind: 2, gait: 2, tool: 1 };
-const legs = (i: { mod: string }) => def(i).family === 'gait' && ['go', 'keys', 'free'].some((k) => param(i, k, false));
+// v2r2 fun: a pilot is legs too (a pick took the psalm of roads, the only legs, for a weapon)
+const legs = (i: { mod: string }) => def(i).family === 'gait' && ['go', 'keys', 'free', 'pilot'].some((k) => param(i, k, false));
 // playtest r3: the map and the last weapon that is on never give way either (a swap took the map, and
 // an eye's swap switched the only bell off mid-fight)
 const weapon = (i: { mod: string }) => def(i).family === 'weapon';
@@ -346,6 +366,20 @@ function weight(g: Game, i: { mod: string }): number {
 /** r5: the installed module that gives way first when you take one out by hand (none: all weigh 9) */
 export const lightest = (g: Game): Inst | undefined =>
   g.player.installed.filter((i) => def(i).family !== 'power' && def(i).family !== 'camera' && weight(g, i) < 9).sort((a, b) => weight(g, a) - weight(g, b) || +a.on - +b.on)[0];
+
+const RANK: Record<string, number> = { common: 0, fine: 1, rare: 2, unique: 3 };
+/** how good a module is within its family: rarity first, then tier (an eye: then its res) */
+const worth = (m: Modish): number => RANK[rarityOf(m)] * 1000 + def(m).tier * 100 + (def(m).family === 'camera' ? Math.min(99, param<number>(m, 'res', 0) / 4) : 0);
+// (another weapon as good gives way too: a nail psalm for the spark finger; never a copy)
+const weaker = (i: Modish, it: Modish): boolean => worth(i) < worth(it) || (worth(i) === worth(it) && i.mod !== it.mod && def(it).family === 'weapon');
+/** what never gives way to `it` (v2r2 fun: a pick took the only legs; an eye took a better eye):
+ *  the last legs (unless `it` is legs), the map, and an eye that is not weaker than `it` (any eye for a non-eye) */
+function kept(g: Game, i: Inst, it: { mod: string }): boolean {
+  if (param<string>(i, 'what', '') === 'map') return true;
+  if (legs(i) && !legs(it) && !g.player.installed.some((o) => o !== i && legs(o))) return true;
+  if (def(i).family === 'camera') return def(it).family !== 'camera' ? !g.player.installed.some((o) => o !== i && o.on && def(o).family === 'camera' && worth(o) >= worth(i)) : !weaker(i, it);
+  return false;
+}
 
 export interface Room {
   /** taken out for a slot */
@@ -367,10 +401,14 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
   if (need > 0) {
     const off = p.installed.filter((i) => !i.on && def(i).family !== 'power').sort((a, b) => weight(g, a) - weight(g, b));
     const on = p.installed.filter((i) => i.on && light(i)).sort((a, b) => weight(g, a) - weight(g, b) || def(b).power - def(a).power);
-    // an eye takes out another eye first, the weakest (playtest r3: it took the map and kept the pinhole)
-    const eyes = def(it).family === 'camera' ? p.installed.filter((i) => def(i).family === 'camera').sort((a, b) => +a.on - +b.on || param<number>(a, 'res', 0) - param<number>(b, 'res', 0)) : [];
-    // one that frees enough, in that order; else the first few until they do (v2: modules that take two)
-    const order = [...new Set([...eyes, ...off, ...on])];
+    // the weakest of its own family goes first (playtest r3: an eye took the map and kept the pinhole); an
+    // eye only ever takes out a weaker eye (v2r2 fun: a fine dawn eye took out the rare vidicon)
+    const fam = p.installed.filter((i) => def(i).family === def(it).family && def(i).family !== 'power' && weaker(i, it)).sort((a, b) => +a.on - +b.on || worth(a) - worth(b));
+    // one that frees enough, in that order; else the first few until they do (v2: modules that take two).
+    // Never the last legs, the map or a better eye (v2r2 fun)
+    const order = [...new Set([...fam, ...off, ...on])].filter((i) => !kept(g, i, it));
+    // an eye no better than the ones you wear asks first: it would take a slot from something else
+    if (def(it).family === 'camera' && !fam.length && p.installed.some((i) => def(i).family === 'camera')) return `your eyes see better than ${def(it).name}: take something out by hand to wear it too.`;
     remove = order.find((i) => size(i) >= need);
     let freed = remove ? need : 0;
     if (!remove) for (const i of order) if (freed < need) (remove ? more.push(i) : (remove = i)), (freed += size(i));

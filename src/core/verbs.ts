@@ -330,7 +330,7 @@ verb('listen', {
     if (!near.length) return say(g, 'only the slow drip of something warm.');
     // compass words and cells, and a button for the next move (tuning #1328: "to the right" of a
     // facing you cannot see told a blind player nothing; crawl and go take compass words)
-    const goes = active(g, 'gait').some((i) => param(i, 'go', false));
+    const goes = active(g, 'gait').some((i) => param(i, 'go', false) || param(i, 'free', false));
     for (const e of near.slice(0, 4)) {
       const [dx, dy] = [e.x - p.x, e.y - p.y];
       const r = dist(e, p);

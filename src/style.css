@@ -114,6 +114,8 @@ img.icon { image-rendering: pixelated; image-rendering: crisp-edges; display: bl
 .win.panel .cell.sel { border-color: var(--acc); background: #1c140e; }
 .win.panel .cell.dim img { opacity: 0.5; }
 .win.panel .cell.socket { border-style: dashed; background: none; cursor: default; }
+/* v2r2 fun: the long bag's "+N more" / fold cell */
+.win.panel .cell.more { color: var(--acc); font-size: 18px; border-style: dotted; }
 .win.panel .cell.socket::after { content: ''; width: 10px; height: 10px; border: 1px solid var(--line); border-radius: 50%; }
 .win.panel .cell.st-on { box-shadow: inset 0 0 0 2px var(--acc); }
 .win.panel .cell.st-warm { box-shadow: inset 0 0 0 2px var(--fg); animation: warm-ring 0.5s steps(2) infinite; }
