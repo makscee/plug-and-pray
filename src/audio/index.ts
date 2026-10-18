@@ -13,7 +13,9 @@ export const CUES = [
   'warm', // a module warming up: a rising whine (secs = the warm-up)
   'ready', // warm: it works now
   'off', // power off: the whine sinks away
-  'hit', // you strike
+  'hit', // you strike: a bright ring, never like being struck (Maks 10-18)
+  'miss', // your shot strikes nothing: a soft whiff
+  'dud', // an attack with no weapon on: a dry empty click
   'hurt', // you are struck
   'kill', // something put down
   'die', // you stop
@@ -138,8 +140,15 @@ export function cue(name: Cue | string, opt: { secs?: number; uid?: number } = {
       if (opt.uid !== undefined) cut(opt.uid);
       return tone(t, 'sine', 420, 55, 0.6, 0.035, 900);
     case 'hit':
-      burst(t, 0.4, 3500, 0.06);
-      return tone(t, 'square', 1400, 300, 0.09, 0.025, 4000);
+      // Maks 10-18: hits and hurts both came as noise bursts and read alike; a hit now rings high
+      tick(t, 0.7, 4200);
+      tone(t, 'triangle', 1760, 1600, 0.12, 0.05, 6000);
+      return tone(t + 0.005, 'square', 2640, 2400, 0.05, 0.012, 6000);
+    case 'miss':
+      return burst(t, 0.18, 1800, 0.14);
+    case 'dud':
+      tick(t, 0.5, 700);
+      return tick(t + 0.09, 0.35, 600);
     case 'hurt':
       thump(t, 0.45, 90, 0.18);
       burst(t, 0.35, 600, 0.12);
