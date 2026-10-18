@@ -64,19 +64,19 @@ describe('fight', () => {
     expect(h.player.hp).toBe(10);
   });
 
-  it('regenerates slowly after four quiet seconds; the lead lung is three times faster', () => {
+  it('no mending for six seconds after a hit, then a quick mend; the lead lung is faster', () => {
     const g = armed();
     g.player.hp = 5;
     g.player.hurtAt = g.t;
-    run(g, 3.9);
+    run(g, 5.9);
     expect(g.player.hp).toBe(5);
-    run(g, 10.1);
-    expect(g.player.hp).toBeCloseTo(7, 1);
+    run(g, 4.1);
+    expect(g.player.hp).toBeCloseTo(7, 0);
     const h = armed('lead-lung');
     h.player.hp = 5;
     h.player.hurtAt = h.t;
-    run(h, 14);
-    expect(h.player.hp).toBeCloseTo(9, 1);
+    run(h, 10);
+    expect(h.player.hp).toBeCloseTo(8.2, 0);
   });
 
   it('the frost coat softens a hit; the mirror ward returns one and recharges', () => {

@@ -59,8 +59,62 @@ gives three rules.
   of 4 power.
 - **The dawn eye (2)** one chunk east is the first choice. Run it instead of the pinhole and you are
   at 5 of 4 power, so something goes off or you find an ember cell (+2 for a slot).
-- **Altars** add core power (+1, climbing prices, up to 10) and max hp. **Printers** add slots, up to 8.
+- **Altars** add core power (+1, prices climbing steeply, up to 9) and max hp. **Printers** add slots, up to 8.
 - **By the ossuary** a careful loadout wants: an eye that sees in the dark (2–3), legs (1), a map (1),
   a lamp or warmth (1–2), two weapons (3–4), a body module (1–2). That is 9–13 power on 7–8 slots,
   with a core of 6–8. One or two generators fill that gap, and setups switch the rest.
 - **The furnace** swaps the lamp and the dark eye for a rime hood and a colour or edge eye.
+
+## Weapons: damage per power, and each one's job (r1 econ)
+
+Walkers and the bone abbot wear bone armour 1.2: each hit loses 1.2, and never drops below a fifth of itself
+(`strike` in src/core/game.ts). Small fast hits lose almost everything, so "which weapon" becomes "against what".
+
+| weapon | power | dps | dps per power | vs armour 1.2, per power | its job |
+|---|---|---|---|---|---|
+| nail psalm (t0, aimed) | 1 | 1.67 | 1.67 | 0.33 | the cheap reach: seraph lamps down their line, mites, the hum blind. Useless on bone. |
+| spark finger (t0, auto) | 1 | 0.83 | 0.83 | 0.17 | the free bite: mites that reach you, no aiming |
+| rivet sling (t0, auto) | 1 | 0.63 | 0.63 | 0.13 | bites at 4 cells on its own: lamps you can see, mites before they bite |
+| ember spit (t1, aimed) | 2 | 2.29 | 1.14 | 0.23 | burst against soft things: the warden, mimics |
+| bone lance (t1, aimed) | 2 | 2.73 | 1.36 | 1.09 | **the armour answer**: walkers and the abbot |
+| choir bell / censer flail (t1, auto, sweep) | 2 | 0.94 / 1.0 per foe | 0.47 / 0.5 per foe | 0.1 | swarms: every mite in reach at once; the flail also warms you in the ossuary |
+| reliquary saw (t2, auto) | 3 | 3.33 | 1.11 | 0.67 | hands-free close fighting that still cuts bone |
+| heat lance (t2, aimed) | 3 | 3.89 | 1.30 | 1.07 | elites: big hits at 8 cells, through armour |
+
+Was: the nail psalm did 2.5 dps per power and 1.75 against armour, the best everywhere, so it stacked
+(18 of 24 winning loadouts). Now it is cheap reach and nothing more.
+
+## Rolls and attunes
+
+A find's roll and an altar's attune move one number its **better** way (src/world/spawn.ts `BETTER`):
+attuned is ×1.4 for damage, range, radius, hp and the like, and ×0.7 for cooldown, recharge, noise, lag, blur,
+refresh and loud; cracked goes the other way. Picture-only numbers (res, fps, colours) never roll. An altar
+attunes a weapon's damage, an eye's **range** (a real buy in the dark), a lamp's radius, and otherwise the first
+number that rolls (the mirror ward's recharge gets shorter). `test/econ.test.ts` checks every module and key.
+
+## Copper, power and the late sink (r1 econ)
+
+- **Copper early.** You wake with 2 copper; recycling a tier-0 module gives 1 bone and 1 copper; the reliquary by
+  the start prices its first relic in bone and glass only. So the first shop is a pick, not a locked door.
+  Later prices lean on copper instead of glass (prints, slots, power), since recycling now pays it.
+- **Power binds.** The core grows to 9 at altars (was 12), each point dearer than the last (4b 2g, then 6b 3g 1c,
+  8b 4g 2c, 10b 5g 3c 1i, 12b 6g 4c 2i). Past that, power comes from generators, which take a slot, and the
+  shop charges a copper and a glass more for them; the votive battery whispers (loud 1). So a generator is a
+  slot and a price for power, and two setups (explore, battle) are how a full kit runs.
+- **The late sink: temper (option B).** At an altar an attuned module can be tempered up to three times: its
+  rolled number moves another step each time (×1.2, or ×0.85 for a number that is better low), so a weapon you
+  lean on reaches about ×2.4 damage. Each temper costs more: bone 2t+k, glass k, copper 3t+3k, ichor k (t = tier+1,
+  k = the temper's number). Copper carries it because recycling pays copper all run. Deeper rings (3.5 chunks out)
+  hold more altars (35% of chunks, was 20%), so there is somewhere to spend. Picked over Balatro-style pacts (option A) because it is one verb in src/world/altar.ts,
+  reads the same as attune, and makes the late game a choice of *which* module to invest in (the one your
+  build leans on), while pacts would touch power, weapons and regen rules across slices on the deadline day.
+- **Regen.** No mending until 6 s after the last hit, then a quick 0.5 hp/s (was 0.2 after 4 s). A fight's
+  damage stays with you through the fight, but a rest is short. The ossuary's cold still stops it without light
+  (the lead lung, 0.3, still mends at half there).
+- **Armoured foes** have a little less hp to make up for armour 1.2: walker 5 (was 6), the bone abbot 13 (was 16).
+- **Zone entry** names the carried modules that answer the zone as install buttons (src/world/zones.ts `answers`):
+  the ossuary lists lamps, glowing, sonar, edge and heat eyes, listeners, big-hit weapons, armour and regen; the
+  furnace lists heat-proofing, or says that a rime hood would.
+
+Sims (`node scripts/sim.mjs 20 both`, 40 runs) before → after: finish 24 → 27, median Engine 24:42 → 22:33,
+power binding (power alone or with slots) 21% → 42%, slots alone 1% → 0%; nail psalms per end loadout 1.6 → 1.2 (it stays the lamp answer), bone lance in end loadouts 20–38% → 45–75%.

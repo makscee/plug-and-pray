@@ -7,9 +7,9 @@
 //   3 the furnace     furnace seraphs, walkers, hum packs; HEAT sears 0.15 hp/s unless something keeps it off. the furnace saint guards shard 3 and the engine.
 // The gate is felt, never a wall: `readiness` is what a careful player (and the sim) waits for.
 import { CHUNK } from '../core/grid';
-import { active, param } from '../core/mods';
+import { active, def, param } from '../core/mods';
 import { say, tickHooks } from '../core/game';
-import type { Game } from '../core/types';
+import type { Game, Line } from '../core/types';
 import { dpsOf } from './zonemath';
 
 export interface Zone {
@@ -69,5 +69,26 @@ tickHooks.push((g) => {
   if (s.has(z)) return;
   s.add(z);
   g.events.push({ type: 'zone', data: z });
-  say(g, ZONES[z].enter);
+  say(g, ZONES[z].enter, ...answers(g, z));
 });
+
+/** what a zone asks for (docs/modules.md): the ossuary light or warmth, sight in the dark, the hum, big hits
+ *  for bone armour; the furnace something that keeps the heat off */
+const ANSWERS: Record<number, (m: { mod: string }) => boolean> = {
+  2: (m) => {
+    const d = def(m);
+    const f = param<string>(m, 'filter', '');
+    return d.family === 'lamp' || param<number>(m, 'glow', 0) > 0 || f === 'sonar' || f === 'edge' || f === 'heat' || param<string[]>(m, 'sees', []).includes('flesh') ||
+      (d.family === 'weapon' && param<number>(m, 'damage', 0) >= 3) || param<number>(m, 'armour', 0) > 0 || param<number>(m, 'regen', 0) > 0;
+  },
+  3: (m) => param<number>(m, 'heatproof', 0) > 0,
+};
+
+/** buttons for the carried modules that answer a zone, on the line after its entry text */
+export function answers(g: Game, z: number): Line[] {
+  const fits = ANSWERS[z];
+  if (!fits) return [];
+  const names = [...new Set(g.player.inv.flatMap((i) => (i.kind === 'mod' && fits(i) ? [def(i).name] : [])))].slice(0, 4);
+  if (!names.length) return z === HEAT ? [['nothing you carry keeps it off. a rime hood would.']] : [];
+  return [['you carry what answers it: ', ...names.flatMap((n, k) => [k ? '  ' : '', { text: `install ${n}`, cmd: `install ${n}` }])]];
+}

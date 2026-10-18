@@ -12,10 +12,12 @@ import { addItem, exec, verb } from '../core/verbs';
 import { frameHooks } from '../ui';
 import { view } from '../ui/views';
 import { near, see, shoot, type Mode } from './scene';
+import { HOLLOW } from './marks';
 import { eyeRange } from '../mods/sense';
 import { engaged } from './foes';
 import './lamp';
 import './scanner';
+import { firstSight } from './codex';
 import { clean } from '../tune/start';
 
 /** the facing as a compass word, and the turn to its left and right */
@@ -113,11 +115,13 @@ export const FILTERS: Record<string, Filter> = {
       px[i * 4 + 2] = b;
     }
   },
-  /** sonar arrives as distance (scene mode depth): bands of distance, a pulse running out, no colour */
+  /** sonar arrives as distance: walls come back as echoes (their creases and edges bright, a band per
+   *  cell of distance), a pulse running out, a hollow wall ringing; no colour */
   sonar(px, res, { colors, t, range = 8 }) {
     const levels = colors || 6;
     // a pulse runs out from you, 5 cells a second, and starts again past the range
     const pulse = (t * 5) % (range + 2);
+    const rim = creases(px, res, range);
     for (let i = 0; i < res * res; i++) {
       const n = near(px, i);
       if (!n) {
@@ -125,36 +129,45 @@ export const FILTERS: Record<string, Filter> = {
         continue;
       }
       const d = (1 - n) * range;
-      // one band per cell of distance, its near edge a bright line
-      let v = Math.round(n * (levels - 1)) / (levels - 1);
-      v = v * (d % 1 < 0.12 ? 0.9 : 0.55);
+      // a dim fill that is brighter near, a faint line each cell of distance, the walls' edges bright
+      let v = n * n * 0.4;
+      if (d % 1 < 0.12) v += 0.2 * n;
+      if (rim[i]) v = Math.max(v, 0.5 + 0.5 * n);
       if (Math.abs(d - pulse) < 0.35) v = Math.min(1, v + 0.45);
+      // a hollow wall (marks.ts) rings: bright bars running across it
+      if (px[i * 4 + 2] >= HOLLOW) v = Math.sin(t * 9 - d * 5 + ((i / res) | 0) * 0.9) > 0 ? 1 : 0.3 + 0.3 * n;
+      v = Math.round(Math.min(1, v) * (levels - 1)) / (levels - 1);
       px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = Math.round(v * 255);
     }
   },
   /** edge arrives as distance: a pixel is lit where the distance jumps (an outline), else dark */
   edge(px, res, { range = 8 }) {
-    // on a flat face 1/distance runs straight across the screen: where it bends (a crease) or
-    // jumps (an edge in front of a far thing), draw a line
-    const inv = new Float32Array(res * res);
-    for (let i = 0; i < res * res; i++) {
-      const n = near(px, i);
-      inv[i] = n ? 1 / Math.max(0.05, (1 - n) * range) : 0;
-    }
-    const at = (x: number, y: number) => inv[Math.min(res - 1, Math.max(0, y)) * res + Math.min(res - 1, Math.max(0, x))];
-    // a crease's bend shrinks with the lens's focal length in pixels (about 0.65 res)
-    const min = 1 / (2 * 0.65 * res);
-    for (let y = 0; y < res; y++)
-      for (let x = 0; x < res; x++) {
-        const c = at(x, y);
-        const lx = Math.abs(at(x + 1, y) + at(x - 1, y) - 2 * c);
-        const ly = Math.abs(at(x, y + 1) + at(x, y - 1) - 2 * c);
-        const v = c > 0 && x > 0 && y > 0 && x < res - 1 && y < res - 1 && Math.max(lx, ly) > min + c * 0.004 ? 255 : 0;
-        const i = (y * res + x) * 4;
-        px[i] = px[i + 1] = px[i + 2] = v;
-      }
+    const rim = creases(px, res, range);
+    for (let i = 0; i < res * res; i++) px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = rim[i] ? 255 : 0;
   },
 };
+
+/** where a depth shot creases or jumps: 1 per pixel on an outline. On a flat face 1/distance runs
+ *  straight across the screen; where it bends (a crease) or jumps (an edge in front of a far thing), a line */
+export function creases(px: Uint8Array, res: number, range: number): Uint8Array {
+  const inv = new Float32Array(res * res);
+  for (let i = 0; i < res * res; i++) {
+    const n = near(px, i);
+    inv[i] = n ? 1 / Math.max(0.05, (1 - n) * range) : 0;
+  }
+  const at = (x: number, y: number) => inv[Math.min(res - 1, Math.max(0, y)) * res + Math.min(res - 1, Math.max(0, x))];
+  // a crease's bend shrinks with the lens's focal length in pixels (about 0.65 res)
+  const min = 1 / (2 * 0.65 * res);
+  const out = new Uint8Array(res * res);
+  for (let y = 1; y < res - 1; y++)
+    for (let x = 1; x < res - 1; x++) {
+      const c = at(x, y);
+      const lx = Math.abs(at(x + 1, y) + at(x - 1, y) - 2 * c);
+      const ly = Math.abs(at(x, y + 1) + at(x, y - 1) - 2 * c);
+      if (c > 0 && Math.max(lx, ly) > min + c * 0.004) out[y * res + x] = 1;
+    }
+  return out;
+}
 
 /** which scene mode a filter needs */
 export const MODES: Record<string, Mode> = { heat: 'heat', sonar: 'depth', edge: 'depth' };
@@ -258,8 +271,11 @@ view('camera', (el, inst, g) => {
       const f = !inst.on ? 'off' : !warm ? 'warming up…' : 'facing ' + ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][((Math.round(g.player.dir / (Math.PI / 4)) % 8) + 8) % 8];
       if (label.textContent !== f) label.textContent = f;
       const hurt = g.t - g.player.hurtAt < 0.3;
-      canvas.style.outline = hurt ? '3px solid #e03828' : '';
-      canvas.style.outlineOffset = hurt ? '-3px' : '';
+      // a first sight or a secret found flashes the frame gold, gently, a few times (codex.ts, world/secrets.ts)
+      const since = g.t - ((inst.data.flashAt as number) ?? -99);
+      const flash = since >= 0 && since < 1.5 && Math.floor(since / 0.25) % 2 === 0;
+      canvas.style.outline = hurt ? '3px solid #e03828' : flash ? '3px solid #e2b47c' : '';
+      canvas.style.outlineOffset = hurt || flash ? '-3px' : '';
       pointAt(g, arrow, param<number>(inst, 'fov', 60), MODES[param<string>(inst, 'filter', 'color')] === 'heat');
       if (!warm) {
         // static instead of black: faint when off, brighter as the warm-up runs out
@@ -278,8 +294,9 @@ view('camera', (el, inst, g) => {
       // heat washes out in the furnace; sonar and heat show the hidden
       const range = eyeRange(g, inst);
       const name = param<string>(inst, 'filter', 'color');
-      const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color', hidden: name === 'sonar' || name === 'heat' });
+      const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color', hidden: name === 'sonar' || name === 'heat', filter: name });
       see(g, range);
+      if (firstSight(g, inst, range)) inst.data.flashAt = g.t;
       // a failed read (a lost GL context, a frame the GPU dropped) comes back all zero: hold the
       // last good frame for one read only, never longer (Maks 10-18: held frames froze an eye)
       if (!MODES[name] && blank(px) && shown && !held) {

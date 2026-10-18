@@ -5,7 +5,7 @@
 // `heat` (the world near black, warm things bright through walls), `depth` (distance as gray).
 
 import * as THREE from 'three';
-import { CHUNK, Cell, cell, veinOf } from '../core/grid';
+import { CHUNK, Cell, cell, clear, edits, veinOf } from '../core/grid';
 import { ENEMIES } from '../core/game';
 import { MODS } from '../core/mods';
 import type { Entity, Game } from '../core/types';
@@ -14,6 +14,8 @@ import { WARM } from '../mods/sense';
 import { textures } from './textures';
 import { engaged, PUFF_TIME, puffs, struckAt } from './foes';
 import { frames, puff, SIZE, SPRITES, type SpriteDef } from './sprites';
+import { addMarks, buildGrid, gridLight, gridMesh } from './marks';
+import { ZONES, zoneAt } from '../world/zones';
 
 /** cells drawn around you in each direction */
 const R = 14;
@@ -77,6 +79,9 @@ const lights = [0, 1, 2].map(() => new THREE.PointLight(0xffffff, 0, 1, 1));
 const ambient = new THREE.AmbientLight(0x4a3c46, 2.6);
 const ents = new THREE.Group();
 scene.add(walls, floors, ceils, glow, ents, ambient, ...lights);
+// the dark zones' floor grid (marks.ts): colour eyes only
+const grid = gridMesh({ snap });
+scene.add(grid);
 for (const [res, c] of Object.entries(VEIN)) {
   veins[res] = new THREE.InstancedMesh(wallGeo, ps1(new THREE.MeshLambertMaterial({ map: tx.vein, color: 0x806868, emissive: c, emissiveMap: tx.glow, emissiveIntensity: 0.55 })), N);
   scene.add(veins[res]);
@@ -87,13 +92,15 @@ const haze = new THREE.Color(HAZE);
 const black = new THREE.Color(0x000000);
 
 let builtFor = '';
+
 const m = new THREE.Matrix4();
 
 /** rebuild the cells around (cx, cy) when you entered another cell */
 function build(g: Game, px: number, py: number): void {
   const cx = Math.floor(px);
   const cy = Math.floor(py);
-  const key = `${g.seed}:${cx},${cy}:${g.chunks.size}`;
+  // a dug, drained or broken wall builds again too (it did only on a step)
+  const key = `${g.seed}:${cx},${cy}:${g.chunks.size}:${edits}`;
   if (key === builtFor) return;
   builtFor = key;
   let nw = 0, nf = 0;
@@ -118,7 +125,14 @@ function build(g: Game, px: number, py: number): void {
   walls.count = nw;
   floors.count = ceils.count = nf;
   for (const k of Object.keys(veins)) veins[k].count = nv[k];
-  for (const mesh of [walls, floors, ceils, ...Object.values(veins)]) mesh.instanceMatrix.needsUpdate = true;
+  // their bounds move with you: a stale bounding sphere culled every wall once you teleported or walked
+  // far from where it was first measured (the sonar went black after a long walk)
+  for (const mesh of [walls, floors, ceils, ...Object.values(veins)]) {
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.boundingSphere = null;
+    mesh.boundingBox = null;
+  }
+  buildGrid(g, cx, cy, Math.min(R, 8));
 }
 
 // ---- how things look: one simple low-poly shape per enemy type and per item kind
@@ -159,6 +173,7 @@ const FAMILY_GEO: Record<string, THREE.BufferGeometry> = {
 const resGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
 const cardGeo = new THREE.BoxGeometry(0.18, 0.02, 0.12);
 const printerGeo = new THREE.BoxGeometry(0.6, 0.9, 0.6);
+const altarGeo = new THREE.BoxGeometry(0.7, 0.5, 0.45);
 const itemGeo = new THREE.OctahedronGeometry(0.12);
 
 const shotGeo = new THREE.IcosahedronGeometry(0.1, 0);
@@ -169,6 +184,8 @@ function lookOf(e: Entity): Look | null {
   if (e.data?.shot) return e.data.foe ? ORB : NAIL; // the fight slice's projectiles
   if (e.enemy) return null; // enemies are sprites (spriteOf)
   if (e.kind === 'printer') return { geo: printerGeo, color: 0x5a4a40, glow: 0x803010, y: 0.45, heat: 0.4 };
+  // an altar: a low stained block with a red glow (it had no shape, so no eye ever saw one)
+  if (e.data?.altar) return { geo: altarGeo, color: 0x6a5048, glow: 0xa02818, y: 0.25, heat: 0.35 };
   const it = e.item;
   if (!it) return null;
   if (it.kind === 'res') return { geo: resGeo, color: VEIN[it.res] ?? 0x808080, glow: VEIN[it.res] ?? 0, y: 0.08, spin: 0.7, heat: it.res === 'ichor' ? 0.4 : 0.05 };
@@ -178,6 +195,8 @@ function lookOf(e: Entity): Look | null {
 }
 
 const mats = new Map<string, THREE.Material>();
+/** a mimic breathing on a black & white eye: out, dim; in, pale */
+const breathMat = [0x6a5040, 0xf0e0c0].map((c) => new THREE.MeshBasicMaterial({ color: c }));
 function matOf(l: Look, mode: Mode): THREE.Material {
   const k = mode === 'heat' ? `h${l.heat}` : `${l.color}:${l.glow}`;
   let mat = mats.get(k);
@@ -295,6 +314,9 @@ function addSprite(g: Game, e: Entity, mode: Mode, showHidden: boolean): void {
   const sh = sheet(type);
   // cold bone (walkers, the abbot) never shows on a heat eye
   if (mode === 'heat' && !WARM.has(type)) return;
+  // nothing is drawn through a wall: only heat shows warmth through stone (playtest r1: a walker in a
+  // wall drawn dead centre, the shots hitting stone)
+  if (mode !== 'heat' && !clear(g, g.player.x, g.player.y, e.x, e.y)) return;
   const f = frameOf(g, e);
   const size = sh.def.size;
   const o = new THREE.Mesh(spriteGeo, mode === 'heat' ? heatSpriteMat(sh.mask[f], sh.def.heat) : mode === 'depth' ? depthSpriteMat(sh.mask[f]) : spriteMat(sh.color[f]));
@@ -345,20 +367,27 @@ void SIZE;
 void engaged;
 
 /** entities near you as their shapes; hidden enemies only on sonar and heat eyes */
-function place(g: Game, mode: Mode, hidden = false): void {
+function place(g: Game, mode: Mode, hidden = false, filter = ''): void {
   ents.clear();
   const p = g.player;
+  addMarks(g, ents, mode, filter, { snap, range }, R);
   for (const e of g.ents) {
     if (Math.abs(e.x - p.x) > R || Math.abs(e.y - p.y) > R) continue;
     if (e.enemy) {
       addSprite(g, e, mode, hidden);
       continue;
     }
-    const l = lookOf(e);
+    let l = lookOf(e);
     if (!l) continue;
+    // a mimic breathes on a heat or a black & white eye: warm, swelling and sinking (src/world/secrets.ts)
+    const breath = !!e.data?.mimic && (filter === 'heat' || filter === '1bit');
+    if (breath && mode === 'heat') l = { ...l, heat: 0.6 };
     if (mode === 'heat' && l.heat < 0.3) continue;
-    const o = new THREE.Mesh(l.geo, mode === 'depth' ? depthMat : matOf(l, mode));
+    // a breathing mimic glows as it swells, so it shows even in the dark
+    const swell = Math.sin(g.t * 2.6 + e.id);
+    const o = new THREE.Mesh(l.geo, mode === 'depth' ? depthMat : breath && mode === 'color' ? breathMat[swell > 0 ? 1 : 0] : matOf(l, mode));
     o.position.set(e.x, l.y + Math.sin(g.t * 4 + e.id) * (l.bob ?? 0), e.y);
+    if (breath) o.scale.setScalar(2.4 + 0.9 * swell);
     o.rotation.y = g.t * (l.spin ?? 0) + e.id;
     o.renderOrder = mode === 'heat' ? 2 : 0;
     ents.add(o);
@@ -415,6 +444,8 @@ export interface Shot {
   mode?: Mode;
   /** shows the hidden (the hum): sonar and heat eyes */
   hidden?: boolean;
+  /** the eye's filter: some things show on one filter only (marks.ts) */
+  filter?: string;
 }
 
 const targets = new Map<string, THREE.WebGLRenderTarget>();
@@ -437,7 +468,11 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   const mode = s.mode ?? 'color';
   const p = g.player;
   build(g, p.x, p.y);
-  place(g, mode, !!s.hidden);
+  place(g, mode, !!s.hidden, s.filter);
+  // the floor grid in the dark zones, on colour eyes only, brighter the darker the zone
+  const dark = ZONES[zoneAt(p.x, p.y)]?.look.dark ?? 0;
+  grid.visible = mode === 'color' && dark > 0;
+  gridLight.value = Math.min(1, dark * 2.5);
   // snap to half the camera's pixels: the wobble shows even on a big lens
   snap.value = s.res / 2;
   range.value = s.range;
@@ -473,6 +508,9 @@ export function shoot(g: Game, s: Shot): Uint8Array {
     ents.visible = false;
     renderer.render(scene, camera);
     scene.overrideMaterial = null;
+    // a colour background clears on every render, even with autoClear off: it wiped the first pass,
+    // so sonar, outline and heat eyes showed no walls at all (playtest r1: "the psalter is nearly black")
+    scene.background = null;
     ents.visible = true;
     const hide = [walls, floors, ceils, ...Object.values(veins)];
     for (const o of hide) o.visible = false;
@@ -485,6 +523,7 @@ export function shoot(g: Game, s: Shot): Uint8Array {
     ents.visible = false;
     renderer.render(scene, camera);
     scene.overrideMaterial = null;
+    scene.background = null;
     ents.visible = true;
     const hide = [walls, floors, ceils, ...Object.values(veins)];
     for (const o of hide) o.visible = false;

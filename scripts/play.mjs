@@ -9,7 +9,7 @@ const STEPS = [
   // sound slice: audio on (as the first click does), every cue once; the run below then plays through it
   [0, '(thawAudio.start(), thawAudio.CUES.forEach((c) => thawAudio.cue(c, { secs: 0.5, uid: 999 })), thawAudio.started())'],
   // start (playtest 10-18): you wake holding the pinhole, stepper, map spool and spark finger and install them
-  [0, 'g.player.installed.length === 0 && g.player.inv.length === 4 && document.querySelector("[data-cmd=\'install pinhole eye\']") !== null'],
+  [0, 'g.player.installed.length === 0 && g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector("[data-cmd=\'install pinhole eye\']") !== null'],
   ['install pinhole eye'], ['install map spool'], ['install stepper relay'], ['install spark finger', 'g.player.installed.length === 4'],
   ['take', 'g.player.inv.some(i => i.mod === "halo")'],
   [1.5, 'document.querySelector("canvas.eye") && document.querySelector(".facing").textContent === "facing north" && document.querySelector("canvas.map") && document.querySelector("[data-cmd=\'go n 1\']")'],
@@ -63,7 +63,7 @@ const STEPS = [
   [0, 'document.querySelector(".hpbar")?.textContent.includes("10/10")'],
   [0, '(g.player.core = 20, g.player.slots = 8, g.player.inv.push({ kind: "mod", mod: "nail-psalm" }), true)'],
   ['install nail'], [1.2, 'document.querySelector("[data-cmd=shoot]") !== null'],
-  ['face w'], [0, '(g.ents.push({ id: 9999, kind: "enemy", x: g.player.x - 3, y: g.player.y, enemy: { type: "mite", hp: 2, readyAt: 0, data: {} } }), true)'],
+  ['face w'], [0, '(g.ents.push({ id: 9999, kind: "enemy", x: g.player.x - 3, y: g.player.y, enemy: { type: "mite", hp: 1.5, readyAt: 0, data: {} } }), true)'],
   ['shoot'], [0.4, '!g.ents.some(e => e.id === 9999) && JSON.stringify(g.log).includes("the mite bursts")'],
   // body slice (self-contained: back in the start chamber, power not under test, every slot full)
   [0, '(Object.assign(g.player, { x: 8.5, y: 8.5, path: [], core: 20, installed: [], slots: 0 }), ["slot-board","slot-board","slot-board","slot-board","ledger","servo-gait","clock-of-hours","gyro-heart"].forEach(m => g.player.inv.push({ kind: "mod", mod: m })), window.full = g.player.slots, true)'],
@@ -90,7 +90,7 @@ const STEPS = [
   [3, 'document.querySelector(".win.melting") !== null'],
   [6, 'document.querySelector(".thaw-card")?.textContent.includes("modules found")'],
   [0, '(document.querySelector(".thaw-card button").click(), true)'],
-  [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && window.thaw.g.player.inv.length === 4 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
+  [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && window.thaw.g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
   // descriptions, reliquary (shop), recycling (playtest 3)
   ['info pinhole', 'JSON.stringify(g.log).includes("eye · 24 px")'],
   ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("eye · 24 px")'],

@@ -10,17 +10,18 @@ import { findInst } from '../core/verbs';
 import type { Chunk, Entity, Game, Inst, Res } from '../core/types';
 import { spot } from './gen';
 import { affords, fmt, type Cost } from './printer';
+import { BETTER, rollMult } from './spawn';
 
 /** the core's power can grow to this at altars */
-export const MAX_CORE = 12; // module pass: past this, power comes from generators that take a slot
+export const MAX_CORE = 9; // r1 econ: was 12; past 9 power comes from generators, so power binds all run (docs/modules.md)
 
-/** the price of the next point of power: it climbs with every one */
+/** the price of the next point of power: it climbs steeply with every one */
 export function powerCost(g: Game): Cost {
-  // bone and glass carry it, copper climbs slowly (the balance sims: copper runs short, bone piles up)
+  // bone and glass carry it, copper and ichor join from the second and fourth point
   const n = Math.max(0, g.player.core - 4);
-  const c: Cost = { bone: 3 + n, glass: 2 + n };
-  if (n >= 1) c.copper = Math.ceil(n / 2);
-  if (n >= 4) c.ichor = 1 + (n >= 6 ? 1 : 0);
+  const c: Cost = { bone: 4 + 2 * n, glass: 2 + n };
+  if (n >= 1) c.copper = n;
+  if (n >= 3) c.ichor = n - 2;
   return c;
 }
 export const MEND: Cost = { bone: 2 };
@@ -35,25 +36,43 @@ export function fleshCost(g: Game): Cost {
 
 export const altarNear = (g: Game): Entity | undefined => g.ents.find((e) => e.data?.altar && dist(e, g.player) < 1.6);
 
-/** the parameter an altar attunes: a weapon's damage, a body's first number, else the first number it has */
+/** the parameter an altar attunes: a weapon's damage, an eye's range, a lamp's radius, else the first number
+ *  that rolls (src/world/spawn.ts BETTER: the mirror ward's recharge gets shorter) */
 export function attuneKey(m: { mod: string }): string | null {
   const d = MODS[m.mod];
   if (!d || d.family === 'unique' || d.family === 'power') return null;
-  if (d.family === 'weapon') return 'damage';
-  const nums = Object.entries(d.params).filter(([, v]) => typeof v === 'number').map(([k]) => k);
+  const first = ({ weapon: 'damage', camera: 'range', lamp: 'radius' } as Record<string, string>)[d.family];
+  if (first && typeof d.params[first] === 'number') return first;
+  const nums = Object.entries(d.params).filter(([k, v]) => typeof v === 'number' && BETTER[k]).map(([k]) => k);
   return nums[0] ?? null;
 }
+/** how an attune changes its number: "damage ×1.4", "recharge ×0.7" */
+const attuneText = (i: Inst, key = attuneKey(i)!) => `${key} ×${rollMult(key, true)}`;
 /** attuning a module: dearer by tier; resources' late sink once power and flesh are full */
 export const attuneCost = (m: { mod: string }): Cost => {
   const t = Math.min(2, MODS[m.mod].tier) + 1;
-  const c: Cost = { bone: 3 * t, glass: 3 * t, copper: t };
+  const c: Cost = { bone: 3 * t, glass: 2 * t, copper: 2 * t };
   if (t > 1) c.ichor = t - 1;
   return c;
 };
-/** installed modules an altar can attune (not attuned already) */
+/** installed modules an altar can attune (not attuned or tempered already) */
 const ORDER = ['weapon', 'body', 'lamp', 'scanner', 'camera', 'mind', 'gait', 'tool'];
+const byFamily = (a: Inst, b: Inst) => ORDER.indexOf(def(a).family) - ORDER.indexOf(def(b).family);
 export const attunable = (g: Game): Inst[] =>
-  g.player.installed.filter((i) => attuneKey(i) && i.roll?.tag !== 'attuned').sort((a, b) => ORDER.indexOf(def(a).family) - ORDER.indexOf(def(b).family));
+  g.player.installed.filter((i) => attuneKey(i) && i.roll?.tag !== 'attuned' && i.roll?.tag !== 'tempered').sort(byFamily);
+
+/** the late sink (docs/modules.md): an attuned module tempers up to three times, its rolled number a step
+ *  further each time (×1.2, or ×0.85 for a number that is better low), dearer each time */
+export const MAX_TEMPER = 3;
+export const temperStep = (key: string): number => (BETTER[key] === 'down' ? 0.85 : 1.2);
+const tempered = (i: Inst) => (i.roll?.tag === 'tempered' ? i.roll.n ?? 1 : 0);
+export const temperable = (g: Game): Inst[] =>
+  g.player.installed.filter((i) => (i.roll?.tag === 'attuned' || (i.roll?.tag === 'tempered' && tempered(i) < MAX_TEMPER)) && BETTER[i.roll.key]).sort(byFamily);
+export const temperCost = (m: Inst): Cost => {
+  const t = Math.min(2, MODS[m.mod].tier) + 1;
+  const k = tempered(m) + 1;
+  return { bone: 2 * t + k, glass: k, copper: 3 * t + 3 * k, ichor: k }; // copper carries it: recycling pays copper all run
+};
 
 /** what an altar offers now: [command, price] */
 export function offers(g: Game, _e: Entity): [string, Cost][] {
@@ -61,6 +80,7 @@ export function offers(g: Game, _e: Entity): [string, Cost][] {
   if (g.player.core < MAX_CORE) out.push(['offer power', powerCost(g)]);
   if ((g.player.flesh ?? 0) < MAX_FLESH) out.push(['offer flesh', fleshCost(g)]);
   for (const i of attunable(g)) out.push([`attune ${def(i).name}`, attuneCost(i)]);
+  for (const i of temperable(g)) out.push([`temper ${def(i).name}`, temperCost(i)]);
   if (g.player.hp < g.player.maxHp * 0.7) out.push(['offer mend', MEND]);
   return out;
 }
@@ -77,7 +97,8 @@ const menu = (g: Game) => [
   g.player.core < MAX_CORE ? [{ text: 'offer power', cmd: 'offer power' }, `  +1 power for good: ${fmt(powerCost(g))}`] : ['  power: the core is full.'],
   (g.player.flesh ?? 0) < MAX_FLESH ? [{ text: 'offer flesh', cmd: 'offer flesh' }, `  +2 max hp for good: ${fmt(fleshCost(g))}`] : ['  flesh: as much as it can give.'],
   [{ text: 'offer mend', cmd: 'offer mend' }, `  mend fully: ${fmt(MEND)}`],
-  ...attunable(g).map((i) => [{ text: `attune ${def(i).name}`, cmd: `attune ${def(i).name}` }, `  ${attuneKey(i)} ×1.4 for good: ${fmt(attuneCost(i))}`]),
+  ...attunable(g).map((i) => [{ text: `attune ${def(i).name}`, cmd: `attune ${def(i).name}` }, `  ${attuneText(i)} for good: ${fmt(attuneCost(i))}`]),
+  ...temperable(g).map((i) => [{ text: `temper ${def(i).name}`, cmd: `temper ${def(i).name}` }, `  ${i.roll!.key} ×${temperStep(i.roll!.key)} more: ${fmt(temperCost(i))}`]),
 ];
 
 verb('offer', {
@@ -117,7 +138,7 @@ verb('offer', {
 });
 
 verb('attune', {
-  help: 'at an altar: attune an installed module (one number ×1.4): attune spark finger',
+  help: 'at an altar: attune an installed module (one number 40% better): attune spark finger',
   when: (g) => !!altarNear(g),
   run(g, args) {
     if (!altarNear(g)) return say(g, 'no altar within reach.');
@@ -127,20 +148,42 @@ verb('attune', {
     if (!inst) return say(g, 'attune what? an installed module.', ...menu(g));
     const key = attuneKey(inst);
     if (!key) return say(g, 'the altar will not touch that.');
-    if (inst.roll?.tag === 'attuned') return say(g, `${label(inst)} is attuned already.`);
+    if (inst.roll?.tag === 'attuned' || inst.roll?.tag === 'tempered') return say(g, `${label(inst)} is attuned already.`, ...(inst.roll.tag === 'attuned' ? [[{ text: `temper ${def(inst).name}`, cmd: `temper ${def(inst).name}` }]] : []));
     const c = attuneCost(inst);
     if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.`);
     pay(g, c);
-    inst.roll = { key, mult: 1.4, tag: 'attuned' };
+    inst.roll = { key, mult: rollMult(key, true), tag: 'attuned' };
     g.events.push({ type: 'print' });
-    say(g, `the altar hums over it: ${label(inst)}, ${key} ×1.4.`);
+    say(g, `the altar hums over it: ${label(inst)}, ${attuneText(inst, key)}.`);
+  },
+});
+
+verb('temper', {
+  help: 'at an altar: temper an attuned module (its number 20% better again, three times): temper bone lance',
+  when: (g) => !!altarNear(g),
+  run(g, args) {
+    if (!altarNear(g)) return say(g, 'no altar within reach.');
+    const q = args.join(' ');
+    // of two alike, the one you can pay for (the less tempered)
+    const alike = q ? temperable(g).filter((i) => label(i).includes(q)).sort((a, b) => tempered(a) - tempered(b)) : [];
+    const inst = alike.find((i) => affords(g, temperCost(i))) ?? alike[0] ?? findInst(g, args);
+    if (!inst) return say(g, 'temper what? an installed, attuned module.', ...menu(g));
+    if (tempered(inst) >= MAX_TEMPER) return say(g, `${label(inst)} is as true as it gets.`);
+    if (!inst.roll || inst.roll.tag === 'cracked' || !BETTER[inst.roll.key]) return say(g, `attune it first: ${def(inst).name}.`);
+    const c = temperCost(inst);
+    if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.`);
+    pay(g, c);
+    const key = inst.roll.key;
+    inst.roll = { key, mult: Math.round(inst.roll.mult * temperStep(key) * 100) / 100, tag: 'tempered', n: tempered(inst) + 1 };
+    g.events.push({ type: 'print' });
+    say(g, `the altar sings it truer: ${label(inst)}, ${key} ×${inst.roll.mult}.`);
   },
 });
 
 chunkHook((g: Game, c: Chunk) => {
   const far = Math.hypot(c.cx, c.cy);
   const r = rng(hash(g.seed, 71, c.cx, c.cy));
-  if (!((c.cx === 1 && c.cy === 1) || (far >= 2 && r.chance(0.2)))) return;
+  if (!((c.cx === 1 && c.cy === 1) || (far >= 2 && r.chance(far >= 3.5 ? 0.35 : 0.2)))) return; // r1 econ: deep, more altars to spend at (temper)
   const [x, y] = spot(g.seed, c.cx, c.cy, 7, c);
   spawn(g, { kind: 'prop', x, y, data: { altar: true } });
 });

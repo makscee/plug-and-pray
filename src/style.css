@@ -157,3 +157,28 @@ canvas.map { cursor: crosshair; }
 .dead .lesson { color: var(--fg); max-width: 520px; }
 .dead .keys { color: var(--dim); font-size: 14px; margin-top: 8px; }
 .dead > div { background: #0b0908; border: 1px solid var(--dim); padding: 20px 28px; max-width: min(640px, calc(100vw - 32px)); box-sizing: border-box; }
+
+/* playtest r1 (ux): docked windows, pause, setups, bars past 8, the fight bar's boxes, the map's legend */
+.win.min { min-width: 0; width: auto !important; max-width: 220px; opacity: 0.85; }
+.win.min .body, .win.min .foot { display: none; }
+.win.min .title { border-bottom: 0; cursor: pointer; }
+.win.min .title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.win.min:hover { opacity: 1; }
+.paused { position: fixed; inset: 0; z-index: 9500; display: grid; place-content: center; text-align: center; background: #000a; cursor: pointer; }
+.paused[hidden] { display: none; }
+.paused div { display: grid; padding: 12px 40px 16px; background: var(--win); border: 1px solid var(--line); box-shadow: 0 6px 24px #000c; }
+.paused span { font-size: 56px; color: var(--acc); letter-spacing: 4px; }
+.paused small { font-size: 20px; color: var(--dim); }
+.win.panel .setups { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.win.panel .setups .btns { margin-top: 0; gap: 0 12px; }
+.pips.bar { display: inline-block; width: 110px; height: 10px; border: 1px solid var(--acc); }
+.pips.bar b { display: block; height: 100%; background: var(--acc); }
+.pips.bar.full { border-color: var(--hurt); }
+.pips.bar.full b { background: var(--hurt); }
+.hpbar .pips.bar { width: 80px; height: 8px; }
+.hpbar .fbar { display: inline-flex; gap: 2px; vertical-align: middle; margin: 0 2px; }
+.hpbar .fbar b { width: 7px; height: 10px; border: 1px solid currentColor; }
+.hpbar .fbar b.on { background: currentColor; }
+.map-legend { margin: 4px 0 0; font-size: 16px; color: var(--dim); max-width: 264px; }
+.map-legend i { font-style: normal; }
+@media (max-height: 799px) { .win-console .out { height: 160px; } }

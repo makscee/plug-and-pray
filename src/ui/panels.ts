@@ -10,9 +10,10 @@ import { VERBS } from '../core/verbs';
 import type { Game, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { costs, does } from '../mods/describe';
-import { affords, fmt, offers, PRICES, priceOf, scrapOf, shopNear } from '../world/printer';
+import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear } from '../world/printer';
 import { altarNear, offers as altarOffers } from '../world/altar';
 import { img, type Of } from './icons';
+import { setupsOf } from '../body';
 
 type Send = (cmd: string) => void;
 /** a button: a command, or greyed with a note saying why */
@@ -54,6 +55,8 @@ const SCALE = 2;
 /** pips for a resource: used of max, red when full */
 export function pips(used: number, max: number): string {
   const full = used >= max;
+  // past 8 a row of pips wraps and misaligns: a bar instead (the number sits in its label)
+  if (Math.max(max, used) > 8) return `<span class="pips bar${full ? ' full' : ''}"><b style="width:${Math.min(100, (used / Math.max(1, max)) * 100)}%"></b></span>`;
   let s = '';
   for (let k = 0; k < Math.max(max, used); k++) s += `<b class="${k < used ? 'used' : ''}${k >= max ? ' over' : ''}"></b>`;
   return `<span class="pips${full ? ' full' : ''}">${s}</span>`;
@@ -72,13 +75,13 @@ export class Panels {
     this.g = g;
     this.send = send;
     for (const [id, title] of [['modules', 'modules'], ['inv', 'inventory'], ['near', 'nearby']])
-      windows.open(id, title, [innerWidth - PANEL_W - 16, 24]).el.classList.add('panel', 'panel-' + id);
+      windows.open(id, title, [innerWidth - PANEL_W - 16, windows.TOP]).el.classList.add('panel', 'panel-' + id);
   }
 
   frame(): void {
     const g = this.g;
     const [mc, md] = this.modules(g);
-    this.grid('modules', mc, md, this.head(g));
+    this.grid('modules', mc, md, this.head(g), '', this.setups(g));
     const [ic, id] = this.inv(g);
     this.grid('inv', ic, id, '', ic.length ? '' : 'you carry nothing.');
     this.list('near', this.near(g));
@@ -89,6 +92,17 @@ export class Panels {
     const p = g.player;
     return `<div class="res-row"><span>slots ${p.installed.length}/${p.slots}</span>${pips(p.installed.length, p.slots)}</div>` +
       `<div class="res-row"><span>power ${powerUsed(g)}/${powerMax(g)}</span>${pips(powerUsed(g), powerMax(g))}</div>`;
+  }
+
+  /** saved setups as buttons (keys 1-4 do the first four), and one to save what is on now */
+  setups(g: Game): Btn[] {
+    const names = Object.keys(setupsOf(g));
+    let n = names.length + 1;
+    while (names.includes(String(n))) n++;
+    return [
+      ...names.map((name, k) => ({ label: k < 4 ? `${k + 1} ${name}` : name, cmd: `setup ${name}` })),
+      { label: '+ save', cmd: `save setup ${n}` },
+    ];
   }
 
   /** the slots as sockets: installed modules first, then empty sockets up to the slot count */
@@ -174,7 +188,7 @@ export class Panels {
       rows.push({ icon: { thing: 'shop' }, name: 'reliquary', buttons: [{ label: 'reroll', cmd: 'reroll', note: `reroll: ${fmt(PRICES.reroll)}` }] });
       offers(g, shop).forEach((it, k) => {
         if (!it || it.kind !== 'mod') return void rows.push({ name: `${k + 1}. sold`, buttons: [], dim: true });
-        const price = priceOf(it);
+        const price = priceAt(shop, k, it);
         rows.push({
           icon: it, name: label(it), tip: `${does(it)}\n${costs(it)}`,
           buttons: [{ label: '?', cmd: `info ${label(it)}` }, affords(g, price) ? { label: 'buy', cmd: `buy ${k + 1}`, note: fmt(price) } : { label: 'buy', note: `${fmt(price)}: short` }],
@@ -197,10 +211,10 @@ export class Panels {
   }
 
   /** a grid panel: head, cells, then the selected cell's detail */
-  grid(id: string, cells: GridCell[], detail: Detail | null, head = '', empty = ''): void {
+  grid(id: string, cells: GridCell[], detail: Detail | null, head = '', empty = '', setups: Btn[] = []): void {
     const w = windows.get(id);
     if (!w) return;
-    const k = head + JSON.stringify([cells, detail, empty]) + (this.sel.get(id) ?? '');
+    const k = head + JSON.stringify([cells, detail, empty, setups]) + (this.sel.get(id) ?? '');
     if (this.keys.get(id) === k) return;
     this.keys.set(id, k);
     // a selection whose thing is gone clears
@@ -211,6 +225,15 @@ export class Panels {
       h.className = 'res';
       h.innerHTML = head;
       els.push(h);
+    }
+    if (setups.length) {
+      const row = document.createElement('div');
+      row.className = 'setups';
+      const h = document.createElement('span');
+      h.className = 'dim';
+      h.textContent = 'setups';
+      row.append(h, ...this.buttons(setups));
+      els.push(row);
     }
     if (empty) {
       const e = document.createElement('div');
@@ -322,7 +345,7 @@ export class Panels {
   stack(): void {
     const ws = ['modules', 'inv', 'near'].map((id) => windows.get(id)).filter((w) => w && !w.el.dataset.moved) as windows.Win[];
     const natural = (w: windows.Win) => w.el.offsetHeight - w.body.clientHeight + w.body.scrollHeight;
-    let room = innerHeight - 24 - 8 - (ws.length - 1) * 8;
+    let room = innerHeight - windows.TOP - 8 - (ws.length - 1) * 8;
     const want = ws.map(natural);
     const total = want.reduce((a, b) => a + b, 0);
     const caps = new Map<windows.Win, number>();
@@ -335,7 +358,7 @@ export class Panels {
       if (mods) { const m = Math.min(natural(mods), Math.max(140, room / 2)); caps.set(mods, m); room -= m; }
       if (inv) caps.set(inv, Math.max(100, room));
     }
-    let y = 24;
+    let y = windows.TOP;
     for (const w of ws) {
       const cap = caps.get(w);
       const chrome = w.el.offsetHeight - w.body.clientHeight;
