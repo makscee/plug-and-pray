@@ -18,6 +18,7 @@ const run = (g: Game, s: number) => {
 function armed(...mods: string[]): Game {
   const g = newGame(1);
   g.ents = [];
+  if (mods.includes('pinhole-eye')) g.player.core += 3; // v3: the pinhole drinks 3
   for (const m of mods) {
     g.player.inv.push({ kind: 'mod', mod: m });
     exec(g, 'install ' + m.split('-')[0]);
@@ -275,7 +276,8 @@ describe('fight r1: seeing the fight', () => {
     for (let k = 0; k < 8 * 30 && g.player.hp === 10; k++) tick(g, 1 / 30);
     expect(g.player.hp).toBeLessThan(10);
     expect(g.player.path.length).toBeLessThanOrEqual(1);
-    expect(text(g)).toMatch(/bitten\. you stop\. go [ew] 3 back the way you came/);
+    // v3: when the bite lands turns with the mite's id (the first eye's place moved), so 1 to 3 back
+    expect(text(g)).toMatch(/bitten\. you stop\. go [ew] [1-3] back the way you came/);
   });
 
   it('a dodged sweep leaves the abbot open: it takes more', () => {

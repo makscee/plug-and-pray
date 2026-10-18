@@ -22,29 +22,6 @@ const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ?
 const eyeOf = (g: Game) => g.ents.find((e) => e.item?.kind === 'mod' && e.item.mod === 'pinhole-eye')!;
 
 describe('v2r2 ux: the first eye', () => {
-  it('lies two chunks out, never in the keeper\'s room, from the start, mostly sealed in a wall', () => {
-    let sealed = 0;
-    for (let seed = 1; seed <= 20; seed++) {
-      const g = newGame(seed);
-      const [cx, cy] = eyeChunk(seed);
-      expect(Math.max(Math.abs(cx), Math.abs(cy)), `seed ${seed}`).toBe(2);
-      expect([cx, cy]).not.toEqual(stairsChunk(seed, 0));
-      const e = eyeOf(g);
-      expect(Math.floor(e.x / CHUNK), `seed ${seed}`).toBe(cx);
-      expect(Math.floor(e.y / CHUNK)).toBe(cy);
-      expect(dist(e, g.player)).toBeGreaterThan(24);
-      if (e.data?.sealed) {
-        sealed++;
-        expect(cell(g, e.x, e.y)).toBe(Cell.wall);
-        // nothing reaches it through the wall: no floor within take's reach
-        for (let y = Math.floor(e.y) - 2; y <= Math.floor(e.y) + 2; y++)
-          for (let x = Math.floor(e.x) - 2; x <= Math.floor(e.x) + 2; x++)
-            if (cell(g, x, y) === Cell.floor) expect(Math.hypot(x + 0.5 - e.x, y + 0.5 - e.y)).toBeGreaterThanOrEqual(1.6);
-      }
-    }
-    expect(sealed).toBeGreaterThanOrEqual(15);
-  });
-
   it('is named only after a minute (or once you are near it)', () => {
     const g = newGame(5);
     for (const m of ['spark-finger', 'stepper-relay', 'map-spool']) {
@@ -58,34 +35,7 @@ describe('v2r2 ux: the first eye', () => {
     expect(text(g)).not.toMatch(/sealed behind a cracked wall/);
     run(g, EYE_HINT);
     expect(goalLine(g)).toMatch(/the ◆ on the map, \d+ cells/);
-    expect(text(g)).toMatch(/caught a glint: your first eye, sealed behind a cracked wall/);
-  });
-
-  it('break at its face opens the niche; then it can be taken', () => {
-    const g = newGame(3);
-    for (const m of ['spark-finger', 'stepper-relay']) {
-      addItem(g, { kind: 'mod', mod: m });
-      exec(g, 'install ' + MODS[m].name);
-    }
-    for (const i of g.player.installed) i.readyAt = 0;
-    const s = sealedEye(g)!;
-    expect(s).toBeTruthy();
-    [g.player.x, g.player.y] = [s.x + s.fx + 0.5, s.y + s.fy + 0.5];
-    g.ents = g.ents.filter((e) => !e.enemy);
-    expect(goalLine(g)).toMatch(/sealed in the wall here/);
-    exec(g, 'take');
-    expect(g.player.inv.some((i) => i.kind === 'mod' && i.mod === 'pinhole-eye')).toBe(false);
-    exec(g, 'break');
-    expect(s.done).toBe(true);
-    expect(text(g)).toMatch(/cracked wall gives/);
-    expect(eyeOf(g).data?.sealed).toBeUndefined();
-    // v2r6 newcomer: typed `go in` steps into the niche, as its link does
-    exec(g, 'go in');
-    expect(text(g)).not.toMatch(/not at a keeper's door/);
-    expect(g.player.path.at(-1)).toEqual([s.x + 0.5, s.y + 0.5]);
-    [g.player.x, g.player.y] = [s.x + 0.5, s.y + 0.5];
-    exec(g, 'take');
-    expect(g.player.inv.some((i) => i.kind === 'mod' && i.mod === 'pinhole-eye')).toBe(true);
+    expect(text(g)).toMatch(/caught a glint: your first eye, \d+ cells/); // v3: in the open, on the way to the keeper
   });
 });
 

@@ -27,6 +27,7 @@ for (const style of styles) {
   const dead = runs.filter((r) => r.ended === 'dead');
   console.log(`  ${style}: ${won.length}/${runs.length} thaw, ${dead.length} dead, median thaw ${mm(med(won.map((r) => r.t)))}, median floor 2-5 arrivals ${[2, 3, 4, 5].map((k) => mm(med(runs.map((r) => r.marks['floor ' + k])))).join(' ')}`);
   console.log(`  deaths by floor: ${[0, 1, 2, 3, 4].map((z) => `f${z + 1} ${dead.filter((r) => r.deathZone === z).length}`).join(', ')}; killers: ${Object.entries(dead.reduce((m, r) => ((m[r.killer] = (m[r.killer] || 0) + 1), m), {})).map(([k, n]) => `${k} ${n}`).join(', ')}`);
+  console.log(`  first eye on (per seed): ${runs.map((r) => mm(r.marks.eye ?? null).trim()).join(' ')}; median ${mm(med(runs.map((r) => r.marks.eye ?? null)))}`);
   const tot = runs.reduce((a, r) => ({ p: a.p + r.bound.power, s: a.s + r.bound.slots, b: a.b + r.bound.both, n: a.n + r.bound.n }), { p: 0, s: 0, b: 0, n: 0 });
   const pc = (x) => `${Math.round((100 * x) / Math.max(1, tot.n))}%`;
   console.log(`  loadout pressure (share of 10 s samples wanting more on): power-bound ${pc(tot.p)}, slot-bound ${pc(tot.s)}, both ${pc(tot.b)}`);

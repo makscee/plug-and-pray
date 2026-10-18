@@ -451,11 +451,19 @@ export function buttons(w: Win, list: { label: string; cmd: string }[], send: (c
 
 function drag(el: HTMLElement, handle: HTMLElement): void {
   handle.addEventListener('pointerdown', (e) => {
-    if ((e.target as HTMLElement).classList.contains('dot') || el.classList.contains('min')) return;
+    // v3: only the main button drags (a right press opened the context menu and its release was lost)
+    if (e.button !== 0 || (e.target as HTMLElement).classList.contains('dot') || el.classList.contains('min')) return;
     const sx = e.clientX - el.offsetLeft;
     const sy = e.clientY - el.offsetTop;
-    handle.setPointerCapture(e.pointerId);
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch {
+      // a synthetic or stale pointer: the window-wide listeners below still end it
+    }
+    // v3 (Maks 10-18: the console kept following the cursor across the screen): every way a drag can end ends it,
+    // and a move with no button down (its release was lost: outside the page, a lost focus) ends it too
     const move = (m: PointerEvent) => {
+      if (!(m.buttons & 1)) return up();
       const x = Math.max(0, Math.min(innerWidth - 60, m.clientX - sx));
       const y = Math.max(0, Math.min(innerHeight - 24, m.clientY - sy));
       el.style.left = x + 'px';
@@ -463,10 +471,17 @@ function drag(el: HTMLElement, handle: HTMLElement): void {
       el.dataset.moved = '1';
     };
     const up = () => {
-      handle.removeEventListener('pointermove', move);
-      handle.removeEventListener('pointerup', up);
+      removeEventListener('pointermove', move);
+      removeEventListener('pointerup', up);
+      removeEventListener('pointercancel', up);
+      removeEventListener('blur', up);
+      handle.removeEventListener('lostpointercapture', up);
+      if (handle.hasPointerCapture?.(e.pointerId)) handle.releasePointerCapture(e.pointerId);
     };
-    handle.addEventListener('pointermove', move);
-    handle.addEventListener('pointerup', up);
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+    addEventListener('pointercancel', up);
+    addEventListener('blur', up);
+    handle.addEventListener('lostpointercapture', up);
   });
 }

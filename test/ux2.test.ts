@@ -10,6 +10,7 @@ import { answers } from '../src/world/zones';
 const text = (g: ReturnType<typeof newGame>, from = 0) => JSON.stringify(g.log.slice(from));
 const kit = (g: ReturnType<typeof newGame>) => {
   g.player.slots = 6;
+  g.player.core += 3; // v3: the pinhole drinks 3 (it was free when these were written)
   for (const mod of ['pinhole-eye', 'map-spool', 'stepper-relay', 'spark-finger']) addItem(g, { kind: 'mod', mod });
 };
 

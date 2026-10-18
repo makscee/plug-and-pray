@@ -207,7 +207,8 @@ function bestLoadout(g: Game, zone: number, wantReader: boolean, lift: { power?:
     .map((a) => {
       const pw = MODS[a.mod].power;
       const fam = MODS[a.mod].family;
-      return { ...a, rank: fam === 'gait' ? a.w : fam === 'camera' ? a.w - 15 * pw + 1000 : a.w / Math.max(1, pw) };
+      // v3: legs before any eye (the first eye drinks 3 now: it took the legs' power and the body stood still)
+      return { ...a, rank: fam === 'gait' ? a.w + 2000 : fam === 'camera' ? a.w - 15 * pw + 1000 : a.w / Math.max(1, pw) };
     })
     .sort((a, b) => b.rank - a.rank);
   // a second copy of a weapon only cools it 25% quicker (src/mods/weapon.ts COPY): worth a third as much

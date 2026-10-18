@@ -5,6 +5,7 @@ import { exec } from '../src/core/verbs';
 import { CHUNK, open } from '../src/core/grid';
 import { powerMax, powerUsed, working } from '../src/core/mods';
 import type { Game } from '../src/core/types';
+import { inside } from '../src/world/floors';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
 const run = (g: Game, s: number) => {
@@ -72,6 +73,7 @@ describe('the spine', () => {
     for (let cy = 0; cy < 3; cy++)
       for (let cx = 0; cx < 3; cx++) {
         let any = false;
+        if (!inside(cx, cy)) continue; // v3: the cradle is a diamond
         for (const k of seen) {
           const [x, y] = k.split(',').map(Number);
           if (Math.floor(x / CHUNK) === cx && Math.floor(y / CHUNK) === cy) { any = true; break; }

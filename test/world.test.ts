@@ -9,6 +9,7 @@ import { CARDS } from '../src/world/cards';
 import { eyeChunk, FURNACE_KIT, lootMod, opening, SECOND } from '../src/world/spawn';
 import { MODS } from '../src/core/mods';
 import { rng } from '../src/core/rng';
+import { inside } from '../src/world/floors';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
 const run = (g: Game, s: number) => {
@@ -35,6 +36,7 @@ describe('the world', () => {
       for (let cy = -2; cy <= 2; cy++)
         for (let lx = -2; lx <= 2; lx++) {
           const cx = ox + lx;
+          if (!inside(cx, cy)) continue; // v3: floors 1-2 are diamonds
           const rs = rooms(3, cx, cy);
           if (rs.length > 1) many++;
           if (rs.some((r) => r[4] !== 'box')) odd++;
@@ -55,13 +57,13 @@ describe('the world', () => {
           expect(seen.size, `chunk ${cx},${cy}`).toBe(floor);
           // a door on each edge that has more floor beyond it, none onto the rock
           const edge = (f: (i: number) => number) => [...Array(CHUNK).keys()].some((i) => c.cells[f(i)] === Cell.floor);
-          expect(edge((y) => y * CHUNK + CHUNK - 1), `east ${cx},${cy}`).toBe(lx < 2);
-          expect(edge((y) => y * CHUNK), `west ${cx},${cy}`).toBe(lx > -2);
-          expect(edge((x) => x), `north ${cx},${cy}`).toBe(cy > -2);
-          expect(edge((x) => (CHUNK - 1) * CHUNK + x), `south ${cx},${cy}`).toBe(cy < 2);
+          expect(edge((y) => y * CHUNK + CHUNK - 1), `east ${cx},${cy}`).toBe(inside(cx + 1, cy));
+          expect(edge((y) => y * CHUNK), `west ${cx},${cy}`).toBe(inside(cx - 1, cy));
+          expect(edge((x) => x), `north ${cx},${cy}`).toBe(inside(cx, cy - 1));
+          expect(edge((x) => (CHUNK - 1) * CHUNK + x), `south ${cx},${cy}`).toBe(inside(cx, cy + 1));
         }
-    expect(many).toBeGreaterThan(40);
-    expect(odd).toBeGreaterThan(15);
+    expect(many).toBeGreaterThan(30);
+    expect(odd).toBeGreaterThan(12);
   });
 
   it('the leech needle drains a vein into resources and wakes what is near', () => {
