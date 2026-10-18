@@ -357,7 +357,7 @@ export interface Room {
 }
 
 /** what to take out and switch off so `it` (carried, or installed and off) can be in and on; why not, if nothing can */
-export function makeRoom(g: Game, it: { mod: string }, installed: boolean): Room | string {
+export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last = false): Room | string {
   const p = g.player;
   const top = WEIGHT[def(it).family] ?? 9;
   const light = (i: Inst) => def(i).family !== 'power' && weight(g, i) < 9 && weight(g, i) <= top;
@@ -380,12 +380,18 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean): Room
   let short = def(it).power - (powerMax(g) - powerUsed(g)) - out.reduce((s, r) => s + (r.on ? def(r).power : 0), 0);
   const off: Inst[] = [];
   if (short > 0) {
-    const can = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && light(i));
+    // v2r1 ux: an eye's power comes from another eye first (the fog of saints for the carrion eye: it
+    // offered nothing, or the map); `last` (swap in): then the map, as the install hint offers it (r5)
+    const cam = def(it).family === 'camera';
+    const eye = (i: Inst) => cam && def(i).family === 'camera';
+    const map = (i: Inst) => last && param<string>(i, 'what', '') === 'map';
+    const w = (i: Inst) => (eye(i) ? 0 : map(i) ? 8 : weight(g, i));
+    const can = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && (light(i) || eye(i) || map(i)));
     // one that frees enough, the lightest and cheapest; else the lightest, biggest first, until it fits
-    const one = can.filter((i) => def(i).power >= short).sort((a, b) => weight(g, a) - weight(g, b) || def(a).power - def(b).power)[0];
+    const one = can.filter((i) => def(i).power >= short).sort((a, b) => w(a) - w(b) || def(a).power - def(b).power)[0];
     if (one) off.push(one), (short = 0);
     else
-      for (const i of can.sort((a, b) => weight(g, a) - weight(g, b) || def(b).power - def(a).power)) {
+      for (const i of can.sort((a, b) => w(a) - w(b) || def(b).power - def(a).power)) {
         if (short <= 0) break;
         off.push(i);
         short -= def(i).power;
@@ -406,7 +412,7 @@ verb('swap', {
     const it = k >= 0 ? p.inv[k] : inst;
     if (!it || ('kind' in it && it.kind !== 'mod')) return say(g, 'swap in what? a module you carry, or one installed and off.');
     if (it === inst && inst.on) return say(g, `${label(inst)} is on already.`);
-    const room = makeRoom(g, it as { mod: string }, it === inst);
+    const room = makeRoom(g, it as { mod: string }, it === inst, true);
     if (typeof room === 'string') return say(g, room);
     const did: string[] = [];
     for (const r of room.remove ? [room.remove, ...(room.more ?? [])] : []) {

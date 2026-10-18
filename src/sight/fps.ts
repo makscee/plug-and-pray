@@ -194,8 +194,13 @@ function make(w: number, h: number): Big {
   lock.textContent = 'click to take the mouse';
   const keys = document.createElement('div');
   keys.className = 'big-keys';
-  keys.innerHTML = 'wasd walk · click shoot · f lunge · <b class="dashkey">shift dash · </b>esc mouse · [ ] mouse speed · v small';
-  root.append(pic, over, boss, warn, lock, keys, hud);
+  // v2r1 ux: the keys were small grey text; Esc frees the mouse first, then leaves (src/body/input.ts)
+  keys.innerHTML = 'wasd walk · click shoot · f lunge<b class="dashkey"> · shift dash</b><br>esc frees the mouse · esc again: small<br>[ ] mouse speed · v small';
+  // v2r1 ux + pace: no map in big view; your map window's picture, in the corner
+  const map = document.createElement('canvas');
+  map.className = 'big-map';
+  map.width = map.height = 168;
+  root.append(pic, over, boss, warn, lock, keys, map, hud);
   document.body.append(root);
   const ctx = pic.getContext('2d')!;
   return { root, pic, ctx, img: ctx.createImageData(w, h), over, oc: over.getContext('2d')!, hud, boss, warn, lock, w, h };
@@ -225,9 +230,23 @@ frameHooks.push((g) => {
   big.root.dataset.mk = String(mark(g));
   overlay(g, big, inst);
   hud(g, big);
+  miniMap(big);
   big.lock.hidden = document.pointerLockElement === big.root;
   cost = cost * 0.9 + (performance.now() - t0) * 0.1;
 });
+
+/** the corner map: the map window's canvas (it keeps drawing while hidden), middle cropped to a square */
+function miniMap(b: Big): void {
+  const m = b.root.querySelector<HTMLCanvasElement>('.big-map')!;
+  const src = document.querySelector<HTMLCanvasElement>('#desk canvas.map, #desk canvas.diorama');
+  m.hidden = !src || !src.width;
+  if (m.hidden || !src) return;
+  const c = m.getContext('2d')!;
+  c.fillStyle = '#000';
+  c.fillRect(0, 0, m.width, m.height);
+  const s = Math.min(src.width, src.height);
+  c.drawImage(src, (src.width - s) / 2, (src.height - s) / 2, s, s, 0, 0, m.width, m.height);
+}
 
 /** how far under the crosshair the name of what is under it sits (px) */
 const LABEL_Y = 56;
@@ -262,7 +281,9 @@ function overlay(g: Game, b: Big, inst: Inst): void {
   c.font = '16px VT323, monospace';
   c.textAlign = 'center';
   if (under.foe) {
-    const txt = `${nameOf(under.foe)} ${under.len.toFixed(1)}` + (reach ? (inReach ? '' : ` · out of reach (${reach})`) : ' · no weapon');
+    // the boss is named once, on its bar: under the crosshair only how far (v2r1 ux: named three times)
+    const named = bossOf(g) === under.foe && !b.boss.hidden;
+    const txt = `${named ? `${under.len.toFixed(1)} cells` : `${nameOf(under.foe)} ${under.len.toFixed(1)}`}` + (reach ? (inReach ? '' : ` · out of reach (${reach})`) : ' · no weapon');
     c.fillStyle = '#000a';
     const tw = c.measureText(txt).width;
     // well under the crosshair, past its widest spread (v2r1: the name sat on the crosshair)

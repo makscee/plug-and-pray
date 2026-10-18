@@ -295,7 +295,7 @@ export class Panels {
     d.ghost.style.top = e.clientY - d.dy + 'px';
     // the grid under the pointer lights up: green where it goes, red where it cannot
     const at = this.dropAt(e.clientX, e.clientY);
-    const why = at ? this.dropWhy(d.id, d.key, at.id) : null;
+    const why = at ? this.dropWhy(d.id, d.key, at.id, at.key) : null;
     for (const id of ['modules', 'inv']) {
       const g = windows.get(id)?.body.querySelector('.grid');
       g?.classList.toggle('drop-ok', at?.id === id && why === null);
@@ -312,7 +312,7 @@ export class Panels {
     document.body.classList.remove('dragging');
     for (const g of document.querySelectorAll('.win.panel .grid')) g.classList.remove('drop-ok', 'drop-no');
     const at = e && this.dropAt(e.clientX, e.clientY);
-    const why = at ? this.dropWhy(d.id, d.key, at.id) : '';
+    const why = at ? this.dropWhy(d.id, d.key, at.id, at.key) : '';
     if (at && why === null) {
       d.ghost.remove();
       this.drop(d.id, d.key, at.id, at.key);
@@ -343,12 +343,19 @@ export class Panels {
   }
 
   /** why a tile cannot go there (null: it can) */
-  dropWhy(from: string, key: string, to: string): string | null {
+  dropWhy(from: string, key: string, to: string, onto?: string): string | null {
     if (from === to) return null;
     if (from === 'modules') return this.instOf(key) ? null : 'it is gone';
     const it = this.items.get(key);
     if (!it || !this.g.player.inv.includes(it)) return 'it is gone';
     if (it.kind !== 'mod') return 'only modules go in sockets';
+    // v2r1 ux: onto an installed module, the two swap
+    const out = onto ? this.instOf(onto) : undefined;
+    if (out) {
+      const p = this.g.player;
+      const left = p.slots - slotsUsed(this.g) + size(out);
+      return size(it) <= left ? null : `${label(it)} takes ${size(it)} slots; ${label(out)} frees ${left}`;
+    }
     const b = installBtn(this.g, it);
     return b.cmd ? null : b.note ?? 'it will not go in';
   }
@@ -366,6 +373,9 @@ export class Panels {
       const k = p.inv.indexOf(it);
       const first = p.inv.findIndex((o) => o.kind === 'mod' && label(o) === label(it));
       if (first >= 0 && first < k) [p.inv[first], p.inv[k]] = [p.inv[k], p.inv[first]];
+      // dropped onto an installed module: that one comes out and this one goes in (v2r1 ux)
+      const out = onto ? this.instOf(onto) : undefined;
+      if (out) return this.send(`remove ${instRef(this.g, out)}; install ${label(it)}`);
       const b = installBtn(this.g, it);
       return this.send(b.cmd!);
     }

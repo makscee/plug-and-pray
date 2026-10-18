@@ -91,6 +91,8 @@ export function open(id: string, title: string, at?: [number, number]): Win {
     };
     el.dataset.fresh = '1';
     queueMicrotask(place);
+    // v2r1 ux: measured before VT323 loaded, the map docked on 2 of 13 fresh starts at 1280x720
+    document.fonts?.ready.then(() => (place(), mapBack()));
     setTimeout(place, 300);
     setTimeout(() => (place(), delete el.dataset.fresh, mapBack()), 1200);
   }
@@ -99,8 +101,8 @@ export function open(id: string, title: string, at?: [number, number]): Win {
   return w;
 }
 
-/** windows start under the hp bar */
-export const TOP = 32;
+/** windows start under the hp bar and the goal line (src/ui/goal.ts) */
+export const TOP = 54;
 /** the panel column on the right edge (panel width 260 + margins) is never free */
 const COLUMN = 260 + 16 + 8;
 type Rect = { left: number; top: number; right: number; bottom: number };
@@ -135,14 +137,26 @@ function free(el: HTMLElement, skip?: (o: HTMLElement) => boolean): [number, num
 
 const moveTo = (el: HTMLElement, [x, y]: [number, number]) => ([el.style.left, el.style.top] = [x + 'px', y + 'px']);
 
-/** how much a window must stay open: 0 an eye that is on and the only one showing its hidden layer,
- * 0.5 any other eye that is on, 1 the map, 2 an on module with buttons, 3 an on module that only
- * reads, 4 one that is off */
+/** how much a window must stay open: an eye that is on, under 1 (v2r1 ux: by how readable it is: a colour
+ * eye, sharper first, 0.2-0.3; a grey one 0.35; a layer eye (heat, sonar, 1-bit, edge) 0.6, 0.55 while it is
+ * the only one showing its hidden layer; installing a heat eye docked the only readable view); 1 the map,
+ * 2 an on module with buttons, 3 an on module that only reads (never above an eye), 4 one that is off */
 export function rank(el: HTMLElement): number {
   if (el.dataset.state === 'off') return 4;
-  if (el.classList.contains('fam-camera')) return el.dataset.layer ? 0 : 0.5;
+  if (el.classList.contains('fam-camera')) {
+    const eye = Number(el.dataset.eye ?? 3);
+    return eye < 2 ? 0.1 + eye * 0.2 : eye === 2 ? 0.35 : el.dataset.layer ? 0.55 : 0.6;
+  }
   if (el.querySelector('canvas.map')) return 1;
   return el.querySelector('.foot button') ? 2 : 3;
+}
+
+/** a second eye (one an open eye outranks) gives way to the map and stands with the modules that have
+ * buttons: installing it never docks your main eye or the map (v2r1 ux) */
+export function eff(el: HTMLElement): number {
+  const r = rank(el);
+  if (r >= 1) return r;
+  return modWins().some((o) => o !== el && !o.classList.contains('min') && rank(o) < r) ? 1.5 : r;
 }
 
 /** room is short: the game docked a window that has an eye, the map or buttons. Then windows that are
@@ -154,7 +168,7 @@ const short = () => modWins().some((w) => w.classList.contains('min') && !w.data
 function room(el: HTMLElement, self: boolean): boolean {
   const spot = free(el);
   if (spot) return moveTo(el, spot), true;
-  const r = rank(el);
+  const r = eff(el);
   const lower = modWins()
     // an eye just installed or just showing its layer may also dock an older one of its rank (r3: the new eye opens big)
     .filter((o) => o !== el && !o.classList.contains('min') && !o.dataset.moved && (rank(o) > r || (r < 1 && !!el.dataset.fresh && rank(o) === r)))
@@ -203,7 +217,7 @@ function put(el: HTMLElement): void {
 /** a docked module window that now outranks an open one (switched on): back out, if it can */
 export function promote(el: HTMLElement): void {
   if (!el.classList.contains('min') || el.dataset.hand || el.dataset.moved) return;
-  const r = rank(el);
+  const r = eff(el);
   if (r >= 3 && short()) return;
   if (!modWins().some((o) => !o.classList.contains('min') && (rank(o) > r || (r < 1 && !!el.dataset.fresh))) && !free(el)) return;
   const was = el.dataset.was;
@@ -318,8 +332,9 @@ function layout(all: boolean): void {
   }
   // by rank (eyes that are on, the map, modules with buttons, text, off), then biggest first
   const area = (w: HTMLElement) => w.offsetWidth * w.offsetHeight;
-  // r4: the map before a second eye (rank 0.5): he asked to always see it, and tidy docked it at 1280x720
-  const order = (w: HTMLElement) => (rank(w) === 0.5 ? 1.5 : rank(w));
+  // r4: the map before a second eye: he asked to always see it, and tidy docked it at 1280x720
+  const best = Math.min(...ws.filter((w) => rank(w) < 1).map(rank));
+  const order = (w: HTMLElement) => (rank(w) < 1 && rank(w) > best ? 1.5 : rank(w));
   ws.sort((a, b) => order(a) - order(b) || area(b) - area(a));
   for (const w of ws) {
     delete w.dataset.tidy;
@@ -336,7 +351,7 @@ function layout(all: boolean): void {
 
 /** the console's own spot: bottom centre, low enough that a map fits above it at 1280x720 (style.css
  * shortens its output under 800 px tall) */
-export const consoleAt = (): [number, number] => [Math.max(16, innerWidth / 2 - 220), Math.max(TOP, innerHeight - (innerHeight < 800 ? 350 : 390))];
+export const consoleAt = (): [number, number] => [Math.max(16, innerWidth / 2 - 220), Math.max(TOP, innerHeight - (innerHeight < 800 ? 330 : 390))];
 
 /** the console on screen: back to its own spot unless you dragged it, else just inside the edges */
 function homeConsole(): void {

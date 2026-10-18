@@ -97,12 +97,19 @@ export class Screen {
       const what = w.body.querySelector<HTMLElement>('.does')!;
       what.textContent = text;
       what.title = costs(inst);
+      // v2 flow: a map window hides its does line (flow.css); its title says it on hover
+      if (param<string>(inst, 'what', '') === 'map') w.title.title = `${text} · drag to move · double-click to minimise`;
     }
     // an eye that is the only one on showing its hidden layer (heat, sonar, 1-bit, edge) outranks the rest
     const f = d.family === 'camera' ? param<string>(inst, 'filter', '') : '';
     const layer = LAYERS.includes(f) && !g.player.installed.some((o) => o !== inst && o.on && o.uid < inst.uid && def(o).family === 'camera' && param<string>(o, 'filter', '') === f);
     if (layer) w.el.dataset.layer = '1';
     else delete w.el.dataset.layer;
+    // v2r1 ux: how readable an eye is, for the dock's rank: colour (sharper first), then grey, then layer eyes
+    if (d.family === 'camera') {
+      const eye = f === 'color' ? 1 - Math.min(200, param<number>(inst, 'res', 64)) / 400 : f === 'gray' ? 2 : 3;
+      if (w.el.dataset.eye !== String(eye)) w.el.dataset.eye = String(eye);
+    }
     // its first reveal (scripture, a hollow wall, handprints) opens its window (playtest r2)
     const flash = inst.data.flashAt as number | undefined;
     let seen = shown.get(g);
