@@ -251,6 +251,11 @@ export function play(seed: number, o: Opts): Run {
   let explore: { x: number; y: number; until: number } | null = null;
   let fightSig = '';
   let fightSince = 0;
+  // a person needs a moment to see a telegraph before they move (r2: the sim dodged every one at once)
+  const REACT = 0.35;
+  const reacted = (e: Entity) => g.t - Number(e.enemy!.data.windAt ?? -99) >= REACT;
+  /** a telegraph seen but not yet reacted to: decide again soon */
+  const pending = (e: Entity) => !!e.enemy!.data.windup && g.t < Number(e.enemy!.data.windup) && !reacted(e) && e.enemy!.type !== 'mite';
   function decide(): string | number {
     why = '';
     const px = Math.floor(P.x);
@@ -261,6 +266,16 @@ export function play(seed: number, o: Opts): Run {
     const hpFrac = P.hp / P.maxHp;
     // nearly dead with something on you: fold home
     const outOfDepth = !ready(zoneHere());
+    // slow foes (walkers, the abbot) a person just walks away from, then mends out of their reach
+    const slow = (e: Entity) => ENEMIES[e.enemy!.type].speed < 1.5;
+    if (hpFrac < (outOfDepth ? 0.55 : 0.4) && close.length && close.every(slow) && !P.path.length) {
+      const away = stepAway(close[0]);
+      if (away) {
+        restUntilFull = true;
+        why = 'walk off a slow foe';
+        return away.replace(/ 1$/, ' 3');
+      }
+    }
     if (hpFrac < (outOfDepth ? 0.55 : 0.4) && close.length) {
       if (!(P as any)._homing || g.t > (P as any)._homing) {
         (P as any)._homing = g.t + 3.2;
@@ -272,15 +287,24 @@ export function play(seed: number, o: Opts): Run {
     if ((P as any)._homing && g.t < (P as any)._homing) return 0.3;
     // a walker winding up next to you: step away
     for (const e of close) {
-      if (e.enemy!.data.windup && e.enemy!.type !== 'mite' && dist(e, P) < 1.4) {
+      if (e.enemy!.data.windup && e.enemy!.type !== 'mite' && dist(e, P) < 1.75 && reacted(e)) {
         const away = stepAway(e);
         if (away) return away;
       }
     }
+    // mending after a walk-off: keep away from what is after you until it gives up
+    if (restUntilFull && hpFrac < 0.95 && !P.path.length) {
+      const after = foes.filter((e) => e.enemy!.data.noticed && dist(e, P) < 6);
+      if (after.length && after.every(slow)) {
+        const away = stepAway(after[0]);
+        if (away) { why = 'keep off to mend'; return away.replace(/ 1$/, ' 3'); }
+      }
+      if (!after.length && !close.length) { why = 'mend'; return 2; }
+    }
     // the elites' telegraphs (src/fight/index.ts): two cells from the abbot's sweep, aside from the warden's dash
     for (const e of foes) {
       const d = e.enemy!.data;
-      if (!d.windup || g.t >= (d.windup as number)) continue;
+      if (!d.windup || g.t >= (d.windup as number) || !reacted(e)) continue;
       if (/both arms/.test(String(d.move)) && dist(e, P) < 2.6 && !P.path.length) {
         const away = stepAway(e);
         if (away) return away.replace(/ 1$/, ' 2');
@@ -351,7 +375,7 @@ export function play(seed: number, o: Opts): Run {
         if (toward) return `go ${toward[0]} 1`;
       }
       why = 'fight ' + close.map((e) => e.enemy!.type + ':' + e.enemy!.hp + '@' + dist(e, P).toFixed(1)).join(',');
-      return 0.3;
+      return foes.some(pending) ? Math.max(0.05, REACT - (g.t - Math.max(...foes.filter(pending).map((e) => Number(e.enemy!.data.windAt))))) : 0.3;
     }
     if (close.length && P.path.length) {
       P.path = P.path.slice(0, 1);
@@ -369,6 +393,11 @@ export function play(seed: number, o: Opts): Run {
       return 'unstuck';
     }
     if (restUntilFull && hpFrac < 0.95 && !foes.length) return 2;
+    // an elite ahead that has not seen you yet: mend to full first (r2: no mending once it is on you)
+    if (hpFrac < 0.95 && foes.some((e) => e.enemy!.data.elite && !e.enemy!.data.noticed) && !foes.some((e) => e.enemy!.data.noticed && dist(e, P) < 6)) {
+      why = 'mend before the elite';
+      return 2;
+    }
     restUntilFull = false;
     if (hpFrac < 0.6 && !foes.some((e) => dist(e, P) < 6)) return 2;
     // stalled (pacing, a corner, a goal it cannot reach): give up the goal; twice running, fold home

@@ -1,6 +1,7 @@
 // HP and the body: slow regeneration after a few quiet seconds, body modules on top of it
 // (more hp, faster regen, armour off each hit), and the mirror ward that returns the next hit.
 import { dist, hurt, REACH, say, START_HP, strike, tickHooks, hurtHooks, ENEMIES } from '../core/game';
+import { clear } from '../core/grid';
 import { COLD, HEAT, SEAR, zoneAt } from '../world/zones';
 import { active, family, param } from '../core/mods';
 import { light } from '../sight/lamp';
@@ -11,6 +12,20 @@ export const REGEN = 0.5; // r1 econ: was 0.2 after 4 s; now no mending in a fig
 export const QUIET = 6;
 
 const body = (g: Game): Inst[] => active(g, 'body');
+
+/** no mending mid-fight (r2: dancing with the abbot mended 10 → 14 between sweeps): a foe after you within
+ *  FIGHT cells in plain sight, or an elite you hit in the last ELITE_FIGHT s */
+export const FIGHT = 6;
+export const ELITE_FIGHT = 10;
+export function fighting(g: Game): boolean {
+  const p = g.player;
+  return g.ents.some((e) => {
+    const d = e.enemy?.data;
+    if (!d) return false;
+    if (d.elite && g.t - ((d.hitAt as number) ?? -99) < ELITE_FIGHT) return true;
+    return !!d.noticed && !ENEMIES[e.enemy!.type]?.hidden && dist(e, p) <= FIGHT && clear(g, p.x, p.y, e.x, e.y);
+  });
+}
 const sum = (g: Game, key: string) => body(g).reduce((s, i) => s + param<number>(i, key, 0), 0);
 
 export function tickBody(g: Game, dt: number): void {
@@ -22,7 +37,7 @@ export function tickBody(g: Game, dt: number): void {
   // at half). A rime hood carries that chill everywhere: the furnace's answer costs you elsewhere.
   const cold = (z === COLD || (z !== HEAT && sum(g, 'chill') > 0)) && !light(g);
   const regen = cold ? sum(g, 'regen') / 2 : REGEN + sum(g, 'regen');
-  if (g.t - p.hurtAt >= QUIET && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + regen * dt);
+  if (g.t - p.hurtAt >= QUIET && p.hp < p.maxHp && !fighting(g)) p.hp = Math.min(p.maxHp, p.hp + regen * dt);
   // the furnace's heat sears unless something keeps it off
   if (z === HEAT) {
     const sear = SEAR * Math.max(0, 1 - sum(g, 'heatproof')) * dt;
