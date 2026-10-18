@@ -550,9 +550,9 @@ boss({
   ],
 });
 
-// floor 2, the ossuary: FPS, bullet patterns (v2r4 bal: 24-33 s with 3-4 weapon kits: hp ×1.3, softer blows, 35-50 s)
+// floor 2, the ossuary: FPS, bullet patterns
 boss({
-  id: 'boss-abbot', floor: 2, name: 'the high abbot', hp: 260, damage: 3.2, speed: 0.7, walk: 'close', armour: 0.8, r: 0.6, at: [0.5],
+  id: 'boss-abbot', floor: 2, name: 'the high abbot', hp: 200, damage: 3.5, speed: 0.7, walk: 'close', armour: 0.8, r: 0.6, at: [0.5],
   hint: 'bone shrugs off small hits. it sweeps round itself and throws fans of bone; later, a spiral.',
   turn: ['the high abbot lifts its crozier. bones begin to wheel round it.'],
   phases: [
@@ -561,7 +561,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-hydra', floor: 2, name: 'the ossuary hydra', hp: 330, damage: 2.9, speed: 0.5, walk: 'drift', r: 0.7, at: [0.5],
+  id: 'boss-hydra', floor: 2, name: 'the ossuary hydra', hp: 250, damage: 2.6, speed: 0.5, walk: 'drift', r: 0.7, at: [0.5],
   hint: 'three heads spit in turn, then all at once. it grows a head at half.',
   turn: ['the ossuary hydra grows a fourth head.'],
   phases: [
@@ -570,7 +570,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-hollow', floor: 2, name: 'the hollow saint', hp: 310, damage: 3.8, speed: 1, walk: 'keep', keep: 5, r: 0.55, at: [0.5],
+  id: 'boss-hollow', floor: 2, name: 'the hollow saint', hp: 240, damage: 4.2, speed: 1, walk: 'keep', keep: 5, r: 0.55, at: [0.5],
   hint: 'it burns down its lines, then the diagonals, and bursts into rings. it fades and comes back elsewhere.',
   turn: ['the hollow saint empties. it fades between every burst now.'],
   phases: [
