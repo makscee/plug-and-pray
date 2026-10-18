@@ -41,7 +41,7 @@ function turns(g: Game, e: Entity): void {
   const text = `${kind.name} turns to you. it hits ${hits}, it has ${hp} hp`;
   // r4 final: damage per second of what is on, × 8 s, short of its hp: say so before the fight
   const dps = active(g, 'weapon').reduce((s, i) => s + param<number>(i, 'damage', 0) / Math.max(0.1, param<number>(i, 'cooldown', 1)), 0);
-  const weak = armed && dps * 8 < hp;
+  const weak = armed && dps * 8 < hp && !d.boss; // a boss is a long fight by design (src/fight/bosses.ts)
   const line: Line = [`⚠ ${text}.${!armed ? ' you have no weapon on! ' : weak ? ' your weapon may be too weak. ' : ' '}`];
   line.push(setupsOf(g).battle ? { text: 'setup battle', cmd: 'setup battle' } : { text: 'unstuck', cmd: 'unstuck' });
   say(g, line);

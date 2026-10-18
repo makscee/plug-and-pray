@@ -58,7 +58,9 @@ export const THROUGH: Record<string, number> = { heat: 99, sonar: 3 };
 /** an installed eye's sight now */
 export function eyeOf(g: Game, inst: Inst): Eye {
   const f = param<string>(inst, 'filter', 'color');
-  return { fov: param<number>(inst, 'fov', 60), range: eyeRange(g, inst), rays: Math.round(param<number>(inst, 'res', 32)), through: THROUGH[f] ?? 0 };
+  // the saint's last lens (a unique, xray): through one wall, into the room behind
+  const xray = param<string>(inst, 'perk', '') === 'xray' ? 6 : 0;
+  return { fov: param<number>(inst, 'fov', 60), range: eyeRange(g, inst), rays: Math.round(param<number>(inst, 'res', 32)), through: Math.max(THROUGH[f] ?? 0, xray) };
 }
 
 /** write what one eye sees from where you stand and face: seen cells, and rumours past walls */

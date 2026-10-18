@@ -98,7 +98,7 @@ function place(g: Game, v: Vector): void {
 function drop(g: Game, v: Vector): void {
   const far = Math.hypot(...chunkOf(v.x, v.y));
   if (v.what === 'printer') spawn(g, { kind: 'printer', x: v.x, y: v.y, data: { far, made: 0 } });
-  else if (v.what === 'ninth eye') spawn(g, { kind: 'item', x: v.x, y: v.y, item: { kind: 'mod', mod: 'ninth-eye' } });
+  else if (v.what === 'ninth eye') spawn(g, { kind: 'item', x: v.x, y: v.y, item: { kind: 'mod', mod: 'ninth-eye', rarity: 'unique', title: 'the ninth eye' } });
   else if (v.what === 'cache') {
     const r = rng(hash(g.seed, 31, v.x, v.y));
     spawn(g, { kind: 'item', x: v.x, y: v.y, item: lootMod(r, far + 2) });

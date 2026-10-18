@@ -31,7 +31,7 @@ mods([
   { id: 'dawn-eye', name: 'dawn eye', family: 'camera', power: 2, warm: 0.5, tier: 0, params: { res: 96, colors: 0, fps: 8, fov: 75, range: 9, filter: 'color' }, text: 'a clear colour eye. honest, but it needs light to see far.' },
   { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 0, warm: 1, tier: 0, params: { res: 24, colors: 4, fps: 3, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
   { id: 'vidicon-tube', name: 'vidicon tube', family: 'camera', power: 1, warm: 1.5, tier: 0, params: { res: 64, colors: 4, fps: 4, fov: 70, range: 8, lag: 0.4, filter: 'color' }, text: 'a glass tube that drags its ghosts behind it.' },
-  { id: 'saints-lens', name: "saint's lens", family: 'camera', power: 4, warm: 3, tier: 2, params: { res: 200, colors: 0, fps: 15, fov: 80, range: 14, filter: 'color' }, text: 'ground from a saint, they say. it sees as he did.' },
+  { id: 'saints-lens', name: "saint's lens", family: 'camera', power: 4, warm: 3, tier: 2, params: { size: 2, res: 200, colors: 0, fps: 15, fov: 80, range: 14, filter: 'color' }, text: 'ground from a saint, they say. it sees as he did.' },
   { id: 'stepper-relay', name: 'stepper relay', family: 'gait', power: 1, warm: 0.5, tier: 0, params: { go: true }, text: 'clicks your legs forward one cell at a time. go n 3.' },
   { id: 'spark-finger', name: 'spark finger', family: 'weapon', power: 1, warm: 0.5, tier: 0, params: { damage: 1, cooldown: 1.2, range: 1.5, aim: 'auto' }, text: 'it bites whatever comes close.' },
   // sight (#1321): eyes that trade sharpness, speed and colour; scanners through walls; lamps that draw things
