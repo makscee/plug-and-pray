@@ -209,7 +209,10 @@ function wayDown(g: Game): Line {
   const name = STAIRS[FLOORS[f].stairs!].name;
   if (bossDown(g)) return toCell(g, sx, sy, `${name} is open`, 'descend');
   // v2r1: it stops at the keeper's door and weighs you, instead of walking you in (src/tune/door.ts)
-  if (atDoor(g)) return keeperLine(g, f).flat();
+  if (atDoor(g)) {
+    const [head, verdict] = keeperLine(g, f);
+    return [...head, ' ', ...verdict];
+  }
   const door = doorOf(g, f);
   if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`))
     return door ? toCell(g, door.x, door.y, `the keeper's door; the way down, ${name}, lies past it`, 'where') : toCell(g, sx, sy, `the way down, ${name}, past its keeper`, 'help descend');

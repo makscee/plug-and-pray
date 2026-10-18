@@ -8,11 +8,14 @@ import { frameHooks } from './index';
 
 let el: HTMLElement | null = null;
 let sig = '';
+/** closed by hand: it stays shut until you step away from the door */
+let shut = false;
 const send = (c: string) => (window as unknown as { thaw: { send(c: string): void } }).thaw.send(c);
 
 frameHooks.push((g) => {
   const d = g.ended ? null : atDoor(g, 3);
-  if (!d) {
+  if (!d || shut) {
+    if (!d) shut = false;
     if (el) el.hidden = true;
     return;
   }
@@ -30,7 +33,7 @@ frameHooks.push((g) => {
   sig = s;
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   el.innerHTML =
-    `<p class="door-k">the keeper of floor ${f + 1}</p>` +
+    `<button class="door-x" title="close">×</button><p class="door-k">the keeper of floor ${f + 1}</p>` +
     `<p class="door-name">${esc(k.name)}</p>` +
     `<p class="door-stats"><b>${c.hp}</b> hp · hits up to <b>${c.damage.toFixed(1)}</b> · you deal <b>${c.dps.toFixed(1)}</b>/s</p>` +
     `<p class="door-hint">${esc(c.hint)}</p>` +
@@ -45,4 +48,5 @@ frameHooks.push((g) => {
     row.append(b);
   }
   el.append(row);
+  el.querySelector('.door-x')!.addEventListener('click', () => ((shut = true), (sig = '')));
 });
