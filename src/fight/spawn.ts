@@ -73,7 +73,11 @@ export function fillFoes(g: Game, c: Chunk): void {
     for (let k = 0; k < n; k++) {
       // a group stands together: a few tenths apart in its cell
       const [x, y] = [at[0] + (k - (n - 1) / 2) * 0.3, at[1]];
-      if (type === 'mimic') spawn(g, { kind: 'item', x, y, item: lootMod(r, far, undefined, far < 2), data: { mimic: true } });
+      // v3 modules (fewer, bigger finds): most mimics dress as a pile of copper now; a third still wear a module
+      if (type === 'mimic') {
+        const it = lootMod(r, far, undefined, far < 2);
+        spawn(g, { kind: 'item', x, y, item: rng(hash(g.seed, 177, Math.floor(x), Math.floor(y))).chance(0.35) ? it : { kind: 'res', res: 'copper', n: 3 }, data: { mimic: true } });
+      }
       else foe(g, type, x, y);
     }
   }

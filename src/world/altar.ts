@@ -12,6 +12,7 @@ import { spot } from './gen';
 import { farOf, floorOfChunk, isArrival, stairsChunk } from './floors';
 import { affords, fmt, glassTip, type Cost } from './printer';
 import { BETTER, rollMult } from './spawn';
+import { upgradeLines } from './upgrade';
 
 /** the core's power can grow to this at altars */
 export const MAX_CORE = 10; // r5 balance: was 9 (sims: power-bound 66% → 60%, finish not lower). r1 econ: was 12; past 9 power comes from generators, so power binds all run (docs/modules.md)
@@ -196,7 +197,7 @@ verb('offer', {
     }
     // r4: `offer bone` says what the altar takes rather than the bare menu again
     if (what) return say(g, `the altar takes no single ${what}. it takes these, and pays in power, flesh or mending:`, ...menu(g));
-    say(g, 'an altar. it wants an offering.', ...menu(g));
+    say(g, 'an altar. it wants an offering.', ...menu(g), ...upgradeLines(g, 2));
   },
 });
 
@@ -260,7 +261,7 @@ tickHooks.push((g) => {
   const e = altarNear(g);
   if (!e || e.data!.greeted) return;
   e.data!.greeted = true;
-  say(g, 'an altar stands here, stained and patient.', ...menu(g));
+  say(g, 'an altar stands here, stained and patient.', ...menu(g), ...upgradeLines(g, 2));
 });
 
 

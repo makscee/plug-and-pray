@@ -1,0 +1,32 @@
+{
+ "card": "nail psalm\nII\nWEAPON\n\nshoots a nail at the nearest foe you see, fast\n\n2.3 dmg/s\nreach 8, aimed\n1⚡︎ · 1 slot\n\nsteady ranged damage for 1 power\n\na verse that ends in a nail.\n\nwarms 1 s · level II: damage +35%",
+ "inst": [
+  "map-spool:1",
+  "stepper-relay:1",
+  "spark-finger:3"
+ ],
+ "bag": [
+  "thread-bell:1",
+  "nail-psalm:2",
+  "ember-iris:1",
+  "choir-bell:1",
+  "bone-lance:1"
+ ],
+ "log": [
+  "print module  a module: 2 bone, 1 glass",
+  "  or one kind: weapon eye body lamp scanner legs mind tool: 2 bone, 1 glass, 2 copper",
+  "upgrade map spool  → II (span +35%): 4 bone, 2 copper, 1 glass",
+  "upgrade spark finger II  → III (damage +35%): 8 bone, 4 copper, 3 glass",
+  "upgrade thread bell  → II (range +35%): 4 bone, 2 copper, 1 glass",
+  "> upgrade spark finger",
+  "▲ upgrade: spark finger III  ·  damage 1.4 → 1.7",
+  "a printer hums here, warm.",
+  "print slot  +1 slot: 6 bone, 2 glass, 2 copper",
+  "print module  a module: 2 bone, 1 glass",
+  "  or one kind: weapon eye body lamp scanner legs mind tool: 2 bone, 1 glass, 2 copper",
+  "upgrade map spool  → II (span +35%): 4 bone, 2 copper, 1 glass",
+  "upgrade thread bell  → II (range +35%): 4 bone, 2 copper, 1 glass",
+  "upgrade nail psalm II  → III (damage +35%): 8 bone, 4 copper, 3 glass"
+ ]
+}
+
