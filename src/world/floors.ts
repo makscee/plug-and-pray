@@ -58,8 +58,8 @@ export const STAIRS: Record<Stairs, { name: string; look: string }> = {
 export const KIT: Record<number, string[]> = {
   0: [],
   1: ['nail-psalm', 'wayfinder-moth', 'lodestone'],
-  2: ['ember-iris', 'censer', 'bone-listener', 'bone-lance'],
-  3: ['rime-hood', 'heat-lance'],
+  2: ['pilgrim-scope', 'ember-iris', 'censer', 'bone-listener', 'bone-lance'],
+  3: ['martyr-scope', 'rime-hood', 'heat-lance'],
   4: [],
 };
 

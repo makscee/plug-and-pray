@@ -27,12 +27,20 @@ const DT = 0.05;
 export function fight(floor: number, variant: string, seed: number, o: { react?: number; sloppy?: number; limit?: number; trace?: boolean } = {}): Fight {
   const g = newGame(seed);
   stageBoss(g, floor, variant);
+  const { won } = duel(g, floor, seed, o);
+  const p = g.player;
+  return { boss: variant, seed, won, t: Math.round(g.t), hp: Math.max(0, Math.round(p.hp * 10) / 10), maxHp: p.maxHp };
+}
+
+/** fight the bosses standing in `g` now, until they are down, you are, or `limit` s more pass (v2 floors: the run
+ *  sim, scripts/sim/brain.ts, hands its player over to this at each floor's keeper) */
+export function duel(g: Game, floor: number, seed: number, o: { react?: number; sloppy?: number; limit?: number; trace?: boolean } = {}): { won: boolean } {
   const r = rng(hash(seed, 99, floor));
   const p = g.player;
   // the cradle and the choir walk in cell steps by keys: a little slower to react than free movement
   const react = (o.react ?? (floor <= 1 ? 0.4 : 0.32)) + r() * 0.1;
   const sloppy = o.sloppy ?? 0.12;
-  const limit = o.limit ?? 300;
+  const limit = g.t + (o.limit ?? 300);
   const speed = 2.5;
   const reach = Math.max(...active(g, 'weapon').map((i) => param<number>(i, 'range', 1.3)));
   const melee = reach < 3;
@@ -42,7 +50,7 @@ export function fight(floor: number, variant: string, seed: number, o: { react?:
   const seenShot = new Map<number, number>();
   let won = false;
   while (g.t < limit && !g.ended) {
-    const bosses = g.ents.filter((e) => e.enemy && BOSS[e.enemy.type]);
+    const bosses = g.ents.filter((e) => e.enemy && BOSS[e.enemy.type] && Math.abs(e.x - p.x) < 200);
     const up = bosses.filter((e) => Math.abs(e.x - p.x) < 1000);
     if (!bosses.length) {
       won = true;
@@ -119,8 +127,7 @@ export function fight(floor: number, variant: string, seed: number, o: { react?:
     if (o.trace && p.hurtAt === g.t) console.log('  hurt', g.t.toFixed(2), `at ${p.x.toFixed(2)},${p.y.toFixed(2)}`, bosses.map((e) => `${e.enemy!.data.atk} ${e.x.toFixed(1)},${e.y.toFixed(1)} d=${dist(e, p).toFixed(2)} wind=${Number(e.enemy!.data.windAt ?? 0).toFixed(2)}`).join(' '), 'zones', zones.length);
     if (o.trace) for (const l of g.log.slice(at)) console.log(g.t.toFixed(1), `hp ${p.hp.toFixed(1)}`, `boss ${bosses.map((e) => e.enemy!.hp.toFixed(1)).join('/')}`, l.map((x) => (typeof x === 'string' ? x : x.text)).join(''));
   }
-  const lost = g.ended === 'dead';
-  return { boss: variant, seed, won: won && !lost, t: Math.round(g.t), hp: Math.max(0, Math.round(p.hp * 10) / 10), maxHp: p.maxHp };
+  return { won: won && g.ended !== 'dead' };
 }
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);

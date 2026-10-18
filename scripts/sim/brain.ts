@@ -18,6 +18,7 @@ import * as altar from '../../src/world/altar';
 import { dpsOf } from '../../src/world/zonemath';
 import { startKit } from '../../src/tune/start';
 import { light } from '../../src/sight/lamp';
+import { duel } from './boss';
 
 export interface Snap {
   t: number;
@@ -246,6 +247,8 @@ export function play(seed: number, o: Opts): Run {
   /** and at least this long: a person looks round a floor (its cache, its loot, a printer) before its keeper */
   const MIN_STAY = 150;
   const RUSH_STAY = 75;
+  /** the readiness of each floor's boss loadout (src/fight/bosses.ts LOADOUTS, what the bosses are balanced for) */
+  const KEEPER_NEED = [32, 55, 80, 150, 300];
   let floorSince = 0;
   let floorWas = 0;
   const send = (cmd: string) => exec(g, cmd);
@@ -268,6 +271,18 @@ export function play(seed: number, o: Opts): Run {
   const pending = (e: Entity) => !!e.enemy!.data.windup && g.t < Number(e.enemy!.data.windup) && !reacted(e) && e.enemy!.type !== 'mite';
   function decide(): string | number {
     why = '';
+    // v2 floors: a keeper awake and close: the boss sim's player fights it (scripts/sim/boss.ts), a couple of minutes at a time
+    const keeper = g.ents.find((e) => e.enemy?.data.boss && e.enemy.data.noticed && dist(e, P) < 14);
+    if (keeper) {
+      P.path = [];
+      if (process.env.DUEL) console.log('duel', g.t.toFixed(0), 'hp', P.hp.toFixed(1), '/', P.maxHp, 'ready', Math.round(zones.readiness(g)), P.installed.filter((i) => i.on).map((i) => i.mod).join(','), 'foes', g.ents.filter((e) => e.enemy && dist(e, P) < 10).map((e) => e.enemy!.type).join(','));
+      duel(g, g.floor, seed, { limit: 120 });
+      if (process.env.DUEL) console.log('  ->', g.t.toFixed(0), 'hp', P.hp.toFixed(1), g.ended ?? '', g.ents.filter((e) => e.enemy?.data.boss).map((e) => e.enemy!.type + ':' + e.enemy!.hp.toFixed(0)).join(','));
+      P.path = [];
+      P.faceLock = 0;
+      why = 'keeper';
+      return 0.1;
+    }
     const px = Math.floor(P.x);
     const py = Math.floor(P.y);
     for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) seen.add(key(px + dx, py + dy));
@@ -594,7 +609,7 @@ export function play(seed: number, o: Opts): Run {
   }
   /** a careful player takes on a keeper once ready for the floor below it, or once it has been on this floor a while */
   // (a rusher too takes a minute for the floor's cache and what lies near before its keeper)
-  const bossReady = () => (o.style === 'rusher' ? g.t - floorSince > RUSH_STAY : ready(Math.min(g.floor + 1, floors.LAST)) && g.t - floorSince > MIN_STAY) || g.t - floorSince > PATIENCE;
+  const bossReady = () => (o.style === 'rusher' ? g.t - floorSince > RUSH_STAY : zones.readiness(g) >= KEEPER_NEED[g.floor] && g.t - floorSince > MIN_STAY) || g.t - floorSince > PATIENCE;
   function targetZone(): number {
     const v = nextTarget();
     return v?.what === 'stairs' ? Math.min(g.floor + 1, floors.LAST) : zoneHere();
