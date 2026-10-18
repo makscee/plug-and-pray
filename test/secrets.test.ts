@@ -43,7 +43,7 @@ describe('secrets', () => {
     const a = world(newGame(5));
     const b = world(newGame(5));
     expect(a.map((s) => [s.kind, s.x, s.y])).toEqual(b.map((s) => [s.kind, s.x, s.y]));
-    expect(a.length).toBeGreaterThan(20);
+    expect(a.length).toBeGreaterThan(14); // v3: floors 1-2 are 13 chunks each
     for (const k of ['hands', 'script', 'hollow']) expect(a.filter((s) => s.kind === k).length).toBeGreaterThanOrEqual(4);
     // the start chunk hides nothing
     expect(hide(5, generate(5, 0, 0))).toBeNull();

@@ -16,7 +16,7 @@ export function startKit(g: Game): void {
   const p = g.player;
   p.slots = 6;
   p.inv.push({ kind: 'res', res: 'copper', n: 2 }); // r1 econ: copper from the start, so the first reliquary is a choice
-  p.core = 4; // module pass: the kit draws 3 of 4 (the thread bell, like the pinhole after it, is free); the first colour eye already asks for a choice
+  p.core = 4; // module pass: the kit draws 3 of 4 (the thread bell is free; v3: the pinhole after it drinks 3); the first colour eye already asks for a choice
   for (const mod of KIT) {
     p.inv.push({ kind: 'mod', mod });
     g.stats.mods.push(mod);

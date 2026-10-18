@@ -81,6 +81,8 @@ export const KIT: Record<number, string[]> = {
 export const STRIDE = 16;
 /** a floor spans local chunks -HALF..HALF each way */
 export const HALF = 2;
+/** v3: floors up to this one (0-based) drop their corners: a diamond (see `inside`) */
+export const SMALL = 1;
 
 /** the floor a chunk column belongs to (rock between floors belongs to the nearest) */
 export const floorOfChunk = (cx: number): number => Math.max(0, Math.min(LAST, Math.round(cx / STRIDE)));
@@ -96,6 +98,9 @@ export function inside(cx: number, cy: number): boolean {
   const f = floorOfChunk(cx);
   const [lx, ly] = local(cx, cy);
   if (f === LAST) return lx === 0 && ly <= 0 && ly >= -HEART_APPROACH;
+  // v3 (Maks 10-18: "exploring should be shorter"): floors 1 and 2 are a diamond of 13 chunks, not 25: the
+  // landing, its four neighbours, the four between them and the four edge middles (one is the keeper's)
+  if (f <= SMALL) return Math.abs(lx) + Math.abs(ly) <= HALF;
   return Math.abs(lx) <= HALF && Math.abs(ly) <= HALF;
 }
 

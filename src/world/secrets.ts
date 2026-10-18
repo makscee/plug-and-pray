@@ -7,14 +7,14 @@
 
 import { CHUNK, Cell, cell, chunkHook, setCell, veinOf } from '../core/grid';
 import { dist, itemName, say, spawn, tickHooks } from '../core/game';
-import { active, label, param } from '../core/mods';
+import { active, label, MODS, param, powerMax, powerUsed } from '../core/mods';
 import { hash, rng, type Rng } from '../core/rng';
 import { goThere, verb, VERBS } from '../core/verbs';
 import { nicheIn } from '../mods/gait';
 import type { Chunk, Entity, Game, Inst, Line } from '../core/types';
 import { eyeRange } from '../mods/sense';
 import { generate, rooms } from './gen';
-import { eyeChunk, lootMod, opening, shopAt } from './spawn';
+import { eyeChunk, firstEye, lootMod, opening, shopAt } from './spawn';
 import { bearing } from './vectors';
 import { ZONES, zoneAt, zoneOf } from './zones';
 import { isArrival, stairsChunk, thinAhead } from './floors';
@@ -217,21 +217,28 @@ export function sealedEye(g: Game): Secret | undefined {
   return secrets(g).find((s) => s.eye && !s.done);
 }
 
+/** v3 (Maks 10-18: "it should require a lot of power, so you sometimes have to put it off in favour of a weapon"):
+ *  the first eye you pick up says what it costs, once */
+const toldDrink = new WeakSet<Game>();
+tickHooks.push((g) => {
+  if (toldDrink.has(g)) return;
+  const p = g.player;
+  if (p.installed.some((i) => i.mod === 'pinhole-eye')) return void toldDrink.add(g);
+  if (!p.inv.some((i) => i.kind === 'mod' && i.mod === 'pinhole-eye')) return;
+  toldDrink.add(g);
+  const n = MODS['pinhole-eye'].power;
+  const free = powerMax(g) - powerUsed(g);
+  const arms = active(g, 'weapon').reduce((s, i) => s + MODS[i.mod].power, 0);
+  const how = free >= n ? 'install it now, or keep that power for a second weapon' : free + arms >= n ? 'switch off a weapon to wake it, or carry it for later' : 'more power wakes it: a generator (ember cell, votive battery) or an altar. carry it till then, or switch off a weapon and more';
+  say(g, `the eye drinks ${n} power (${free} free): ${how}.`);
+});
+
 chunkHook((g, c) => {
-  // the first eye: in its niche, else on the far side of its chunk
+  // v3: the first eye lies in the open on the way to the keeper (src/world/spawn.ts firstEye): no niche to break
   const [ex, ey] = eyeChunk(g.seed);
   if (c.cx === ex && c.cy === ey) {
-    const n = eyeNiche(g.seed, c);
-    if (n) secrets(g).push(n);
-    const [x, y] = n ? n.trail[0] : (() => {
-      const r = rng(hash(g.seed, 71, c.cx, c.cy));
-      const fl: [number, number][] = [];
-      for (let j = 1; j < CHUNK - 1; j++) for (let i = 1; i < CHUNK - 1; i++) if (F(c, i, j)) fl.push([i, j]);
-      const far = fl.sort((a, b) => Math.hypot(b[0] - 8, b[1] - 8) - Math.hypot(a[0] - 8, a[1] - 8)).slice(0, 6);
-      const [i, j] = far.length ? r.pick(far) : [8, 8];
-      return [c.cx * CHUNK + i, c.cy * CHUNK + j];
-    })();
-    spawn(g, { kind: 'item', x: x + 0.5, y: y + 0.5, item: { kind: 'mod', mod: 'pinhole-eye' }, data: n ? { sealed: [n.x + n.fx, n.y + n.fy] } : undefined });
+    const [x, y] = firstEye(g.seed).at;
+    spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'pinhole-eye' } });
   }
   const s = hide(g.seed, c);
   if (s) secrets(g).push(s);
