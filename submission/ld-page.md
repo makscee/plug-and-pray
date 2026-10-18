@@ -9,13 +9,13 @@ You start with a map and nothing to see with. You click the map and walk; a rada
 Each floor down looks different, plays a little differently and ends at a **keeper** behind a door that tells you whether you look ready.
 
 - **The cradle** and **the choir nave**: melee. Kite swarms, step out of slams, hit between.
-- **The ossuary**: you find **saint's reins**. Take the mouse and fight in first person: shoot, strafe and dodge bullet patterns. Tab gives the cursor back for your modules.
+- **The ossuary**: you find **saint's reins**. Take the reins and fight in first person: look with the mouse, trackpad or ←/→, hold Space to shoot, strafe and dodge bullet patterns. Tab gives the cursor back for your modules.
 - **The furnace**: better reins, a dash, and the god's heart below.
 
 ## How to play
 
 - Click the map to walk, click the orange words and buttons, drag modules to install them. Every button types a console command; `help` lists them and `where` says where to go next.
-- Arrow keys or WASD walk; M shows the big map.
+- Arrow keys or WASD walk; M shows the big map. A trackpad is enough: no mouse needed.
 - Die and you wake again on a new world. A run takes 25–35 minutes.
 
 Desktop browser, sound on.
