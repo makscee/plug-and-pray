@@ -11,7 +11,7 @@ import { cradleShop, eyeHinted, firstLeg, HINTED } from '../tune/hints';
 import { cell, Cell, veinOf } from '../core/grid';
 import { MODS } from '../core/mods';
 import { know, markAt, thinWall } from '../sight/know';
-import { does } from '../mods/describe';
+import { mechanic } from './cardText';
 import type { Game } from '../core/types';
 import { mapHooks } from '../world/mind';
 import { walks } from '../mods/gait';
@@ -169,7 +169,7 @@ export function infoAt(g: Game, x: number, y: number): string[] {
   const e = k === 'seen' || k === 'scanned' ? g.ents.find((e) => here(e) && (e.kind === 'printer' || e.kind === 'item' || (e.enemy && !ENEMIES[e.enemy.type]?.hidden))) : undefined;
   if (e?.kind === 'printer') return e.data?.shop ? ['reliquary', 'buys, sells, rerolls and recycles modules.'] : ['printer', 'prints a module for ore: print <family>.'];
   if (e?.enemy) return [ENEMIES[e.enemy.type]?.name ?? 'something moving', `${Math.max(0, e.enemy.hp).toFixed(1)} hp${e.enemy.data.noticed ? ' · it has seen you' : ' · it has not seen you'}`];
-  if (e?.item && !e.data?.mimic) return [itemName(e.item), e.item.kind === 'mod' ? does(e.item) : e.item.kind === 'card' ? 'a memory card: a card reader reads it.' : 'walk over it to pick it up.'];
+  if (e?.item && !e.data?.mimic) return [itemName(e.item), e.item.kind === 'mod' ? mechanic(e.item) : e.item.kind === 'card' ? 'a memory card: a card reader reads it.' : 'walk over it to pick it up.'];
   const m = markAt(g, x, y);
   if (m) return [m.what, ...(m.info ? [m.info] : []), `marked by the ${MODS[m.by]?.name ?? m.by}${m.ttl ? `, ${Math.round(g.t - m.at)} s ago` : ''}${m.r ? `; somewhere within ${Math.round(m.r)} cells` : ''}.`];
   if (k === 'unseen') return ['unseen', 'no eye has looked here; a radar may still mark things.'];

@@ -1,0 +1,26 @@
+/* the item card (src/ui/card.ts): mechanic first, the numbers that matter, noise dim at the foot */
+.item-card {
+  position: fixed; z-index: 9500; width: 248px; box-sizing: border-box; padding: 8px 10px 7px;
+  background: #0d0a09f2; border: 1px solid var(--line-hi); box-shadow: 0 4px 18px #000a;
+  font-size: 18px; line-height: 1.05; color: var(--t-body); pointer-events: auto;
+}
+.item-card[hidden] { display: none; }
+.item-card.pinned { border-color: var(--acc); }
+.item-card p { margin: 0; }
+.item-card .ic-head { display: flex; align-items: baseline; gap: 8px; }
+.item-card .ic-name { font-size: 22px; color: var(--t-title); }
+.item-card .ic-name.rar-fine { color: var(--rar-fine); }
+.item-card .ic-name.rar-rare { color: var(--rar-rare); }
+.item-card .ic-name.rar-unique { color: var(--rar-unique); }
+.item-card .ic-level { font-size: 18px; color: var(--acc); border: 1px solid var(--acc); padding: 0 4px; line-height: 1; }
+.item-card .ic-kind { font-size: 15px; color: var(--t-head); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.item-card .ic-kind .rar-fine { color: var(--rar-fine); }
+.item-card .ic-kind .rar-rare { color: var(--rar-rare); }
+.item-card .ic-kind .rar-unique { color: var(--rar-unique); }
+.item-card .ic-does { font-size: 19px; color: var(--t-title); margin-bottom: 5px; }
+.item-card .ic-nums { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-bottom: 5px; }
+.item-card .ic-nums b { font-weight: normal; color: var(--acc); background: #f0a05018; border: 1px solid #f0a05055; padding: 0 5px; }
+.item-card .ic-cost { color: var(--fg); margin-left: auto; }
+.item-card .ic-good { font-size: 16px; color: var(--good); margin-bottom: 4px; }
+.item-card .ic-flav { font-size: 15px; color: var(--dim); font-style: italic; }
+.item-card .ic-foot { font-size: 14px; color: var(--dim); opacity: 0.8; margin-top: 3px; border-top: 1px solid var(--line); padding-top: 2px; }
