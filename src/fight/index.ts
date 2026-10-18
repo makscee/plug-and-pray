@@ -182,7 +182,18 @@ function saint(g: Game, e: Entity, dt: number): void {
 
 /** the hum: hidden, and it keeps to the deep (zone 2 on): walk out of the ossuary and it lets you go */
 function hum(g: Game, e: Entity, dt: number): void {
-  if (zoneAt(g.player.x, g.player.y) < 2) return void (e.enemy!.data.noticed = false);
+  const p = g.player;
+  if (zoneAt(p.x, p.y) < 2) {
+    e.enemy!.data.noticed = false;
+    // it lets you go: it backs off into the deep instead of hanging at your shoulder unseen
+    const r = near(e, p);
+    if (r < 3 && r > 0.01) {
+      const step = ENEMIES.hum.speed * dt;
+      const [nx, ny] = [e.x - ((p.x - e.x) / r) * step, e.y - ((p.y - e.y) / r) * step];
+      if (open(g, nx, ny)) [e.x, e.y] = [nx, ny];
+    }
+    return;
+  }
   chase(g, e, dt);
 }
 

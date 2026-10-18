@@ -1,4 +1,5 @@
-// Aimed weapons: `shoot` fires your warm aimed weapons down your facing, each on its own cooldown.
+// Aimed weapons: `shoot` fires one shot per aimed module down your facing; copies of a module
+// shorten its cooldown instead of adding burst.
 // With no foe in front, it first turns you to the nearest one you perceive within reach. The gyro heart turns `player.dir`
 // to the mouse. Their windows carry a shoot button.
 import { dist, say } from '../core/game';
@@ -39,10 +40,26 @@ export function aimAt(g: Game, range: number): boolean {
   return true;
 }
 
-/** what the next `shoot` fires: every warm aimed weapon, each on its own cooldown. (Playtest r1 asked
- *  to stop a stack of nail psalms firing as one burst; making copies take turns cost the sim's careful
- *  player 6 of 40 finishes, so the stack keeps its burst and its price is left to the economy pass.) */
-export const volley = (g: Game): Inst[] => aimed(g).filter((i) => g.t >= ((i.data.readyAt as number) ?? 0));
+/** each extra copy of one aimed module cuts its cooldown by this much (stacked) */
+export const COPY = 0.25;
+
+/** what the next `shoot` fires: one shot per distinct aimed module whose copies are warm. Copies of
+ *  one module never stack burst (playtest r1/r2: nail psalm stacks won most runs); each extra copy
+ *  shortens that module's cooldown by COPY instead. */
+export function volley(g: Game): Inst[] {
+  const out: Inst[] = [];
+  for (const mod of new Set(aimed(g).map((i) => i.mod))) {
+    const lead = aimed(g).find((i) => i.mod === mod && g.t >= ((i.data.readyAt as number) ?? 0));
+    if (lead) out.push(lead);
+  }
+  return out;
+}
+
+/** the cooldown of a shot from `i`, with its copies counted */
+export function shotCooldown(g: Game, i: Inst): number {
+  const copies = aimed(g).filter((x) => x.mod === i.mod).length;
+  return (param<number>(i, 'cooldown', 1) * Math.pow(1 - COPY, copies - 1)) / haste(g);
+}
 
 verb('shoot', {
   help: 'fire your aimed weapons where you face (turns to a foe in reach first)',
@@ -59,7 +76,9 @@ verb('shoot', {
     const fx = Math.sin(p.dir);
     const fy = -Math.cos(p.dir);
     for (const i of fire1) {
-      i.data.readyAt = g.t + param<number>(i, 'cooldown', 1) / haste(g);
+      // the copies cool together: one shot per module
+      const until = g.t + shotCooldown(g, i);
+      for (const c of aimed(g).filter((x) => x.mod === i.mod)) c.data.readyAt = until;
       fire(g, { x: p.x + fx * 0.3, y: p.y + fy * 0.3, vx: fx * SHOT_SPEED, vy: fy * SHOT_SPEED, dmg: param<number>(i, 'damage', 1), range: param<number>(i, 'range', 6), src: null, foe: false });
       g.events.push({ type: 'shoot', data: i.uid });
     }
