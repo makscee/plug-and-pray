@@ -113,7 +113,7 @@ frameHooks.push((g) => {
   staged = true;
   clean(g);
   Object.assign(g.player, { slots: 5, core: 12 });
-  g.player.inv.push({ kind: 'res', res: 'bone', n: 14 }, { kind: 'res', res: 'glass', n: 6 }, { kind: 'res', res: 'copper', n: 9 }, { kind: 'res', res: 'ichor', n: 3 });
+  g.player.inv.push({ kind: 'res', res: 'bone', n: 31 }, { kind: 'res', res: 'glass', n: 14 }, { kind: 'res', res: 'copper', n: 17 }, { kind: 'res', res: 'ichor', n: 6 });
   for (const mod of ['vidicon-tube', 'stepper-relay', 'map-spool', 'thaw-engine']) {
     g.player.inv.push({ kind: 'mod', mod });
     exec(g, `install ${mod.replace(/-/g, ' ')}`);

@@ -28,7 +28,7 @@ export const PRICES = {
 export function slotCost(g: Game): Cost {
   // balance pass: the run starts with 6 slots, so the price starts there
   const n = Math.max(0, g.player.slots - 6);
-  const c: Cost = { bone: 6 + 3 * n, glass: n ? 3 + n : (globalThis as any).process?.env?.R2_SLOT3 ? 3 : 2, copper: 2 + 2 * n }; // r2 econ: slot 7 wants 2 glass, not 3
+  const c: Cost = { bone: 6 + 3 * n, glass: n ? 3 + n : 2, copper: 2 + 2 * n }; // r2 econ: slot 7 wants 2 glass, not 3
   if (n >= 1) c.ichor = n;
   return c;
 }

@@ -56,11 +56,11 @@ describe('r2 econ', () => {
 
   it('the Engine drinks what you carry and grades the thaw', () => {
     expect(gradeOf(0)).toBe('a cold waking');
-    expect(gradeOf(15)).toBe('the god stirs');
-    expect(gradeOf(40)).toBe('spring');
+    expect(gradeOf(40)).toBe('the god stirs');
+    expect(gradeOf(100)).toBe('spring');
     const g = newGame(1);
     g.player.inv.push({ kind: 'res', res: 'bone', n: 12 }, { kind: 'res', res: 'glass', n: 5 }, { kind: 'mod', mod: 'thaw-engine' });
-    expect(weigh(g)).toMatchObject({ total: 17, grade: 'the god stirs' });
+    expect(weigh(g)).toMatchObject({ total: 17, grade: 'a cold waking' });
     exec(g, 'install thaw engine');
     for (let k = 0; k < 60; k++) tick(g, 1 / 30);
     expect(g.ended).toBe('thaw');

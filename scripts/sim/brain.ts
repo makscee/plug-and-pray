@@ -554,12 +554,13 @@ export function play(seed: number, o: Opts): Run {
         if (P.slots < pr.MAX_SLOTS) out.push({ cmd: 'print slot', ok: afford(pr.slotCost(g)) });
         // a module only with plenty to spare
         const mc = pr.modCost((m.data?.far as number) ?? 0);
-        // r2 econ: an aimed print first, at the family whose best piece on is weakest (weapon, body, eye)
+        // r2 econ: with R2_AIM=1, an aimed print first once the core is full, at the family whose best piece on is
+        // weakest (weapon, body, eye). Off by default: every aiming rule tried cost the sims 1-5 thaws of 40
         const zone = Math.max(targetZone(), zoneHere());
         const best = (f: string) => Math.max(0, ...P.installed.filter((i) => MODS[i.mod].family === f).map((i) => worth(g, i, zone, false)));
         const fam = (['weapon', 'body', 'camera'] as const).slice().sort((a, b) => best(a) - best(b))[0];
         const ac = pr.aimedCost((m.data?.far as number) ?? 0);
-        if (!process.env.R2_NOAIM) out.push({ cmd: `print ${fam === 'camera' ? 'eye' : fam}`, ok: afford(Object.fromEntries(Object.entries(ac).map(([k, v]) => [k, (v as number) * 2]))) });
+        if (process.env.R2_AIM && P.core >= altar.MAX_CORE) out.push({ cmd: `print ${fam === 'camera' ? 'eye' : fam}`, ok: afford(Object.fromEntries(Object.entries(ac).map(([k, v]) => [k, (v as number) * 2]))) });
         out.push({ cmd: 'print module', ok: afford(Object.fromEntries(Object.entries(mc).map(([k, v]) => [k, (v as number) * 2]))) });
       }
     }

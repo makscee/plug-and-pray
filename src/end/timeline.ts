@@ -50,7 +50,7 @@ export function summary(g: Game): string {
 // tallies them line by line, then grades the thaw by the total (so "temper now or carry it in" is a choice).
 
 /** the grades, best first: [the least total that earns it, its name] */
-export const GRADES: [number, string][] = [[40, 'spring'], [15, 'the god stirs'], [0, 'a cold waking']];
+export const GRADES: [number, string][] = [[100, 'spring'], [40, 'the god stirs'], [0, 'a cold waking']]; // sims: winners carry 50-130
 export const gradeOf = (total: number): string => GRADES.find(([n]) => total >= n)![1];
 
 export interface Offering {
