@@ -7,6 +7,10 @@
 // On the end screen Enter or R wakes again.
 // Mouse: with the gyro heart, a click on a camera's eye (or the empty desk) locks the pointer and the
 // mouse turns you; Esc lets it go. Without a lock, dragging on the eye turns you too.
+// The FPS eye's big view (src/body/fps.ts, v2): V goes big and back; there WASD and the arrows walk and
+// strafe relative to the view, a click on the view takes the mouse (smooth yaw), then a click shoots down the
+// crosshair (right click or F: a melee lunge; Space shoots too), Shift dashes (mk2), Esc frees the mouse,
+// and Esc again with the mouse free leaves the big view.
 
 import { gyroMove, gyroTurn, hasGyro, saveSetup, servoStep, setupsOf } from './index';
 import { exec, VERBS } from '../core/verbs';
@@ -18,10 +22,16 @@ import { togglePause } from '../ui/pause';
 import type { Game, Line } from '../core/types';
 import './views';
 import { clean } from '../tune/start';
+import { bigOn, dash, fpsEye, fpsFire, fpsMove, fpsTurn, lunge } from './fps';
 
 const ARROWS: Record<string, string> = { ArrowUp: 'n', ArrowRight: 'e', ArrowDown: 's', ArrowLeft: 'w' };
 const WASD: Record<string, string> = { w: 'n', a: 'w', s: 's', d: 'e' };
 const held = new Set<string>();
+/** test runs hold keys as if pressed ('w', 'ArrowUp'...): src/sight/fps.ts fpsTest.hold */
+(globalThis as unknown as { fpsHold: (...keys: string[]) => void }).fpsHold = (...keys) => {
+  held.clear();
+  for (const k of keys) held.add(k);
+};
 const thaw = () => (window as unknown as { thaw: { g: Game; send(c: string): void; screen?: { con: { follow: boolean } } } }).thaw;
 const typing = (t: EventTarget | null) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
 const consoleInput = () => document.querySelector<HTMLInputElement>('.win-console input');
@@ -117,6 +127,10 @@ addEventListener(
     }
     if (!g || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
+    if (fpsKey(g, e, k)) {
+      e.preventDefault();
+      return;
+    }
     const d = ARROWS[e.key] ?? (!hasGyro(g) ? WASD[k] : undefined);
     if (d) {
       keyStep(g, d);
@@ -140,7 +154,33 @@ addEventListener(
   },
   true,
 );
-addEventListener('keyup', (e) => held.delete(e.key.toLowerCase()));
+addEventListener('keyup', (e) => {
+  held.delete(e.key.toLowerCase());
+  held.delete(e.key);
+});
+
+/** the big view's keys; true when it took the key */
+function fpsKey(g: Game, e: KeyboardEvent, k: string): boolean {
+  if (k === 'v' && !e.repeat && fpsEye(g)) {
+    thaw().send('big');
+    return true;
+  }
+  if (!bigOn(g)) return false;
+  if (WASD[k] || ARROWS[e.key]) {
+    held.add(ARROWS[e.key] ? e.key : k);
+    return true;
+  }
+  if (e.repeat) return k === ' ' || k === 'shift' || k === 'f';
+  if (k === 'shift') dash(g);
+  else if (k === 'f') lunge(g);
+  else if (k === ' ') fpsFire(g);
+  else if (k === 'escape') {
+    if (document.pointerLockElement) document.exitPointerLock();
+    else thaw().send('big');
+  } else return false;
+  return true;
+}
+
 addEventListener('blur', () => held.clear());
 
 // focus moving into the console drops held keys, so you do not walk on while typing
@@ -151,11 +191,37 @@ addEventListener('focusin', (e) => {
 frameHooks.push((g) => {
   const fwd = (held.has('w') ? 1 : 0) - (held.has('s') ? 1 : 0);
   const side = (held.has('d') ? 1 : 0) - (held.has('a') ? 1 : 0);
+  if (bigOn(g)) {
+    // the big view: the arrows walk with WASD, relative to where you look
+    const f = fwd + (held.has('ArrowUp') ? 1 : 0) - (held.has('ArrowDown') ? 1 : 0);
+    const sd = side + (held.has('ArrowRight') ? 1 : 0) - (held.has('ArrowLeft') ? 1 : 0);
+    fpsMove(g, Math.sign(f), Math.sign(sd));
+    return;
+  }
   if (fwd || side || g.player.move) gyroMove(g, fwd, side);
+});
+
+// the big view: a press takes the mouse, then fires (left) or lunges (right)
+addEventListener('mousedown', (e) => {
+  const g = thaw()?.g;
+  const view = document.getElementById('bigview');
+  if (!g || !view || !bigOn(g) || !view.contains(e.target as Node)) return;
+  e.preventDefault();
+  (document.activeElement as HTMLElement | null)?.blur();
+  if (document.pointerLockElement !== view) {
+    (view.requestPointerLock?.() as unknown as Promise<void> | undefined)?.catch?.(() => {});
+    return;
+  }
+  if (e.button === 2) lunge(g);
+  else if (e.button === 0) fpsFire(g);
+});
+addEventListener('contextmenu', (e) => {
+  if (document.getElementById('bigview')?.contains(e.target as Node)) e.preventDefault();
 });
 
 addEventListener('click', (e) => {
   const t = e.target as HTMLElement;
+  if (document.pointerLockElement && document.pointerLockElement.id === 'bigview') return; // the big view's own (mousedown)
   if (document.pointerLockElement) {
     // locked: a click fires an aimed weapon, when the fight slice has added one
     if (VERBS.shoot && (!VERBS.shoot.when || VERBS.shoot.when(thaw().g))) thaw().send('shoot');
@@ -171,10 +237,16 @@ addEventListener('click', (e) => {
   (t.requestPointerLock?.() as unknown as Promise<void> | undefined)?.catch?.(() => {});
 });
 
+/** mouse-look in the big view: radians per pixel */
+export const SENS = 0.0026;
 addEventListener('mousemove', (e) => {
   const dragging = e.buttons === 1 && (e.target as HTMLElement).matches?.('canvas.eye');
   if (!document.pointerLockElement && !dragging) return;
   const g = thaw()?.g;
+  if (g && bigOn(g)) {
+    if (document.pointerLockElement?.id === 'bigview') fpsTurn(g, e.movementX * SENS);
+    return;
+  }
   if (g) gyroTurn(g, e.movementX * 0.004);
 });
 

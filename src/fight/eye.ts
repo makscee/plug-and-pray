@@ -41,6 +41,8 @@ export const offFacing = (g: Game, e: { x: number; y: number }): number => {
 };
 
 const gyro = (g: Game) => active(g, 'gait').some((i) => param(i, 'free', false));
+/** other ways the mouse aims (the FPS eye's big view, src/body/fps.ts): the eye leaves you be */
+export const mouseAims: ((g: Game) => boolean)[] = [];
 
 function snap(g: Game, e: Entity): void {
   const s = eye(g);
@@ -69,7 +71,7 @@ hurtHooks.push((g, n, from) => {
 
 tickHooks.push((g) => {
   const p = g.player;
-  if (g.ended || gyro(g)) return;
+  if (g.ended || gyro(g) || mouseAims.some((f) => f(g))) return;
   const s = eye(g);
   const free = g.t - s.manual >= MANUAL;
   // a short step with a foe on you is a backpedal: the eye (and your weapons) stay on it (r2: `go e 1`
