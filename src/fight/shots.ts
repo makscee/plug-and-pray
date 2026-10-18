@@ -3,6 +3,7 @@
 import { hurt, spawn, strike, tickHooks } from '../core/game';
 import { open } from '../core/grid';
 import type { Entity, Game } from '../core/types';
+import { fx } from '../fx/attacks';
 
 export interface ShotData {
   shot: true;
@@ -68,6 +69,7 @@ export function tickShots(g: Game, dt: number): void {
         gone = true;
         // your shot struck nothing: a soft whiff, never the hit sound (Maks 10-18); v2r5 run: on a wall or a
         // pillar it says so (a pillar in the line read as "you miss ×2" for a minute)
+        if (!d.foe) fx(g, 'spark', s.x, s.y);
         if (!d.foe) g.events.push({ type: 'miss', at: [s.x, s.y], data: !free ? { stone: true, name: d.name } : undefined });
       }
       else if (d.foe) {
@@ -81,6 +83,7 @@ export function tickShots(g: Game, dt: number): void {
         // a boss is bigger: its own hit radius on top (src/fight/bosses.ts)
         const t = g.ents.find((e) => e.enemy && Math.hypot(e.x - s.x, e.y - s.y) < HIT + Number(e.enemy.data.r ?? 0));
         if (t) {
+          fx(g, 'spark', t.x, t.y);
           strike(g, t, d.dmg);
           gone = true;
         }
