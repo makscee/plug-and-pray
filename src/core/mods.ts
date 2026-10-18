@@ -58,7 +58,7 @@ export const BETTER: Record<string, 'up' | 'down'> = {
   range: 'up', damage: 'up', radius: 'up', hp: 'up', regen: 'up', armour: 'up', mend: 'up', thorns: 'up', haste: 'up',
   heatproof: 'up', glow: 'up', drain: 'up', power: 'up', speed: 'up', pace: 'up', plan: 'up', span: 'up', reveal: 'up',
   keep: 'up', tithe: 'up', fov: 'up', ahead: 'up',
-  cooldown: 'down', recharge: 'down', noise: 'down', lag: 'down', blur: 'down', refresh: 'down', loud: 'down',
+  cooldown: 'down', recharge: 'down', noise: 'down', lag: 'down', blur: 'down', refresh: 'down', loud: 'down', every: 'down', spread: 'down',
 };
 
 /** what a module is, rarity and name: v2 rarity rides on the item and the installed module alike */

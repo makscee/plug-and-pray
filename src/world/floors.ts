@@ -56,10 +56,10 @@ export const STAIRS: Record<Stairs, { name: string; look: string }> = {
 /** the module ids a floor's arrival cache (and the reliquary there) guarantees: that floor's new kit.
  *  Other slices add their ids here (the FPS eye on 2 and 3, map upgrades on 1...) */
 export const KIT: Record<number, string[]> = {
-  0: [],
-  1: ['nail-psalm', 'wayfinder-moth', 'lodestone'],
-  2: ['pilgrim-scope', 'ember-iris', 'censer', 'bone-listener', 'bone-lance'],
-  3: ['martyr-scope', 'rime-hood', 'heat-lance'],
+  0: ['hollow-tap'],
+  1: ['nail-psalm', 'survey-spool', 'sounding-knell', 'vein-fork', 'plumb-line'],
+  2: ['pilgrim-scope', 'illuminated-atlas', 'pulse-choir', 'bone-glass', 'ember-iris', 'censer', 'bone-lance'],
+  3: ['martyr-scope', 'glass-diorama', 'rime-hood', 'heat-lance'],
   4: [],
 };
 

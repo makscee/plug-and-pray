@@ -2,12 +2,17 @@
 // the accent colour (on the edge when it lies off the map); hovering a cell names what is there, with
 // the legend; a line under the map keys the diamond and has a zoom link (6 or 9 px a cell) and `where`.
 // Playtest r2: a click on the map with no pilot walks the first straight leg toward that cell.
+// v2: clicks only on a map that takes them (the surveyor's and up); the hover tells only what is known
+// (unseen, seen, seen through a wall, marked), and the illuminated atlas shows a note instead of a title.
 
 import { ENEMIES, itemName, say, tickHooks } from '../core/game';
 import { active, param } from '../core/mods';
 import { exec, VERBS, way } from '../core/verbs';
 import { cradleShop, firstLeg, HINTED } from '../tune/hints';
 import { cell, Cell, veinOf } from '../core/grid';
+import { MODS } from '../core/mods';
+import { know, markAt, thinWall } from '../sight/know';
+import { does } from '../mods/describe';
 import type { Game } from '../core/types';
 import { mapCell, mapHooks } from '../world/mind';
 import { refit } from './windows';
@@ -28,23 +33,59 @@ function targets(g: Game): { x: number; y: number; name: string }[] {
   return out;
 }
 
-const LEGEND = 'legend: ◆ where the hints and cards point · green ◇ a set piece\'s finds · small dot a pile (bone, glass, copper, ichor) · small square a module · teal printer or reliquary · red enemy · arrow you';
+const LEGEND = ['legend: arrow you · ◆ where the hints point · hatched: seen through a wall (it may hide things) · ? something a radar marked · chevron: a thin wall to dig through',
+  'legend: arrow you · ◆ where the hints point · green ◇ a set piece\'s finds · dots: piles in their ore\'s colour · small square a module · teal printer or reliquary · red enemy · hatched: seen through a wall (it may hide things) · coloured spots: what radars marked (orange vein, gold cache, red life, white stairs, violet guard), a dashed ring where it may be'];
 /** per map canvas: where its top-left cell is and how big a cell draws, for the hover */
 const at = new WeakMap<HTMLCanvasElement, { g: Game; ox: number; oy: number; px: number }>();
 
+/** the atlas's note under the pointer (v2: "icons for POIs, hover tooltips with info") */
+let tip: HTMLDivElement | null = null;
+function showTip(ev: MouseEvent, head: string, lines: string[]): void {
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.className = 'map-tip';
+    document.body.append(tip);
+  }
+  tip.replaceChildren();
+  const b = document.createElement('b');
+  b.textContent = head;
+  tip.append(b);
+  for (const l of lines) {
+    const p = document.createElement('p');
+    p.textContent = l;
+    tip.append(p);
+  }
+  tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  tip.style.left = `${Math.min(innerWidth - r.width - 8, ev.clientX + 14)}px`;
+  tip.style.top = `${Math.min(innerHeight - r.height - 8, ev.clientY + 14)}px`;
+}
+const hideTip = () => tip && (tip.hidden = true);
+// a map window that closes under the pointer gets no mouseleave: any move off a map hides the note
+if (typeof document !== 'undefined') document.addEventListener('mousemove', (e) => tip && !tip.hidden && !(e.target as Element)?.closest?.('canvas.map') && hideTip());
+
 function hover(c: HTMLCanvasElement): void {
+  const detail = Number(c.dataset.detail ?? 0);
   c.addEventListener('mousemove', (ev) => {
     const m = at.get(c);
     if (!m) return;
     const r = c.getBoundingClientRect();
     const x = m.ox + Math.floor(((ev.clientX - r.left) / r.width) * (c.width / m.px));
     const y = m.oy + Math.floor(((ev.clientY - r.top) / r.height) * (c.height / m.px));
-    const what = `${whatAt(m.g, x, y)}\n\n${LEGEND}`;
+    if (detail >= 2) {
+      const [head, ...lines] = infoAt(m.g, x, y);
+      if (c.title) c.title = '';
+      return showTip(ev, head, lines);
+    }
+    const what = `${whatAt(m.g, x, y, detail)}\n\n${LEGEND[detail ? 1 : 0]}`;
     if (c.title !== what) c.title = what;
   });
+  c.addEventListener('mouseleave', hideTip);
   const legend = document.createElement('p');
   legend.className = 'map-legend';
-  legend.innerHTML = `<i style="color:${ACC}">◆</i> hints · <i style="color:#b0f080">◇</i> finds · <i style="color:#7fd8d0">•</i> piles · <i style="color:${ACC}">▪</i> mods · `;
+  legend.innerHTML = detail
+    ? `<i style="color:${ACC}">◆</i> hints · <i style="color:#b0f080">◇</i> finds · <i class="hatch"></i> unsure · <i style="color:#ffd070">●</i> marks · `
+    : `<i style="color:${ACC}">◆</i> hints · <i class="hatch"></i> unsure · <i>?</i> marks · `;
   const zoom = document.createElement('button');
   const big = () => mapCell.zoom ?? innerHeight >= 900;
   zoom.textContent = big() ? 'smaller' : 'zoom';
@@ -83,21 +124,49 @@ function hover(c: HTMLCanvasElement): void {
   c.after(legend);
 }
 
-/** what the map shows at cell (x, y), in words */
-export function whatAt(g: Game, x: number, y: number): string {
+/** what the map shows at cell (x, y), in words: only what is known there, and only as much as the map's detail tells */
+export function whatAt(g: Game, x: number, y: number, detail = 1): string {
   const p = g.player;
   const here = (e: { x: number; y: number }) => Math.floor(e.x) === x && Math.floor(e.y) === y;
   const t = targets(g).find(here);
   if (here(p)) return 'you';
   if (t) return `${t.name} (the hints point here)`;
-  if (!g.seen.has(`${x},${y}`)) return 'unseen';
+  const m = markAt(g, x, y);
+  const k = know(g, x, y);
+  if (m) return detail ? `${m.what}${m.r ? ` (somewhere within ${Math.round(m.r)} cells)` : ''}` : 'something marked here; a better map would say what';
+  if (k === 'unseen') return 'unseen';
+  const c = cell(g, x, y);
+  if (k === 'through') return `seen through a wall: ${c === Cell.floor ? 'open' : 'stone'}, but it may hide what that eye cannot show`;
   const e = g.ents.find((e) => here(e) && (e.kind === 'printer' || e.kind === 'item' || (e.enemy && !ENEMIES[e.enemy.type]?.hidden)));
   if (e?.kind === 'printer') return e.data?.shop ? 'reliquary' : 'printer';
   if (e?.enemy) return ENEMIES[e.enemy.type]?.name ?? 'something moving';
-  if (e?.item && !e.data?.mimic) return itemName(e.item);
-  const c = cell(g, x, y);
+  if (e?.item && !e.data?.mimic) return detail ? itemName(e.item) : 'a thing on the floor';
   const v = veinOf(c);
-  return c === Cell.floor ? 'floor' : v ? `${v} vein` : 'wall';
+  if (thinWall(g, x, y, (a, b) => cell(g, a, b) === Cell.floor)) return 'a thin wall: something open lies past it. dig or break through';
+  return c === Cell.floor ? 'floor' : v && detail ? `${v} vein` : 'wall';
+}
+
+/** the atlas's note: a name, then what it is and what to do with it */
+export function infoAt(g: Game, x: number, y: number): string[] {
+  const p = g.player;
+  const here = (e: { x: number; y: number }) => Math.floor(e.x) === x && Math.floor(e.y) === y;
+  if (here(p)) return ['you', `${p.hp.toFixed(0)}/${p.maxHp} hp`];
+  const t = targets(g).find(here);
+  if (t) return [t.name, 'the hints point here.'];
+  const k = know(g, x, y);
+  const e = k === 'seen' || k === 'scanned' ? g.ents.find((e) => here(e) && (e.kind === 'printer' || e.kind === 'item' || (e.enemy && !ENEMIES[e.enemy.type]?.hidden))) : undefined;
+  if (e?.kind === 'printer') return e.data?.shop ? ['reliquary', 'buys, sells, rerolls and recycles modules.'] : ['printer', 'prints a module for ore: print <family>.'];
+  if (e?.enemy) return [ENEMIES[e.enemy.type]?.name ?? 'something moving', `${Math.max(0, e.enemy.hp).toFixed(1)} hp${e.enemy.data.noticed ? ' · it has seen you' : ' · it has not seen you'}`];
+  if (e?.item && !e.data?.mimic) return [itemName(e.item), e.item.kind === 'mod' ? does(e.item) : e.item.kind === 'card' ? 'a memory card: a card reader reads it.' : 'walk over it to pick it up.'];
+  const m = markAt(g, x, y);
+  if (m) return [m.what, ...(m.info ? [m.info] : []), `marked by the ${MODS[m.by]?.name ?? m.by}${m.ttl ? `, ${Math.round(g.t - m.at)} s ago` : ''}${m.r ? `; somewhere within ${Math.round(m.r)} cells` : ''}.`];
+  if (k === 'unseen') return ['unseen', 'no eye has looked here; a radar may still mark things.'];
+  const c = cell(g, x, y);
+  if (k === 'through') return [c === Cell.floor ? 'open, past the stone' : 'stone, past the stone', 'seen through a wall: that eye can miss what lies here. not known to be empty.'];
+  if (thinWall(g, x, y, (a, b) => cell(g, a, b) === Cell.floor)) return ['a thin wall', 'one cell thick, with open space past it: dig, or break a hollow one.'];
+  const v = veinOf(c);
+  if (v) return [`${v} vein`, 'a leech needle or a bone auger beside it drains it.'];
+  return c === Cell.floor ? ['floor', 'seen: nothing here.'] : ['wall'];
 }
 
 mapHooks.draw.push((g, ctx, ox, oy, px) => {
@@ -171,3 +240,4 @@ tickHooks.push((g) => {
   exec(g, `go ${leg[0]} ${leg[1]}`);
   t.log = g.log.length;
 });
+import './map3d';
