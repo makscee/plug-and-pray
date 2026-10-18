@@ -12,7 +12,8 @@
 //
 // What counts as new (first time in a run). Major: a foe type met (noticed within 8 cells; the hidden hum
 // within 2.5), an elite, a zone (z2 adds dark + cold, z3 heat), a module family, a mechanic (altar,
-// printer, reliquary shop, memory card, card reader, mimic, shard, generator on, setups) and a kind of
+// printer, reliquary shop, memory card, card reader, mimic, shard, generator on, setups), a set piece (src/world/events.ts:
+// the first of each kind per zone) and a kind of
 // decision (KINDS below: loadout, buy, recycle, print slot/module, offer power/flesh/mend, attune, read card,
 // aim, drain, dig, retreat, setup). Minor: a new module id. Also: the share of minutes with no major novelty
 // (the benchmark: something new every 1-2 minutes).
@@ -35,7 +36,7 @@ export function sample(g) {
   for (const e of g.ents) {
     const d = Math.hypot(e.x - p.x, e.y - p.y);
     if (d > 10) continue;
-    near.push({ k: e.kind, d: Math.round(d * 10) / 10, type: e.enemy ? e.enemy.type : undefined, noticed: !!(e.enemy && e.enemy.data.noticed), elite: !!(e.enemy && e.enemy.data.elite), altar: !!(e.data && e.data.altar), shop: !!(e.data && e.data.shop), mimic: !!(e.data && e.data.mimic) });
+    near.push({ k: e.kind, d: Math.round(d * 10) / 10, type: e.enemy ? e.enemy.type : undefined, noticed: !!(e.enemy && e.enemy.data.noticed), elite: !!(e.enemy && e.enemy.data.elite), altar: !!(e.data && e.data.altar), shop: !!(e.data && e.data.shop), mimic: !!(e.data && e.data.mimic), set: (e.data && e.data.set) || (e.enemy && e.enemy.data.set) || undefined });
   }
   const res = p.inv.reduce((n, i) => n + (i.kind === 'res' ? i.n : 0), 0);
   return {
@@ -88,6 +89,8 @@ export function analyse(samples, M) {
         if (e.type === 'mimic') add(s.t, 'mechanic', 'mimic');
         if (firstFight == null && e.d < 2.5) firstFight = s.t;
       }
+      // a set piece (src/world/events.ts): the first of each kind in each zone
+      if (e.set && e.d < 8) add(s.t, 'set', `${e.set} z${z}`);
       if (e.d < 4) {
         if (e.altar) add(s.t, 'mechanic', 'altar');
         if (e.k === 'printer') add(s.t, 'mechanic', e.shop ? 'shop' : 'printer');

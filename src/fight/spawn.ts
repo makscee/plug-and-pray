@@ -34,9 +34,12 @@ export function table(far: number): [string, number, number][] {
   if (far === 0) return [['mite', 1, 2]]; // the start chunk's conduits
   const z = zoneFar(far);
   if (z === 0) return [['mite', 0.85, 2], ['mite', 0.35, 2], ['seraph', 0.25, 1]];
-  if (z === 1) return [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
-  if (z === 2) return [['mite', 0.6, 3], ['walker', 0.55, 1], ['seraph', 0.35, 1], ['hum', 0.35, 1], ['mimic', 0.15, 1]];
-  return [['mite', 0.5, 4], ['walker', 0.5, 1], ['pyre', 0.45, 1], ['hum', 0.4, 1], ['mimic', 0.15, 1]];
+  // r1 pace: the nave's first ring (by the cradle's border) holds pairs, not threes: a step, not a cliff
+  if (z === 1) return far < 2.5 ? [['mite', 0.8, 2], ['mite', 0.2, 2], ['seraph', 0.3, 1], ['mimic', 0.1, 1]] : [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
+  // r1 pace: a touch lighter than it was, so the furnace (below) is the hardest zone
+  if (z === 2) return [['mite', 0.55, 3], ['walker', 0.5, 1], ['seraph', 0.3, 1], ['hum', 0.3, 1], ['mimic', 0.15, 1]];
+  // r1 pace: the furnace is the hardest zone: hum packs and more mimics on top of its lamps and walkers
+  return [['mite', 0.6, 4], ['walker', 0.55, 1], ['pyre', 0.4, 1], ['hum', 0.35, 2], ['mimic', 0.25, 1]];
 }
 
 /** a foe made for its zone: hp scaled here, its damage by `FOE.damage` in the hurt hook */

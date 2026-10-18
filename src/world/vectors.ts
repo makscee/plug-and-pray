@@ -15,6 +15,7 @@ import type { Chunk, Game, Vector } from '../core/types';
 import { CARDS, LOGS, SHARDS } from './cards';
 import { spot } from './gen';
 import { lootMod } from './spawn';
+import { foe } from '../fight/spawn';
 
 export interface Plan {
   /** chunk of shard 1, 2, 3 */
@@ -23,8 +24,8 @@ export interface Plan {
 }
 
 const plans = new Map<number, Plan>();
-/** the seed's fixed places: one shard in each zone past the cradle (about 2.5, 4.5 and 6.5 chunks out),
- *  the Engine about 7 out in the furnace, all on different bearings */
+/** the seed's fixed places: one shard in each zone past the cradle (about 2.5, 4.5 and 6.5 chunks out) on
+ *  different bearings, the Engine a chunk past shard 3 */
 export function plan(seed: number): Plan {
   let p = plans.get(seed);
   if (p) return p;
@@ -39,10 +40,16 @@ export function plan(seed: number): Plan {
     }
     return at(d, a);
   };
-  p = {
-    shards: [inZone(1, 2.5, a0), inZone(2, 4.5, a0 + 2.1 + r() * 0.6), inZone(3, 6.5, a0 + 4.2 + r() * 0.6)],
-    engine: inZone(3, 7.2, a0 + Math.PI + r() - 0.5),
-  };
+  const a2 = a0 + 2.1 + r() * 0.6;
+  const a3 = a0 + 4.2 + r() * 0.6;
+  const s3 = inZone(3, 6.5, a3);
+  // r1 pace: the Engine lies about a chunk past shard 3 on its bearing (it was across the map: a 4-10 min dead walk)
+  let engine = at(7.6, a3);
+  for (const d of [7.6, 8, 8.4, 9]) {
+    engine = at(d, a3);
+    if (engine[0] !== s3[0] || engine[1] !== s3[1]) break;
+  }
+  p = { shards: [inZone(1, 2.5, a0), inZone(2, 4.5, a2), s3], engine };
   plans.set(seed, p);
   return p;
 }
@@ -107,7 +114,15 @@ chunkHook((g: Game, c: Chunk) => {
   if (c.cx === p.engine[0] && c.cy === p.engine[1]) {
     const [x, y] = spot(g.seed, c.cx, c.cy, 2, c);
     spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'thaw-engine' } });
-    guard(g, x, y, 'saint');
+    // r1 pace: not a second saint but a gauntlet: a walker keeps the engine, a pyre lamp and a mite swarm on the way in
+    const post = (type: string, salt: number, dx = 0) => {
+      const [px, py] = salt ? spot(g.seed, c.cx, c.cy, salt, c) : [x + 1, y];
+      const e = foe(g, type, (open(g, px, py) ? px : x) + dx, open(g, px, py) ? py : y);
+      e.enemy!.data.post = [e.x, e.y];
+    };
+    post('walker', 0);
+    post('pyre', 5);
+    for (const dx of [-0.3, 0, 0.3]) post('mite', 6, dx);
   }
   for (const v of g.vectors) {
     const [cx, cy] = chunkOf(v.x, v.y);

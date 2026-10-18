@@ -4,9 +4,12 @@ import { newGame, spawnEnemy, tick } from '../src/core/game';
 import { exec } from '../src/core/verbs';
 import { CHUNK, Cell, chunk, setCell } from '../src/core/grid';
 import type { Game } from '../src/core/types';
-import { generate, rooms } from '../src/world/gen';
+import { generate, rooms, spot } from '../src/world/gen';
 import { engineAt, plan, shardAt } from '../src/world/vectors';
 import { CARDS } from '../src/world/cards';
+import { FURNACE_KIT, lootMod, opening, SECOND } from '../src/world/spawn';
+import { MODS } from '../src/core/mods';
+import { rng } from '../src/core/rng';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
 const run = (g: Game, s: number) => {
@@ -139,12 +142,62 @@ describe('the world', () => {
     for (const c of Object.values(CARDS)) for (const l of c.lines) expect(l.length, l).toBeLessThanOrEqual(44);
   });
 
-  it('the start area holds the reader and a card one chunk south, a printer one chunk west', () => {
-    const g = newGame(1);
-    chunk(g, 0, 1);
-    chunk(g, -1, 0);
-    expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === 'card-reader')).toBe(true);
-    expect(g.ents.some((e) => e.item?.kind === 'card')).toBe(true);
-    expect(g.ents.some((e) => e.kind === 'printer' && !e.data?.shop && Math.floor(e.x / CHUNK) === -1)).toBe(true);
+  it('the start area holds the reader and a card, a printer with a second weapon, turned per seed', () => {
+    const sides = new Set<string>();
+    for (let seed = 1; seed <= 12; seed++) {
+      const g = newGame(seed);
+      const o = opening(seed);
+      sides.add(o.eye.join());
+      const inChunk = (e: { x: number; y: number }, [cx, cy]: [number, number]) => Math.floor(e.x / CHUNK) === cx && Math.floor(e.y / CHUNK) === cy;
+      expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === 'card-reader' && inChunk(e, o.reader))).toBe(true);
+      expect(g.ents.some((e) => e.item?.kind === 'card' && inChunk(e, o.reader))).toBe(true);
+      expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === 'dawn-eye' && inChunk(e, o.eye))).toBe(true);
+      const pr = g.ents.find((e) => e.kind === 'printer' && !e.data?.shop && inChunk(e, o.printer))!;
+      expect(pr).toBeTruthy();
+      expect(g.ents.some((e) => e.item?.kind === 'mod' && SECOND.includes(e.item.mod) && Math.hypot(e.x - pr.x, e.y - pr.y) < 1)).toBe(true);
+      expect(g.ents.some((e) => e.kind === 'printer' && e.data?.shop && inChunk(e, o.shop))).toBe(true);
+    }
+    expect(sides.size).toBeGreaterThan(1);
+  });
+
+  it('the engine lies about a chunk past shard 3', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const p = plan(seed);
+      const [s3, e] = [p.shards[2], p.engine];
+      expect(s3.join()).not.toBe(e.join());
+      expect(Math.hypot(e[0] - s3[0], e[1] - s3[1]), `seed ${seed}`).toBeLessThanOrEqual(2.3);
+      expect(Math.hypot(...e)).toBeGreaterThan(Math.hypot(...s3) - 0.01);
+    }
+  });
+
+  it('loot leans to the zone\'s own tier; the furnace keeps its own kit', () => {
+    const r = rng(5);
+    const tierOf = (far: number) => {
+      const xs = Array.from({ length: 400 }, () => lootMod(r, far)).map((i) => (i.kind === 'mod' ? i.mod : ''));
+      return xs;
+    };
+    const nave = tierOf(2.5);
+    expect(nave.filter((id) => MODS[id].tier === 1).length / nave.length).toBeGreaterThan(0.6);
+    const oss = tierOf(4.5);
+    expect(oss.some((id) => FURNACE_KIT.includes(id))).toBe(false);
+    const furnace = tierOf(7);
+    expect(furnace.filter((id) => FURNACE_KIT.includes(id)).length / furnace.length).toBeGreaterThan(0.55);
+  });
+
+  it('past the cradle a set piece happens every 2-3 minutes', () => {
+    const g = newGame(3);
+    const [sx, sy] = spot(3, 2, 0, 9);
+    chunk(g, 2, 0);
+    at(g, sx, sy);
+    g.player.hp = g.player.maxHp = 1e9;
+    const sets: string[] = [];
+    for (let k = 0; k < 20 * 400; k++) {
+      tick(g, 0.05);
+      for (const e of g.events) if (e.type === 'set') sets.push(e.data as string);
+      g.ents = g.ents.filter((e) => !e.enemy); // nothing keeps it busy
+    }
+    // 400 s: the first at 150 s, then every 110-170 s
+    expect(sets.length).toBeGreaterThanOrEqual(2);
+    expect(sets[0]).not.toBe(sets[1]);
   });
 });
