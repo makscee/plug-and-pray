@@ -452,7 +452,7 @@ export function buttons(w: Win, list: { label: string; cmd: string }[], send: (c
   );
 }
 
-function drag(el: HTMLElement, handle: HTMLElement): void {
+export function drag(el: HTMLElement, handle: HTMLElement): void {
   handle.addEventListener('pointerdown', (e) => {
     // v3: only the main button drags (a right press opened the context menu and its release was lost)
     if (e.button !== 0 || (e.target as HTMLElement).classList.contains('dot') || el.classList.contains('min')) return;

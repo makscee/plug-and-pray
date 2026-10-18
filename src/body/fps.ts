@@ -15,6 +15,7 @@ import { aimed, shotCooldown, volley } from '../fight/aim';
 import { autoCooldown, copiesOf, hasteHooks } from '../mods/weapon';
 import { walkPace } from '../mods/gait';
 import { WIDEN } from '../sight/layers';
+import { fpsWalked } from '../audio/listen';
 import { mouseAims } from '../fight/eye';
 import { armed, warnUnarmed } from '../fight/unarmed';
 import { SPRITES } from '../sight/sprites';
@@ -267,7 +268,10 @@ tickHooks.push((g, dt) => {
   // the look is yours in the reins: a walk left over (a `go`, a map click, the pilot) moves you but never turns you
   // (v2-touchpad: the arrows' turn was undone each tick by a walk from before the reins)
   g.player.faceLock = Math.max(g.player.faceLock ?? 0, g.t + 0.1);
-  if (s.move) slide(g, s.move[0], s.move[1], dt);
+  if (s.move) {
+    slide(g, s.move[0], s.move[1], dt);
+    fpsWalked.set(g, g.t);
+  }
   if (g.t < s.dashUntil) slide(g, s.dashV[0], s.dashV[1], dt);
 });
 

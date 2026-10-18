@@ -9,7 +9,7 @@ import { verb } from '../core/verbs';
 import { detailOf, mapView, walksOnClick } from '../world/mind';
 import type { View } from './views';
 import { frameHooks } from './index';
-import { TOP } from './windows';
+import { drag, TOP } from './windows';
 import { floorAt, floorOf } from '../world/floors';
 import './flow.css';
 
@@ -62,6 +62,16 @@ export function toggleBigMap(g: Game, keeper = false): void {
   x.title = 'close (m or esc)';
   x.addEventListener('click', closeBigMap);
   head.append(name, how, x);
+  // v6 (Maks: the big map could not be dragged): its title bar drags it like a window; × still closes
+  head.addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).closest('button')) return e.stopImmediatePropagation();
+    if (root.dataset.moved) return;
+    const r = root.getBoundingClientRect();
+    root.style.transform = 'none';
+    root.style.left = r.left + 'px';
+    root.style.top = r.top + 'px';
+  });
+  drag(root, head);
   const body = document.createElement('div');
   body.className = 'body';
   root.append(head, body);
@@ -78,7 +88,7 @@ frameHooks.push((g, dt) => {
   // centred, unless that would cover the console's last three lines: then it rises (never above the goal line)
   const h = open.root.offsetHeight;
   const top = Math.max(TOP, Math.min((innerHeight - h) / 2, consoleCut() - h));
-  if (open.root.style.top !== top + 'px') {
+  if (!open.root.dataset.moved && open.root.style.top !== top + 'px') {
     open.root.style.top = top + 'px';
     open.root.style.transform = 'translateX(-50%)';
   }
