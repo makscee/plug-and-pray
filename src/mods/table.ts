@@ -108,6 +108,6 @@ mods([
   { id: 'martyr-scope', name: 'martyr scope', family: 'camera', power: 3, warm: 1.5, tier: 3, params: { res: 180, wide: 320, colors: 0, fps: 30, fov: 110, range: 13, filter: 'color' }, text: 'it saw its death coming and stepped aside. wider still, and sharper.' },
   // v2-view (Maks 10-18 ~10:50): true fps comes with the reins, not an eye. Taken (tab), the mouse looks, a click
   // shoots, wasd walks the way you look; tab again gives the cursor back. Their own keys: big (the mark: 1, 2), speed (cells/s)
-  { id: 'saints-reins', name: "saint's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 1, speed: 2.6 }, text: 'a bridle of gut and gold thread. take them (tab) and your eye turns with the mouse; a click shoots.' },
+  { id: 'saints-reins', name: "saint's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 1, speed: 2.6 }, text: 'a bridle of gut and gold thread. take them (tab): the mouse turns you, a click shoots.' },
   { id: 'martyrs-reins', name: "martyr's reins", family: 'mind', power: 2, warm: 1, tier: 3, params: { what: 'reins', big: 2, speed: 2.9 }, text: 'the reins it died holding. quicker hands: shift dashes, every hit is marked.' },
 ]);

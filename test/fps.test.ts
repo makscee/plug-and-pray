@@ -5,6 +5,7 @@ import { newGame, spawnEnemy, tick } from '../src/core/game';
 import { exec } from '../src/core/verbs';
 import { shots, type ShotData } from '../src/fight/shots';
 import type { Game } from '../src/core/types';
+import { MODS } from '../src/core/mods';
 import { bigOn, dash, fps, fpsEye, fpsFire, fpsMove, lunge, ray } from '../src/body/fps';
 import { floorNow, spread } from '../src/fight/bolts';
 
@@ -17,9 +18,10 @@ function scoped(...mods: string[]): Game {
   g.ents = [];
   g.player.slots = 8;
   g.player.core = 12;
-  for (const m of mods) {
+  // v2-view: the reins give the fps, not the scope: mk2 with the martyr scope's tests
+  for (const m of [...mods, mods.includes('martyr-scope') ? 'martyrs-reins' : 'saints-reins']) {
     g.player.inv.push({ kind: 'mod', mod: m });
-    exec(g, 'install ' + m.split('-').join(' '));
+    exec(g, 'install ' + MODS[m].name);
   }
   run(g, 3);
   exec(g, 'big');
@@ -27,12 +29,12 @@ function scoped(...mods: string[]): Game {
 }
 const at = (g: Game, x: number, y: number, dir: number) => Object.assign(g.player, { x, y, dir });
 
-describe('fps eye (v2)', () => {
-  it('goes big only with a scope on; the big view drops when it goes off', () => {
+describe('the reins (v2-view)', () => {
+  it('takes the reins only with reins on; they drop when the reins go off', () => {
     const g = scoped('pilgrim-scope', 'nail-psalm');
-    expect(fpsEye(g)?.mod).toBe('pilgrim-scope');
+    expect(fpsEye(g)?.mod).toBe('saints-reins');
     expect(bigOn(g)).toBe(true);
-    exec(g, 'off pilgrim scope');
+    exec(g, "off saint's reins");
     run(g, 0.1);
     expect(bigOn(g)).toBe(false);
     expect(fps(g).big).toBe(false);
