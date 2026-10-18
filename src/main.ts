@@ -13,6 +13,7 @@ import './audio/hook';
 import './end';
 import type { Game } from './core/types';
 import { deathInfo } from './fight/death';
+import { toward } from './fight/eye';
 import { summary } from './end/timeline';
 
 const params = new URLSearchParams(location.search);
@@ -67,6 +68,16 @@ function deathCard(): void {
   d.className = 'dead';
   const box = document.createElement('div');
   const info = deathInfo(g);
+  // the last frame faces what took you (r2: it showed a wall, "walker behind")
+  const killer = g.ents.find((e) => e.id === info.killerId && e.enemy);
+  if (killer) {
+    g.player.dir = toward(g, killer);
+    // eyes redraw at their own fps: step the clock past their next frame for this one draw, then put it back
+    const t = g.t;
+    g.t += 2;
+    screen.frame(0);
+    g.t = t;
+  }
   // the last frame your first working eye showed (a 2D canvas: cheap to copy)
   const eye = [...document.querySelectorAll<HTMLCanvasElement>('canvas.eye')].find((c) => c.width > 0);
   let frame = '';

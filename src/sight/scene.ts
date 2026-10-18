@@ -322,8 +322,13 @@ function addSprite(g: Game, e: Entity, mode: Mode, showHidden: boolean): void {
   const o = new THREE.Mesh(spriteGeo, mode === 'heat' ? heatSpriteMat(sh.mask[f], sh.def.heat) : mode === 'depth' ? depthSpriteMat(sh.mask[f]) : spriteMat(sh.color[f]));
   // the art fills SIZE px; the sprite stands on the floor (or hovers by `lift`), a little bob when floating
   const bob = sh.def.lift ? Math.sin(g.t * 3 + e.id) * 0.04 : 0;
-  o.scale.set(size, size, 1);
-  o.position.set(e.x, sh.def.lift + size / 2 + bob, e.y);
+  // poses the fight slice asks for (src/fight/index.ts): a sweep's wind-up is wider, a rearing mite stands up
+  const d = e.enemy!.data;
+  const winding = typeof d.windup === 'number' && g.t < d.windup;
+  const wide = winding && d.wide ? 1.5 : 1;
+  const rear = winding && type === 'mite' ? 1.3 : 1;
+  o.scale.set(size * wide, size * rear, 1);
+  o.position.set(e.x, sh.def.lift + (size * rear) / 2 + bob, e.y);
   o.rotation.y = -g.player.dir;
   o.renderOrder = mode === 'heat' ? 2 : 1;
   ents.add(o);

@@ -189,5 +189,7 @@ canvas.map { cursor: crosshair; }
 .win .dot::after { content: ''; position: absolute; inset: -6px; }
 /* the HUD keeps its left edge, so the fight line grows to the right without moving the hp bar */
 .hpbar { left: clamp(8px, calc(50% - 252px), calc(100% - 900px)); transform: none; }
+/* r2 fight: it never runs off the right edge (at 1280 px it did); a line too long ends in … */
+.hpbar { width: max-content; max-width: calc(100vw - clamp(8px, calc(50vw - 252px), calc(100vw - 900px)) - 8px); overflow: hidden; text-overflow: ellipsis; }
 /* a nearby name keeps a few letters; its buttons wrap under it instead */
 .win.panel .row .name { min-width: 88px; }

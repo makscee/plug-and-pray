@@ -250,6 +250,15 @@ export function play(seed: number, o: Opts): Run {
   let explore: { x: number; y: number; until: number } | null = null;
   let fightSig = '';
   let fightSince = 0;
+  // a person needs a moment to see a telegraph before they move (r2: the sim dodged every one at once)
+  const REACT = 0.35;
+  const windSeen = new Map<number, { w: unknown; t: number }>();
+  const reacted = (e: Entity) => {
+    const w = e.enemy!.data.windup;
+    const s = windSeen.get(e.id);
+    if (!s || s.w !== w) windSeen.set(e.id, { w, t: g.t });
+    return g.t - (windSeen.get(e.id)!.t) >= REACT;
+  };
   function decide(): string | number {
     why = '';
     const px = Math.floor(P.x);
@@ -271,7 +280,7 @@ export function play(seed: number, o: Opts): Run {
     if ((P as any)._homing && g.t < (P as any)._homing) return 0.3;
     // a walker winding up next to you: step away
     for (const e of close) {
-      if (e.enemy!.data.windup && e.enemy!.type !== 'mite' && dist(e, P) < 1.4) {
+      if (e.enemy!.data.windup && e.enemy!.type !== 'mite' && dist(e, P) < 1.4 && reacted(e)) {
         const away = stepAway(e);
         if (away) return away;
       }
@@ -279,7 +288,7 @@ export function play(seed: number, o: Opts): Run {
     // the elites' telegraphs (src/fight/index.ts): two cells from the abbot's sweep, aside from the warden's dash
     for (const e of foes) {
       const d = e.enemy!.data;
-      if (!d.windup || g.t >= (d.windup as number)) continue;
+      if (!d.windup || g.t >= (d.windup as number) || !reacted(e)) continue;
       if (/both arms/.test(String(d.move)) && dist(e, P) < 2.6 && !P.path.length) {
         const away = stepAway(e);
         if (away) return away.replace(/ 1$/, ' 2');

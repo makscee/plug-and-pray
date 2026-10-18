@@ -8,7 +8,7 @@ import { perceives } from '../mods/sense';
 import { clock } from '../end/timeline';
 import { ELITE } from '.';
 
-export interface Blow { type: string; name: string; n: number; t: number; seen: boolean }
+export interface Blow { type: string; name: string; n: number; t: number; seen: boolean; id?: number }
 const blows = new WeakMap<Game, Blow[]>();
 export const blowsOf = (g: Game): Blow[] => blows.get(g) ?? [];
 
@@ -21,8 +21,8 @@ hurtHooks.push((g, n, from) => {
   const type = from?.enemy?.type ?? (furnace ? 'heat' : 'something');
   const name = from?.enemy ? ENEMIES[type]?.name ?? 'something' : furnace ? "the furnace's heat" : 'something';
   const src = from && g.ents.find((e) => e.id === from.id);
-  list.push({ type, name, n, t: g.t, seen: !!src && perceives(g, src) });
-  if (list.length > 12) list.shift();
+  list.push({ type, name, n, t: g.t, seen: !!src && perceives(g, src), id: from?.id });
+  if (list.length > 40) list.shift();
   return n;
 });
 
@@ -41,21 +41,41 @@ export function lesson(g: Game): string {
   if (killer.type === 'hum') return 'sonar or a heat eye shows the hum; colour eyes never do.';
   if (killer.type === 'mimic') return 'a lodestone or sonar shows a mimic before you reach for it.';
   if (dark && !killer.seen) return 'light or sonar: you could not see what hit you.';
-  if (kinds.size > 1 || last.filter((b) => b.type === 'mite').length >= 2) return 'something that hits many (a bell, a flail), or a corridor to take them one at a time.';
+  // mites stack on one cell, so a corridor does not split them; walking off does (you outpace them)
+  if (last.filter((b) => b.type === 'mite').length >= 2) return 'something that hits many (a censer flail, a bell), or walk back the way you came: mites are slower than you.';
+  if (kinds.size > 1) return 'something that hits many (a bell, a flail), or back off so they come at you one by one.';
   if (killer.type === 'seraph' || killer.type === 'pyre') return 'step out of its line: a lamp only fires down its row or column.';
   if (killer.type === 'walker') return 'step back when it lifts its arm.';
   if (!killer.seen) return 'an eye on the threat: turn to what hits you, or carry a scanner.';
   return 'mend to full before the next fight, or fight from range.';
 }
 
-/** the card's lines: who took you, the last three blows */
-export function deathInfo(g: Game): { killer: string; blows: string[]; lesson: string } {
-  const last = blowsOf(g).slice(-3);
+/** blows of one kind within this many seconds read as one volley */
+const AT_ONCE = 0.12;
+export interface Volley { type: string; name: string; n: number; t: number; seen: boolean; count: number }
+/** the blows, same-kind ones landing together grouped (r2: a swarm read as "−0.5 ×3" and hid −3 volleys) */
+export function volleys(list: Blow[]): Volley[] {
+  const out: Volley[] = [];
+  for (const b of list) {
+    const v = out[out.length - 1];
+    if (v && v.type === b.type && b.t - v.t <= AT_ONCE) Object.assign(v, { n: v.n + b.n, count: v.count + 1, seen: v.seen || b.seen });
+    else out.push({ type: b.type, name: b.name, n: b.n, t: b.t, seen: b.seen, count: 1 });
+  }
+  return out;
+}
+
+/** the card's lines: who took you, the last three blows (a volley counts as one) */
+export function deathInfo(g: Game): { killer: string; blows: string[]; lesson: string; killerId?: number } {
+  const all = blowsOf(g);
+  const last = volleys(all).slice(-3);
   const killer = last[last.length - 1];
-  const fmt = (b: Blow) => `${b.name.replace(/^(a|an|the) /, '')} −${b.n.toFixed(1)} hp at ${clock(b.t)}${b.seen ? '' : ' (unseen)'}`;
+  const short = (b: Volley) => b.name.replace(/^(a|an|the) /, '');
+  const fmt = (b: Volley) =>
+    `${b.count > 1 ? `${b.count} ${short(b)}s at once` : short(b)} −${b.n.toFixed(1)} hp at ${clock(b.t)}${b.seen ? '' : ' (unseen)'}`;
   return {
     killer: killer ? `${killer.name} took you` : 'something took you',
     blows: last.map(fmt),
     lesson: lesson(g),
+    killerId: all[all.length - 1]?.id,
   };
 }

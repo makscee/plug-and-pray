@@ -73,6 +73,8 @@ export interface Player {
   hurtAt: number;
   /** max hp bought at altars, on top of START_HP and body modules */
   flesh?: number;
+  /** game time until which walking does not turn you (the eye holds on a foe: src/fight/eye.ts) */
+  faceLock?: number;
 }
 
 /** a vector from a memory card: a thing placed at a cell */
