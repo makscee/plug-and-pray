@@ -95,8 +95,8 @@ const STEPS = [
   [0, '(document.querySelector(".thaw-card button").click(), true)'],
   [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && window.thaw.g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
   // descriptions, reliquary (shop), recycling (playtest 3)
-  ['conjure pinhole eye'], ['info pinhole', 'JSON.stringify(g.log).includes("eye · 24 px")'],
-  ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("eye · 24 px")'], ['install thread bell'],
+  ['conjure pinhole eye'], ['info pinhole', 'JSON.stringify(g.log).includes("eye · 32 px")'],
+  ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("eye · 32 px")'], ['install thread bell'],
   [0, '(g.ents.push({ id: 9998, kind: "printer", x: g.player.x + 0.6, y: g.player.y, data: { far: 0, shop: true } }), ["bone","glass","copper"].forEach(r => g.player.inv.push({ kind: "res", res: r, n: 20 })), g.player.inv.push({ kind: "res", res: "ichor", n: 5 }), true)'],
   [0.2, 'document.querySelector(".panel-near [data-cmd=\'buy 1\']") !== null && JSON.stringify(g.log).includes("reliquary")'],
   ['buy 1', 'g.ents.find(e => e.id === 9998).data.offers[0] === null && g.player.inv.filter(i => i.kind === "mod").length === 4'],

@@ -29,7 +29,7 @@ mods([
   { id: 'ledger', name: 'tithe ledger', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'ledger', tithe: 2 }, text: 'a clerk of the dead counts every kill: twice as many pay out.' },
   { id: 'clock-of-hours', name: 'clock of hours', family: 'mind', power: 2, warm: 1.5, tier: 1, params: { what: 'clock', range: 8, ahead: 1 }, text: 'it ticks a second ahead of the world.' },
   { id: 'dawn-eye', name: 'dawn eye', family: 'camera', power: 2, warm: 0.5, tier: 0, params: { res: 96, colors: 0, fps: 8, fov: 75, range: 9, filter: 'color' }, text: 'a clear colour eye. honest, but it needs light to see far.' },
-  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 0, warm: 1, tier: 0, params: { res: 24, colors: 4, fps: 3, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
+  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 0, warm: 1, tier: 0, params: { res: 32, colors: 4, fps: 3, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
   { id: 'vidicon-tube', name: 'vidicon tube', family: 'camera', power: 1, warm: 1.5, tier: 0, params: { res: 64, colors: 4, fps: 4, fov: 70, range: 8, lag: 0.4, filter: 'color' }, text: 'a glass tube that drags its ghosts behind it.' },
   { id: 'saints-lens', name: "saint's lens", family: 'camera', power: 4, warm: 3, tier: 2, params: { size: 2, res: 200, colors: 0, fps: 15, fov: 80, range: 14, filter: 'color' }, text: 'ground from a saint, they say. it sees as he did.' },
   { id: 'stepper-relay', name: 'stepper relay', family: 'gait', power: 1, warm: 0.5, tier: 0, params: { go: true }, text: 'clicks your legs forward one cell at a time. go n 3.' },
@@ -109,5 +109,5 @@ mods([
   // v2-view (Maks 10-18 ~10:50): true fps comes with the reins, not an eye. Taken (tab), the mouse looks, a click
   // shoots, wasd walks the way you look; tab again gives the cursor back. Their own keys: big (the mark: 1, 2), speed (cells/s)
   { id: 'saints-reins', name: "saint's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 1, speed: 2.6 }, text: 'gut and gold thread, and a socket of their own. tab: the mouse turns you, a click shoots.' },
-  { id: 'martyrs-reins', name: "martyr's reins", family: 'mind', power: 2, warm: 1, tier: 3, params: { what: 'reins', big: 2, speed: 2.9 }, text: 'the reins it died holding. quicker hands: shift dashes, every hit is marked.' },
+  { id: 'martyrs-reins', name: "martyr's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 2, speed: 2.9 }, text: 'the reins it died holding. quicker hands: shift dashes, every hit is marked.' },
 ]);

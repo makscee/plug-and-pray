@@ -58,6 +58,8 @@ interface Bd {
   glintNext: number;
   /** which windows the screen lets show (the map's, all): a change lays them out again */
   shown: string;
+  /** the overlay has something on it */
+  drawn: boolean;
 }
 let bd: Bd | null = null;
 
@@ -81,7 +83,7 @@ function make(g: Game): Bd {
   tag.className = 'bd-tag';
   root.append(mapBox, over, tag);
   document.body.prepend(root);
-  return { g, root, mapBox, map: null, base: null, baseOf: -1, layers: new Map(), over, oc: over.getContext('2d')!, tag, glints: [], glintNext: 0, shown: '' };
+  return { g, root, mapBox, map: null, base: null, baseOf: -1, layers: new Map(), over, oc: over.getContext('2d')!, tag, glints: [], glintNext: 0, shown: '', drawn: true };
 }
 
 /** a picture canvas w×h (made again when the size changes), placed under the overlay */
@@ -105,6 +107,7 @@ frameHooks.push((g) => {
     bd = make(g);
   }
   const b = bd;
+  const t0 = performance.now();
   const pl = plan(g);
   mode = pl.base ? 'view' : pl.warming ? 'static' : 'map';
   if (document.body.dataset.view !== mode) document.body.dataset.view = mode;
@@ -150,7 +153,12 @@ frameHooks.push((g) => {
   if (mode !== 'view' || !pl.layers.some((l) => l.layer === 'glint')) b.glints = [];
   overlay(g, b, pl.base);
   tag(g, b, pl.base);
+  cost = cost * 0.9 + (performance.now() - t0) * 0.1;
 });
+
+/** the screen's cost a frame, ms (smoothed): the test hook reads it */
+let cost = 0;
+(globalThis as unknown as { backdropCost: () => number }).backdropCost = () => cost;
 
 // ---- map mode
 
@@ -336,16 +344,20 @@ function overlay(g: Game, b: Bd, base: Inst | null): void {
   const W = innerWidth, H = innerHeight;
   if (b.over.width !== W || b.over.height !== H) [b.over.width, b.over.height] = [W, H];
   const c = b.oc;
-  c.clearRect(0, 0, W, H);
   const p = g.player;
   const rs = radars(g);
+  // nothing to draw now and nothing drawn last frame: leave the canvas be (a full-screen clear is not free)
+  const busy = mode === 'map' || rs.length || b.glints.length || engagedNear(g) || g.player.installed.some((i) => g.t - ((i.data.flashAt as number) ?? -99) < 1.6);
+  if (!busy && !b.drawn) return;
+  b.drawn = !!busy;
+  c.clearRect(0, 0, W, H);
   if (mode === 'map') {
     const me = onMap(b, p.x, p.y);
     if (!me) {
       c.fillStyle = '#7a6a5a';
       c.font = '22px VT323, monospace';
       c.textAlign = 'center';
-      c.fillText('no eye and no map: you are blind. install one.', W / 2, H / 2);
+      c.fillText(g.player.installed.length ? 'no eye and no map: you are blind. install one.' : 'you wake blind. install your kit: the map will be your sight.', W / 2, H / 2);
       return;
     }
     const px = mapSize(b.map!.inst)[2];
@@ -432,7 +444,7 @@ function overlay(g: Game, b: Bd, base: Inst | null): void {
   if (out) {
     c.font = '24px VT323, monospace';
     const tw = c.measureText(out.text).width;
-    const [x, y] = out.side === 'behind' ? [W / 2 - tw / 2, H - 150] : out.side === 'right' ? [W - tw - 300, H / 2] : [300, H / 2];
+    const [x, y] = out.side === 'behind' ? [W / 2 - tw / 2, Math.round(H * 0.58)] : out.side === 'right' ? [W - tw - 300, H / 2] : [300, H / 2];
     c.fillStyle = '#000b';
     c.fillRect(x - 6, y - 20, tw + 12, 26);
     c.fillStyle = '#ff5a3c';
@@ -448,6 +460,9 @@ function overlay(g: Game, b: Bd, base: Inst | null): void {
     c.strokeRect(2, 2, W - 4, H - 4);
   }
 }
+
+/** anything after you near enough for the edge arrow to name */
+const engagedNear = (g: Game): boolean => g.ents.some((e) => e.enemy?.data.noticed && Math.abs(e.x - g.player.x) < 8 && Math.abs(e.y - g.player.y) < 8);
 
 const GLINT: Record<string, string> = { bone: '#d8c8a8', glass: '#7fe8e0', copper: '#ff9a48', ichor: '#ff3858' };
 
@@ -493,7 +508,7 @@ function tag(g: Game, b: Bd, base: Inst | null): void {
     const on = bigOn(g);
     t = on ? '◉ reins · tab: cursor' : '○ cursor · tab or click the view: reins';
     cls = on ? 'reins' : 'cursor';
-  } else if (mode === 'map') t = 'no eye: the map is your sight · click to walk';
+  } else if (mode === 'map') t = b.map ? 'no eye: the map is your sight · click to walk' : 'no eye, no map';
   else if (mode === 'static') t = 'an eye warms up…';
   else {
     const n = b.layers.size + (b.glints.length ? 1 : 0);

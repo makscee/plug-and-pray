@@ -36,19 +36,21 @@ export interface Cache {
   done: boolean;
 }
 
-/** the floor's offer: its headline (the kit's first module) always, then the rest of the kit in a seed order, five at most.
+/** the floor's offer: its headline (the kit's first module; on floor 3 its first two) always, then the rest of the kit in a seed order, five at most.
  *  Each rolls its rarity as loot does on that floor */
 export function offerOf(seed: number, f: number): Item[] {
   const kit = (KIT[f] ?? []).filter((m) => MODS[m]);
   if (!kit.length) return [];
   const r = rng(hash(seed, 12, f));
-  const rest = kit.slice(1);
+  // v2-view: on floor 3 the reins and the scope after them both stay on offer (the fps was one module there before)
+  const head = f === 2 ? 2 : 1;
+  const rest = kit.slice(head);
   for (let k = rest.length - 1; k > 0; k--) {
     const j = r.int(0, k);
     [rest[k], rest[j]] = [rest[j], rest[k]];
   }
   const [fine, rare] = RARITY_ODDS[Math.min(f, RARITY_ODDS.length - 1)];
-  return [kit[0], ...rest].slice(0, OFFER).map((mod) => {
+  return [...kit.slice(0, head), ...rest].slice(0, OFFER).map((mod) => {
     const it: Item = { kind: 'mod', mod };
     const k = r();
     if (rarityKey(it) && k < fine + rare) it.rarity = k < rare ? 'rare' : 'fine';

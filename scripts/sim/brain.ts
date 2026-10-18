@@ -107,7 +107,7 @@ function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReade
   const fam = MODS[it.mod].family;
   if (fam === 'weapon') return w * (param(it, 'aim', 'auto') === 'aimed' && lampNear(g) ? 3 : 1.5);
   if (fam === 'body') return w * 1.2;
-  if (fam === 'mind') return 0;
+  if (fam === 'mind') return param<string>(it, 'what', '') === 'reins' ? w : 0; // v2-view: the reins stay on to fight
   if (fam === 'scanner') return zone >= 2 && w >= 45 ? w : 0;
   if (fam === 'camera' && zone >= 2 && humNear(g)) {
     const f = param<string>(it, 'filter', 'color');
