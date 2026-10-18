@@ -6,6 +6,7 @@
 import { def, label, LEVEL_STEP, levelKey, param, RARITY_MULT, rarityKey, rarityOf, size, BETTER, type Modish } from '../core/mods';
 import { perkText } from '../mods/uniques';
 import { does as describeDoes } from '../mods/describe';
+import { eyeTone } from '../sight/layers';
 
 export interface CardText {
   /** the mechanic: what it does for you in play */
@@ -159,7 +160,10 @@ export function keyNums(m: Modish): string[] {
   switch (d.family) {
     case 'camera': {
       const f = param<string>(m, 'filter', 'color');
-      return [`sees ${n(p('range'))} cells`, FILTER[f] ?? f];
+      // v5: a level's real picture: a grey eye's II is amber, its III colour; any other eye sharpens
+      const tone = eyeTone(m), lv = levelOf(m);
+      const look = tone === 'amber' || tone === 'colour' ? tone : (lv >= 2 ? (lv === 2 ? 'sharp ' : 'fine ') : '') + (FILTER[f] ?? f);
+      return [`sees ${n(p('range'))} cells`, look];
     }
     case 'scanner':
       if (has('finds')) return [p('range') > 200 ? 'whole floor' : `${n(p('range'))} cells`, `every ${n(p('every'))} s`];

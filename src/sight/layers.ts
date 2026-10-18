@@ -7,7 +7,7 @@
 //                       outlines, a second colour eye's vein glints, black & white's scripture
 //   only layer eyes     the best of them is the base, in its own full look
 
-import { def, param } from '../core/mods';
+import { def, moduleLevel, param, ROMAN } from '../core/mods';
 import type { Modish } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 
@@ -46,9 +46,26 @@ export const turnLayers = (g: Game): void => void turned.set(g, (turned.get(g) ?
  *  grey eye it stays its own black & white, a layer */
 export function baseLook(inst: Modish): { filter: string; colors: number } {
   const f = param<string>(inst, 'filter', 'color');
+  const tone = eyeTone(inst);
+  // v5: a grey or b&w eye's level II is an amber duotone, its level III true colour
+  if (tone === 'amber') return { filter: 'amber', colors: f === '1bit' ? 12 : param<number>(inst, 'colors', 0) };
+  if (tone === 'colour') return { filter: 'color', colors: 0 };
   if (f === '1bit') return { filter: 'gray', colors: 12 };
   return { filter: f, colors: param<number>(inst, 'colors', 0) };
 }
+
+/** v5 (Maks 10-18: "upgrading eye module should ... add colors"): what a level does to an eye's tone, as a word.
+ *  Grey and b&w eyes: II amber, III colour. Colour, heat and sonar eyes gain colours (EYE_LEVEL); an outline eye sharpens */
+export function eyeTone(inst: Modish): string {
+  const lv = moduleLevel(inst);
+  if (lv < 2) return '';
+  const f = param<string>(inst, 'filter', 'color');
+  if (f === 'gray' || f === '1bit') return lv === 2 ? 'amber' : 'colour';
+  if (f === 'edge') return 'finer lines';
+  return param<number>(inst, 'colors', 0) ? 'more colours' : 'farther';
+}
+/** the banner when the eye you look through levels up: "pinhole eye II: sharper, amber" */
+export const eyeLine = (inst: Modish): string => `${def(inst).name} ${ROMAN[moduleLevel(inst)]}: sharper${eyeTone(inst) ? ', ' + eyeTone(inst) : ''}`;
 
 /** the layer an eye adds when it is not the base */
 export function layerOf(inst: Modish): Layer {

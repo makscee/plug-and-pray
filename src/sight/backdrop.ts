@@ -10,7 +10,7 @@
 // One shot per eye per its own frame (the base every frame while the reins are taken), so it stays cheap.
 
 import { cell, clear, veinOf } from '../core/grid';
-import { def, MODS, param } from '../core/mods';
+import { def, moduleLevel, MODS, param } from '../core/mods';
 import { cells, say } from '../core/game';
 import { verb } from '../core/verbs';
 import type { Game, Inst } from '../core/types';
@@ -31,7 +31,7 @@ import { secrets } from '../world/secrets';
 import { bossRoom } from '../world/floors';
 import { bossesNear } from '../fight/bosses';
 import { addBlur, addLag, addNoise, blank, creases, FILTERS, foeOutside, heatRamp, MODES, staticFrame } from './index';
-import { baseLook, fovAcross, plan, rowsOf, shownLayers, turnLayers, type Layer } from './layers';
+import { baseLook, eyeLine, fovAcross, plan, rowsOf, shownLayers, turnLayers, type Layer } from './layers';
 import { bigOn, canFps } from '../body/fps';
 import { aimed } from '../fight/aim';
 import './backdrop.css';
@@ -252,6 +252,9 @@ function onMap(b: Bd, x: number, y: number): [number, number] | null {
 
 // ---- the base view
 
+/** v5: seconds a levelled eye takes to pull focus */
+const FOCUS = 0.9;
+
 function drawBase(g: Game, b: Bd, inst: Inst): void {
   const h = rowsOf(inst);
   const w = across(h);
@@ -260,8 +263,16 @@ function drawBase(g: Game, b: Bd, inst: Inst): void {
   b.base = pic(b, fresh ? null : b.base, w, h, 'eye bd-base');
   b.baseOf = inst.uid;
   const p = b.base;
-  // the reins taken: every frame, so the mouse turns a live view; else at the eye's own fps
-  const step = bigOn(g) ? 0 : 1 / Math.max(1, param<number>(inst, 'fps', 1));
+  // v5: the eye you look through levels up: the edge flashes, the view pulls focus, one line says what changed
+  const lv = moduleLevel(inst);
+  if (!fresh && ((inst.data.seenLevel as number) ?? lv) < lv) {
+    inst.data.flashAt = inst.data.focusAt = g.t;
+    say(g, `◆ ${eyeLine(inst)}`);
+  }
+  inst.data.seenLevel = lv;
+  const focus = g.t - ((inst.data.focusAt as number) ?? -99);
+  // the reins taken (or a focus pull): every frame, so the mouse turns a live view; else at the eye's own fps
+  const step = bigOn(g) || focus < FOCUS ? 0 : 1 / Math.max(1, param<number>(inst, 'fps', 1));
   if (!fresh && g.t < p.next) return;
   p.next = g.t + step;
   const range = eyeRange(g, inst);
@@ -271,7 +282,9 @@ function drawBase(g: Game, b: Bd, inst: Inst): void {
   if (firstSight(g, inst, range)) inst.data.flashAt = g.t;
   // a failed read (a lost GL context) comes back all zero: keep the last frame for this one read
   if (!MODES[name] && blank(px) && !fresh) return;
-  if (!MODES[name]) addBlur(px, h, Math.round(param<number>(inst, 'blur', 0)), w);
+  // the focus pull: a blur that clears over FOCUS seconds
+  const pull = focus >= 0 && focus < FOCUS ? Math.round(3 * (1 - focus / FOCUS)) : 0;
+  if (!MODES[name] || pull) addBlur(px, h, Math.round(param<number>(inst, 'blur', 0)) + pull, w);
   // v2r2 fight: a noisy eye steadies with a foe after you near (the carrion eye hid the bell at 5 cells)
   const noise = engagedWithin(g, 6) ? 0 : param<number>(inst, 'noise', 0);
   const look = baseLook(inst);
