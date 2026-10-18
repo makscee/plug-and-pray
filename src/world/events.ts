@@ -87,7 +87,7 @@ function where(g: Game, x: number, y: number): (string | { text: string; cmd: st
 }
 
 /** what a set piece's finds are called while they lie there */
-const NAMES: Record<string, string> = { reliquary: 'an open reliquary', collapse: 'rubble', machine: 'a dying machine', flare: 'a vent' };
+const NAMES: Record<string, string> = { reliquary: 'open reliquary', collapse: 'rubble', machine: 'dead machine', flare: 'vent' };
 export interface Piece { x: number; y: number; name: string; r: number; side: string; cmd: string; item: Item }
 /** set pieces whose finds still lie out there, within `range` cells, nearest first (playtest r2 pace:
  *  the message scrolled away and the finds were lost) */

@@ -71,7 +71,7 @@ describe('r2 pace', () => {
     g.player.path = [];
     run(g, 2);
     stage(g, 'reliquary', sx, sy + 1, rng(1));
-    expect(pieces(g).some((o) => o.name === 'an open reliquary')).toBe(true);
+    expect(pieces(g).some((o) => o.name === 'open reliquary')).toBe(true);
   });
 
   it('an elite that turns to you is named with how hard it hits; unstuck is instant with nothing on you', () => {
@@ -96,5 +96,26 @@ describe('r2 pace', () => {
       expect(p.shards.map(([cx, cy]) => zoneOf(cx, cy))).toEqual([1, 2, 3]);
       expect(Math.hypot(...p.engine)).toBeLessThan(8.5);
     }
+  });
+
+  it('a setup installs what it wants from the inventory, taking out what it does not want', () => {
+    const g = newGame(1);
+    const P = g.player;
+    P.inv.push({ kind: 'mod', mod: 'map-spool' }, { kind: 'mod', mod: 'pinhole-eye' });
+    exec(g, 'install map spool');
+    exec(g, 'install pinhole eye');
+    run(g, 3);
+    P.slots = P.installed.length;
+    const map = P.installed.find((i) => i.mod === 'map-spool')!;
+    expect(map).toBeTruthy();
+    exec(g, 'save setup travel');
+    exec(g, 'remove map spool');
+    P.inv.push({ kind: 'mod', mod: 'rivet-sling' });
+    exec(g, 'install rivet sling');
+    expect(P.installed.some((i) => i.mod === 'map-spool')).toBe(false);
+    exec(g, 'setup travel');
+    expect(P.installed.some((i) => i.mod === 'map-spool')).toBe(true);
+    expect(P.installed.some((i) => i.mod === 'rivet-sling')).toBe(false);
+    expect(P.inv.some((i) => i.kind === 'mod' && i.mod === 'rivet-sling')).toBe(true);
   });
 });

@@ -211,7 +211,7 @@ export class Panels {
         rows.push({ name: '', buttons: [affords(g, price) ? { label: cmd, cmd, note: fmt(price) } : { label: cmd, note: `${fmt(price)}: short` }] });
     }
     // a set piece's finds, until taken (src/world/events.ts)
-    for (const o of nearPieces(g)) rows.push({ icon: o.item, name: `${o.name}, ${Math.round(o.r)} ${o.side}`, buttons: [{ label: o.cmd.startsWith('goto') ? 'go' : o.cmd, cmd: o.cmd }] });
+    for (const o of nearPieces(g)) rows.push({ icon: o.item, name: `${o.name} ${Math.round(o.r)} ${o.side}`, tip: `${o.name}, ${Math.round(o.r)} cells ${o.side}: a set piece's finds`, buttons: [{ label: o.cmd.startsWith('goto') ? 'go' : o.cmd, cmd: o.cmd }] });
     const [cx, cy] = [Math.floor(p.x), Math.floor(p.y)];
     for (const [d, dx, dy] of [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]] as const) {
       const c = cell(g, cx + dx, cy + dy);
