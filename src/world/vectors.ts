@@ -24,11 +24,11 @@ export interface Plan {
 }
 
 const plans = new Map<number, Plan>();
-/** how far out (chunks) shards 1, 2, 3 lie; the Engine 1.7 past shard 3 */
-export const SHARD_AT = [2.2, 4, 5.8];
-/** the seed's fixed places: one shard in each zone past the cradle (about 2.2, 4 and 5.8 chunks out: r2 pace, a
- *  human run in 25-30 min) on
- *  different bearings, the Engine one or two chunks past shard 3 */
+/** how far out (chunks) shards 1, 2, 3 lie; the Engine 1.7 past shard 3. r2 pace: 2 and 3 came in from 4.5
+ *  and 6.5 (the hunt after shard 1 was the long human stretch); shard 1 stays, the warden is early enough */
+export const SHARD_AT = [2.5, 3.8, 5.6];
+/** the seed's fixed places: one shard in each zone past the cradle (`SHARD_AT`) on different bearings, the
+ *  Engine one or two chunks past shard 3 */
 export function plan(seed: number): Plan {
   let p = plans.get(seed);
   if (p) return p;
