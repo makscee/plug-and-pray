@@ -169,6 +169,7 @@ export function play(seed: number, o: Opts): Run {
 
   /** one decision: a command (then a short wait) or a wait */
   let why = '';
+  let toward: { x: number; y: number; tx: number; ty: number; until: number } | null = null;
   const stall = { at: 0, x: 8.5, y: 8.5, n: 0 };
   let lastGoalRef: object | null = null;
   const hunts = new Map<object, { since: number; hp: number }>();
@@ -250,7 +251,7 @@ export function play(seed: number, o: Opts): Run {
     if (P.path.length) { why = 'path ' + P.path.length + ' ' + JSON.stringify(P.path[0]) + ' at ' + P.x.toFixed(2) + ',' + P.y.toFixed(2) + ' pace ' + P.pace; return 0.3; }
     // rest: after a fold home, to full; otherwise to 70% when nothing is near
     const canMend = !(zones.needsLamp(zoneHere()) && !active(g, 'lamp').length) || active(g, 'body').some((i) => param<number>(i, 'regen', 0) > 0);
-    if (!canMend && hpFrac < 0.6 && !foes.some((e) => dist(e, P) < 6) && !(P as any)._homing) {
+    if (!canMend && hpFrac < 0.6 && !foes.some((e) => dist(e, P) < 6) && !(g.t < ((P as any)._homing ?? -1))) {
       (P as any)._homing = g.t + 3.2;
       why = 'cold: home to mend';
       return 'unstuck';
@@ -315,12 +316,13 @@ export function play(seed: number, o: Opts): Run {
         const c = walkTo({ x: diag[0] + 0.5, y: diag[1] + 0.5, zone: zoneHere() });
         avoid = null;
         if (c !== 'listen') { why = 'hunt lamp ' + lamp.id; return c; }
-        banned.add(lamp); // no way round its lines from here: leave it
+        // no way round its lines: rush it straight while it cools
+        if (lamp.enemy!.readyAt - g.t > 1.2) {
+          const c2 = walkTo({ x: lamp.x, y: lamp.y, zone: zoneHere() });
+          if (c2 !== 'listen') { why = 'rush lamp'; return c2; }
+        }
+        banned.add(lamp);
       } else if (diag) return 0.3;
-    }
-    if (false) {
-      {
-      }
     }
     // where to go
     const gl = goal();
@@ -369,7 +371,6 @@ export function play(seed: number, o: Opts): Run {
     if (!m) return null;
     for (const offer of machineOffers(m)) {
       if (!offer.ok) continue;
-      if ((m.data!.tried as number) === g.t) return null;
       run.bought.push(`${Math.round(g.t)}s ${offer.cmd}`);
       return offer.cmd;
     }
@@ -480,6 +481,7 @@ export function play(seed: number, o: Opts): Run {
       }
       explore = { x: target[0], y: target[1], until: g.t + 25 };
     } else if (d.has(key(Math.floor(t.x), Math.floor(t.y)))) target = [Math.floor(t.x), Math.floor(t.y)];
+    else if (toward && toward.tx === t.x && toward.ty === t.y && g.t < toward.until && d.has(key(toward.x, toward.y)) && !(toward.x === px && toward.y === py)) target = [toward.x, toward.y];
     else {
       let best = Infinity;
       for (const [x, y] of q) {
@@ -489,6 +491,8 @@ export function play(seed: number, o: Opts): Run {
           target = [x, y];
         }
       }
+      // keep heading for that frontier cell until reached (the best one flips as cells get seen)
+      if (target) toward = { x: target[0], y: target[1], tx: t.x, ty: t.y, until: g.t + 20 };
     }
     if (!target || (target[0] === px && target[1] === py)) {
       if (t.ref) banned.add(t.ref);
@@ -548,6 +552,10 @@ export function play(seed: number, o: Opts): Run {
   run.t = Math.round(g.t);
   run.kills = g.stats.kills;
   run.resEnd = resAll(g);
+  (run as any).resBy = Object.fromEntries((['bone', 'glass', 'copper', 'ichor'] as Res[]).map((r) => [r, resOf(g, r)]));
+  (run as any).core = P.core;
+  (run as any).flesh = P.flesh ?? 0;
+  (run as any).slots = P.slots;
   if (g.ended === 'dead') {
     const line = g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).reverse().find((l) => l.includes('took you'));
     run.killer = line?.replace(/^you stop\. /, '').replace(/ took you\.$/, '');

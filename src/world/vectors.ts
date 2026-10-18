@@ -24,7 +24,7 @@ export interface Plan {
 
 const plans = new Map<number, Plan>();
 /** the seed's fixed places: one shard in each zone past the cradle (about 2.5, 4.5 and 6.5 chunks out),
- *  the Engine at 8 in the furnace, all on different bearings */
+ *  the Engine about 7 out in the furnace, all on different bearings */
 export function plan(seed: number): Plan {
   let p = plans.get(seed);
   if (p) return p;
@@ -41,7 +41,7 @@ export function plan(seed: number): Plan {
   };
   p = {
     shards: [inZone(1, 2.5, a0), inZone(2, 4.5, a0 + 2.1 + r() * 0.6), inZone(3, 6.5, a0 + 4.2 + r() * 0.6)],
-    engine: at(8, a0 + Math.PI + r() - 0.5),
+    engine: inZone(3, 7.2, a0 + Math.PI + r() - 0.5),
   };
   plans.set(seed, p);
   return p;

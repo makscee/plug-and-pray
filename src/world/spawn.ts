@@ -78,7 +78,7 @@ export function fill(g: Game, c: Chunk): void {
   const loot = r.int(1, 2) + (far >= 4 ? 1 : 0);
   for (let k = 0; k < loot; k++) {
     const [x, y] = cellIn(r, c, g.seed);
-    spawn(g, { kind: 'item', x, y, item: r.chance(0.55) ? lootMod(r, far) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 3) } });
+    spawn(g, { kind: 'item', x, y, item: r.chance(0.55) ? lootMod(r, far) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 2) } });
   }
   // enemies: the fight slice's own chunk hook (src/fight/spawn.ts)
 }

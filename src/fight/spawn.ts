@@ -36,7 +36,7 @@ export function table(far: number): [string, number, number][] {
   if (z === 0) return [['mite', 0.85, 2], ['mite', 0.35, 2], ['seraph', 0.25, 1]];
   if (z === 1) return [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
   if (z === 2) return [['mite', 0.6, 3], ['walker', 0.55, 1], ['seraph', 0.35, 1], ['hum', 0.35, 1], ['mimic', 0.15, 1]];
-  return [['mite', 0.5, 4], ['walker', 0.5, 1], ['pyre', 0.45, 1], ['hum', 0.4, 2], ['mimic', 0.15, 1]];
+  return [['mite', 0.5, 4], ['walker', 0.5, 1], ['pyre', 0.45, 1], ['hum', 0.4, 1], ['mimic', 0.15, 1]];
 }
 
 /** a foe made for its zone: hp scaled here, its damage by `FOE.damage` in the hurt hook */
