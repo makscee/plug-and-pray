@@ -90,7 +90,6 @@ if (go)
 
 function toward(g: Game, mod: string, sound: string): Line | null {
   const p = g.player;
-  if (mod === 'pinhole-eye' && !eyeHinted(g) && ![...p.inv, ...p.installed].some((i) => 'mod' in i && i.mod === mod)) return ['an eye glints somewhere out on this floor. walk; the map will catch it.'];
   // v2r1 pace: a second card reader lies about as loot; the one with the card beside it comes first
   const card = (e: Entity) => g.ents.some((o) => o.item?.kind === 'card' && dist(o, e) < 1);
   const e = g.ents
@@ -100,8 +99,11 @@ function toward(g: Game, mod: string, sound: string): Line | null {
   if (!e || [...p.inv, ...p.installed].some((i) => 'mod' in i && i.mod === mod)) return null;
   // v2r2 ux: the first eye lies sealed behind a cracked wall: the way is to the wall, and the act is break
   const sealed = e.data?.sealed as [number, number] | undefined;
-  if (sealed) return toCell(g, sealed[0] + 0.5, sealed[1] + 0.5, `${sound}, sealed behind a cracked wall`, 'break');
-  return toCell(g, e.x, e.y, sound);
+  // the way is worked out even while the eye is not named yet: finding it makes the chunks on the way, and the
+  // world must grow the same either way (the sims lost 9 thaws of 80 when it did not)
+  const line = sealed ? toCell(g, sealed[0] + 0.5, sealed[1] + 0.5, `${sound}, sealed behind a cracked wall`, 'break') : toCell(g, e.x, e.y, sound);
+  if (mod === 'pinhole-eye' && !eyeHinted(g)) return ['an eye glints somewhere out on this floor. walk; the map will catch it.'];
+  return line;
 }
 
 /** "<sound>, 21 cells se. first: [go s 5]": the leg is the start of a real way there (playtest r3: the
