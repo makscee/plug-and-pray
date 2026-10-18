@@ -2,7 +2,7 @@
 // and the eyes share it. A cell is seen when it lies within `range` and a straight line from you
 // reaches it through open floor (its own wall face counts: you see the wall that stops the line).
 
-import { clear } from '../core/grid';
+import { clear, edits } from '../core/grid';
 import type { Game } from '../core/types';
 
 const last = new WeakMap<Game, Map<number, string>>();
@@ -15,7 +15,7 @@ export function see(g: Game, range: number): void {
   // the same cell and range as last time sees the same cells (unless a vein was drained: rare)
   let m = last.get(g);
   if (!m) last.set(g, (m = new Map()));
-  const k = `${i},${j},${g.chunks.size}`;
+  const k = `${i},${j},${g.chunks.size},${edits}`;
   if (m.get(range) === k) return;
   m.set(range, k);
   const r = Math.ceil(range);

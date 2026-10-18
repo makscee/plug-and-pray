@@ -12,8 +12,8 @@ const FILTER: Record<string, string> = {
 };
 /** where an eye works (src/mods/sense.ts) */
 const SIGHT: Record<string, string> = {
-  color: 'needs light in the dark', gray: 'needs light in the dark', '1bit': 'half the light it needs',
-  heat: 'warm things only, the hidden too; blind in the furnace', sonar: 'sees in the dark and the hidden', edge: 'sees in the dark',
+  color: 'needs light in the dark', gray: 'needs light in the dark', '1bit': 'half the light it needs; reads scratched walls, sees mimics breathe',
+  heat: 'warm things only, through walls, the hidden too; shows warm handprints; blind in the furnace', sonar: 'sees in the dark and the hidden; hears hollow walls', edge: 'sees in the dark; reads scratched walls',
 };
 const SEES: Record<string, string> = {
   heat: 'warm things', metal: 'metal', flesh: 'hidden flesh', doors: 'passages', cards: 'memory cards', enemies: 'enemies', veins: 'veins',

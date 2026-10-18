@@ -405,7 +405,7 @@ function moduleIcon(id: string, roll?: Roll): Px {
     if (!px.get(x + dx, y)) px.set(x + dx, y, t);
     if (!px.get(x, y + dy)) px.set(x, y + dy, t);
   }
-  if (roll?.tag === 'attuned') [[13, 1], [12, 2], [14, 2], [13, 3]].forEach(([x, y]) => px.set(x, y, '#fff6d0'));
+  if (roll?.tag === 'attuned' || roll?.tag === 'tempered') [[13, 1], [12, 2], [14, 2], [13, 3]].forEach(([x, y]) => px.set(x, y, '#fff6d0'));
   if (roll?.tag === 'cracked') px.line(2, 4, 7, 9, INK), px.line(7, 9, 5, 13, INK);
   return px;
 }

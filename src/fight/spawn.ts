@@ -5,6 +5,7 @@ import { CHUNK, Cell, chunkHook } from '../core/grid';
 import { spawn, spawnEnemy } from '../core/game';
 import { hash, rng, type Rng } from '../core/rng';
 import { lootMod } from '../world/spawn';
+import { plan } from '../world/vectors';
 import type { Chunk, Entity, Game } from '../core/types';
 import { ZONES, zoneAt, zoneFar } from '../world/zones';
 
@@ -35,11 +36,11 @@ export function table(far: number): [string, number, number][] {
   const z = zoneFar(far);
   if (z === 0) return [['mite', 0.85, 2], ['mite', 0.35, 2], ['seraph', 0.25, 1]];
   // r1 pace: the nave's first ring (by the cradle's border) holds pairs, not threes: a step, not a cliff
-  if (z === 1) return far < 2.5 ? [['mite', 0.8, 2], ['mite', 0.2, 2], ['seraph', 0.3, 1], ['mimic', 0.1, 1]] : [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
+  if (z === 1) return far < 2.5 ? [['mite', 0.8, 2], ['mite', 0.15, 2], ['seraph', 0.2, 1], ['mimic', 0.1, 1]] : [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
   // r1 pace: a touch lighter than it was, so the furnace (below) is the hardest zone
   if (z === 2) return [['mite', 0.55, 3], ['walker', 0.5, 1], ['seraph', 0.3, 1], ['hum', 0.3, 1], ['mimic', 0.15, 1]];
   // r1 pace: the furnace is the hardest zone: hum packs and more mimics on top of its lamps and walkers
-  return [['mite', 0.6, 4], ['walker', 0.55, 1], ['pyre', 0.4, 1], ['hum', 0.35, 2], ['mimic', 0.25, 1]];
+  return [['mite', 0.65, 4], ['mite', 0.3, 3], ['walker', 0.55, 1], ['pyre', 0.4, 1], ['hum', 0.25, 2], ['mimic', 0.3, 1]];
 }
 
 /** a foe made for its zone: hp scaled here, its damage by `FOE.damage` in the hurt hook */
@@ -52,6 +53,9 @@ export function foe(g: Game, type: string, x: number, y: number): Entity {
 }
 
 export function fillFoes(g: Game, c: Chunk): void {
+  // the engine's chunk holds only its own gauntlet (src/world/vectors.ts)
+  const [ex, ey] = plan(g.seed).engine;
+  if (c.cx === ex && c.cy === ey) return;
   const r = rng(hash(g.seed, 23, c.cx, c.cy));
   const far = Math.hypot(c.cx, c.cy);
   for (const [type, p, n] of table(far)) {

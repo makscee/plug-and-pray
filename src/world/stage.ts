@@ -66,6 +66,7 @@ const STAGES: Record<string, (g: Game) => void> = {
     g.player.inv.push({ kind: 'card', card: 'shard-1' }, { kind: 'card', card: 'shard-2' }, { kind: 'card', card: 'shard-3' });
     for (let k = 0; k < 3; k++) exec(g, 'read card');
     goTo(g, ex, ey);
+    g.ents = g.ents.filter((e) => !e.enemy || Math.hypot(e.x - ex, e.y - ey) > 10); // its gauntlet, already beaten
     say(g, ['staged: the engine lies at your feet. ', { text: 'take thaw', cmd: 'take thaw' }, '  ', { text: 'install thaw engine', cmd: 'install thaw engine' }]);
   },
 };

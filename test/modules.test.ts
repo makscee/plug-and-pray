@@ -87,9 +87,9 @@ describe('module pass', () => {
     const w = spawnEnemy(g, 'walker', 20.5, 8.5);
     const hp = w.enemy!.hp;
     strike(g, w, 1);
-    expect(hp - w.enemy!.hp).toBeCloseTo(0.4);
+    expect(hp - w.enemy!.hp).toBeCloseTo(0.2);
     strike(g, w, 5);
-    expect(hp - w.enemy!.hp).toBeCloseTo(4.8);
+    expect(hp - w.enemy!.hp).toBeCloseTo(4);
   });
 
   it('a rime hood keeps the furnace off but chills you elsewhere; light warms', () => {

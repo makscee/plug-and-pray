@@ -22,7 +22,7 @@ mods([
   { id: 'servo-gait', name: 'servo gait', family: 'gait', power: 1, warm: 1, tier: 0, params: { keys: true, pace: 4 }, text: 'pistons that answer the arrow keys. esc leaves the console, enter goes back.' },
   { id: 'gyro-heart', name: 'gyro heart', family: 'gait', power: 2, warm: 2, tier: 1, params: { free: true, speed: 2.5 }, text: 'a spinning heart: wasd to walk, click the eye to turn with the mouse.' },
   { id: 'tunnel-tongue', name: 'tunnel tongue', family: 'gait', power: 2, warm: 1.5, tier: 1, params: { dig: true, cooldown: 1 }, text: 'a rasp of bone-iron. it eats plain wall, not ore.' },
-  { id: 'votive-battery', name: 'votive battery', family: 'power', power: 0, warm: 1, tier: 1, params: { power: 3 }, text: 'a jar of prayers that still hold a charge.' },
+  { id: 'votive-battery', name: 'votive battery', family: 'power', power: 0, warm: 1, tier: 1, params: { power: 3, loud: 1 }, text: 'a jar of prayers that still hold a charge. they whisper.' },
   { id: 'heart-shard', name: 'heart-shard', family: 'power', power: 0, warm: 2, tier: 2, params: { power: 5, loud: 3 }, text: 'a splinter of the god\'s heart. it beats against your board, and everything hears it.' },
   { id: 'slot-board', name: 'slot board', family: 'power', power: 0, warm: 0, tier: 1, params: { slots: 1 }, text: 'a spare socket. install it: one more slot.' },
   { id: 'ledger', name: 'tithe ledger', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'ledger', tithe: 2 }, text: 'a clerk of the dead counts every kill: twice as many pay out.' },
@@ -59,11 +59,11 @@ mods([
   { id: 'ninth-eye', name: 'the ninth eye', family: 'camera', power: 3, warm: 2, tier: 3, params: { res: 160, colors: 0, fps: 10, fov: 100, range: 16, filter: 'color' }, text: 'eight were made for the god. this one stayed.' },
   { id: 'thaw-engine', name: 'thaw engine', family: 'unique', power: 0, warm: 0, tier: 3, params: {}, text: 'a cold heart the size of a fist. it wants a breast.' },
   // fight: weapons and body
-  { id: 'nail-psalm', name: 'nail psalm', family: 'weapon', power: 1, warm: 1, tier: 0, params: { damage: 2, cooldown: 0.8, range: 8, aim: 'aimed' }, text: 'a verse that ends in a nail. shoot.' },
+  { id: 'nail-psalm', name: 'nail psalm', family: 'weapon', power: 1, warm: 1, tier: 0, params: { damage: 1.5, cooldown: 0.9, range: 8, aim: 'aimed' }, text: 'a verse that ends in a nail. shoot.' }, // r1 econ: was 2 / 0.8; bone armour (1.2) eats most of it
   { id: 'ember-spit', name: 'ember spit', family: 'weapon', power: 2, warm: 0.5, tier: 1, params: { damage: 0.8, cooldown: 0.35, range: 6, aim: 'aimed' }, text: 'it coughs sparks as fast as you ask.' },
-  { id: 'bone-lance', name: 'bone lance', family: 'weapon', power: 2, warm: 2, tier: 1, params: { damage: 5, cooldown: 2.2, range: 5, aim: 'aimed' }, text: 'a rib sharpened by a patient god.' },
+  { id: 'bone-lance', name: 'bone lance', family: 'weapon', power: 2, warm: 2, tier: 1, params: { damage: 6, cooldown: 2.2, range: 5, aim: 'aimed' }, text: 'a rib sharpened by a patient god.' },
   { id: 'choir-bell', name: 'choir bell', family: 'weapon', power: 2, warm: 1.5, tier: 1, params: { damage: 1.5, cooldown: 1.6, range: 2.4, aim: 'auto', sweep: true }, text: 'it rings at anything that comes near.' },
-  { id: 'lead-lung', name: 'lead lung', family: 'body', power: 1, warm: 1, tier: 0, params: { regen: 0.2 }, text: 'heavy breath. you mend three times as fast.' },
+  { id: 'lead-lung', name: 'lead lung', family: 'body', power: 1, warm: 1, tier: 0, params: { regen: 0.3 }, text: 'heavy breath. you mend faster, and still mend in the cold.' },
   { id: 'frost-coat', name: 'frost coat', family: 'body', power: 1, warm: 1.5, tier: 1, params: { armour: 0.5 }, text: 'rime that takes the edge off every blow.' },
   { id: 'mirror-ward', name: 'mirror ward', family: 'body', power: 2, warm: 2, tier: 1, params: { ward: true, recharge: 8 }, text: 'it gives the next blow back. then it rests.' },
   { id: 'reliquary-ribs', name: 'reliquary ribs', family: 'body', power: 1, warm: 1, tier: 2, params: { hp: 5 }, text: 'a cage of holy bone around your core.' },

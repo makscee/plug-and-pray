@@ -10,3 +10,4 @@ import './drain';
 import './mind';
 import './stage';
 import './events';
+import './secrets';

@@ -18,16 +18,17 @@ export type Cost = Partial<Record<Res, number>>;
 
 /** every price and yield in one place: by module tier 0, 1, 2 (uniques never sell or recycle) */
 export const PRICES = {
-  print: [{ bone: 2, glass: 1 }, { bone: 2, glass: 2, copper: 1 }, { bone: 3, glass: 2, copper: 2, ichor: 1 }] as Cost[],
+  // r1 econ: copper comes early now (2 at the start, 1 from each tier-0 recycle), so it carries the later prices and glass stops gating
+  print: [{ bone: 2, glass: 1 }, { bone: 2, glass: 1, copper: 2 }, { bone: 3, glass: 1, copper: 3, ichor: 1 }] as Cost[],
   shop: [{ bone: 2, copper: 1 }, { bone: 3, glass: 2, copper: 1 }, { bone: 4, glass: 3, copper: 2, ichor: 1 }] as Cost[],
   reroll: { bone: 1, glass: 1 } as Cost,
-  scrap: [{ bone: 1, glass: 1 }, { bone: 2, glass: 1, copper: 1 }, { bone: 2, glass: 2, copper: 1, ichor: 1 }] as Cost[],
+  scrap: [{ bone: 1, copper: 1 }, { bone: 2, glass: 1, copper: 1 }, { bone: 2, glass: 2, copper: 1, ichor: 1 }] as Cost[],
 };
 
 export function slotCost(g: Game): Cost {
   // balance pass: the run starts with 6 slots, so the price starts there
   const n = Math.max(0, g.player.slots - 6);
-  const c: Cost = { bone: 6 + 3 * n, glass: 4 + 2 * n, copper: 2 + n };
+  const c: Cost = { bone: 6 + 3 * n, glass: 3 + n, copper: 2 + 2 * n };
   if (n >= 1) c.ichor = n;
   return c;
 }
@@ -108,8 +109,24 @@ tickHooks.push((g) => {
 export const shopNear = (g: Game): Entity | undefined =>
   g.ents.filter((e) => e.kind === 'printer' && e.data?.shop && dist(e, g.player) < 1.6).sort((a, b) => dist(a, g.player) - dist(b, g.player))[0];
 
-/** what a module costs at a reliquary */
-export const priceOf = (it: Item): Cost => (it.kind === 'mod' ? PRICES.shop[Math.min(2, def(it).tier)] : {});
+/** what a module costs at a reliquary; generators cost a copper and a glass more (power is the scarce thing) */
+export const priceOf = (it: Item): Cost => {
+  if (it.kind !== 'mod') return {};
+  const c = { ...PRICES.shop[Math.min(2, def(it).tier)] };
+  if (def(it).family === 'power') (c.copper = (c.copper ?? 0) + 1), (c.glass = (c.glass ?? 0) + 1);
+  return c;
+};
+/** the reliquary by the start (it stands at 1 chunk) always prices one relic in bone and glass alone */
+const firstShop = (e: Entity) => ((e.data?.far as number) ?? 0) < 1.5;
+const noCopper = (c: Cost): Cost => {
+  const { copper = 0, ...rest } = c;
+  return copper ? { ...rest, glass: (rest.glass ?? 0) + 2 * copper } : c;
+};
+/** the price of the k-th relic at this reliquary */
+export function priceAt(e: Entity, k: number, it: Item): Cost {
+  const c = priceOf(it);
+  return firstShop(e) && k === 0 ? noCopper(c) : c;
+}
 
 /** the reliquary's three relics: seeded per reliquary and per reroll; a sold one leaves an empty niche */
 export function offers(g: Game, e: Entity): (Item | null)[] {
@@ -131,7 +148,7 @@ export function offers(g: Game, e: Entity): (Item | null)[] {
 function shopMenu(g: Game, e: Entity): Line[] {
   const lines: Line[] = offers(g, e).map((it, k) =>
     it && it.kind === 'mod'
-      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}: ${fmt(priceOf(it))}. ${does(it)}`]
+      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}: ${fmt(priceAt(e, k, it))}. ${does(it)}`]
       : [`  ${k + 1}: an empty niche.`],
   );
   lines.push([{ text: 'reroll', cmd: 'reroll' }, `  new relics: ${fmt(PRICES.reroll)}`]);
@@ -147,7 +164,7 @@ verb('buy', {
     const k = Number(which) - 1;
     const it = list[k];
     if (!it) return say(g, 'the reliquary shows:', ...shopMenu(g, e));
-    const c = priceOf(it);
+    const c = priceAt(e, k, it);
     if (!affords(g, c)) return say(g, `the reliquary wants ${fmt(c)}.`);
     pay(g, c);
     list[k] = null;

@@ -11,7 +11,7 @@ describe('accessible start (10-18)', () => {
     const g = newGame(1);
     startKit(g);
     expect(g.player.installed).toHaveLength(0);
-    expect(g.player.inv.map((i) => (i.kind === 'mod' ? i.mod : ''))).toEqual(['pinhole-eye', 'stepper-relay', 'map-spool', 'spark-finger']);
+    expect(g.player.inv.flatMap((i) => (i.kind === 'mod' ? [i.mod] : []))).toEqual(['pinhole-eye', 'stepper-relay', 'map-spool', 'spark-finger']);
     for (const m of ['pinhole eye', 'stepper relay', 'map spool', 'spark finger']) exec(g, 'install ' + m);
     for (let k = 0; k < 30; k++) tick(g, 0.05);
     expect(g.player.installed.every((i) => working(g, i))).toBe(true);

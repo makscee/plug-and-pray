@@ -25,7 +25,7 @@ export interface Plan {
 
 const plans = new Map<number, Plan>();
 /** the seed's fixed places: one shard in each zone past the cradle (about 2.5, 4.5 and 6.5 chunks out) on
- *  different bearings, the Engine a chunk past shard 3 */
+ *  different bearings, the Engine one or two chunks past shard 3 */
 export function plan(seed: number): Plan {
   let p = plans.get(seed);
   if (p) return p;
@@ -43,9 +43,9 @@ export function plan(seed: number): Plan {
   const a2 = a0 + 2.1 + r() * 0.6;
   const a3 = a0 + 4.2 + r() * 0.6;
   const s3 = inZone(3, 6.5, a3);
-  // r1 pace: the Engine lies about a chunk past shard 3 on its bearing (it was across the map: a 4-10 min dead walk)
-  let engine = at(7.6, a3);
-  for (const d of [7.6, 8, 8.4, 9]) {
+  // r1 pace: the Engine lies one to two chunks past shard 3 on its bearing (it was across the map: a 4-10 min dead walk)
+  let engine = at(8.2, a3);
+  for (const d of [8.2, 8.6, 9, 9.6]) {
     engine = at(d, a3);
     if (engine[0] !== s3[0] || engine[1] !== s3[1]) break;
   }
@@ -114,15 +114,15 @@ chunkHook((g: Game, c: Chunk) => {
   if (c.cx === p.engine[0] && c.cy === p.engine[1]) {
     const [x, y] = spot(g.seed, c.cx, c.cy, 2, c);
     spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'thaw-engine' } });
-    // r1 pace: not a second saint but a gauntlet: a walker keeps the engine, a pyre lamp and a mite swarm on the way in
+    // r1 pace: not a second saint but a gauntlet: a walker keeps the engine, a mite swarm waits on the way in
+    // (only these: the chunk holds no other foes, src/fight/spawn.ts; a lamp here could hold the only corridor shut)
     const post = (type: string, salt: number, dx = 0) => {
       const [px, py] = salt ? spot(g.seed, c.cx, c.cy, salt, c) : [x + 1, y];
       const e = foe(g, type, (open(g, px, py) ? px : x) + dx, open(g, px, py) ? py : y);
       e.enemy!.data.post = [e.x, e.y];
     };
     post('walker', 0);
-    post('pyre', 5);
-    for (const dx of [-0.3, 0, 0.3]) post('mite', 6, dx);
+    for (const dx of [-0.45, -0.15, 0.15, 0.45]) post('mite', 6, dx);
   }
   for (const v of g.vectors) {
     const [cx, cy] = chunkOf(v.x, v.y);

@@ -56,6 +56,12 @@ export interface Run {
   loadouts: Record<string, string[]>;
   /** times it switched a module off to make room (a setup change) */
   offs: number;
+  /** modules on in any 10 s sample */
+  everOn: string[];
+  /** setup switches (setup explore / setup battle) */
+  setups: number;
+  /** resources gathered over the run (gains between decisions) */
+  income: number;
 }
 
 const DT = 0.1;
@@ -68,7 +74,26 @@ const resOf = (g: Game, r: Res) => g.player.inv.reduce((n, i) => n + (i.kind ===
 const resAll = (g: Game) => g.player.inv.reduce((n, i) => n + (i.kind === 'res' ? i.n : 0), 0);
 
 /** what a module is worth to this player now (0 = never install) */
-function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReader: boolean): number {
+function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReader: boolean, mode: Mode = 'explore'): number {
+  const w = worth0(g, it, zone, wantReader);
+  if (mode === 'explore') return w;
+  // the battle setup (docs/modules.md): weapons and body up, maps, readers and plain scanners off
+  const fam = MODS[it.mod].family;
+  if (fam === 'weapon') return w * (param(it, 'aim', 'auto') === 'aimed' && lampNear(g) ? 3 : 1.5);
+  if (fam === 'body') return w * 1.2;
+  if (fam === 'mind') return 0;
+  if (fam === 'scanner') return zone >= 2 && w >= 45 ? w : 0;
+  if (fam === 'camera' && zone >= 2 && humNear(g)) {
+    const f = param<string>(it, 'filter', 'color');
+    return w + (f === 'sonar' || f === 'heat' ? 120 : 0); // the hum: only sonar or heat show it to auto weapons
+  }
+  return w;
+}
+type Mode = 'explore' | 'battle';
+const lampNear = (g: Game) => g.ents.some((e) => e.enemy && ['seraph', 'pyre', 'saint'].includes(e.enemy.type) && dist(e, g.player) < 10);
+const humNear = (g: Game) => g.ents.some((e) => e.enemy && ENEMIES[e.enemy.type]?.hidden && dist(e, g.player) < 9);
+
+function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantReader: boolean): number {
   const m = MODS[it.mod];
   const p = (k: string, f = 0) => param<number>(it, k, f);
   const loud = p('loud') * 8;
@@ -86,12 +111,14 @@ function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReade
       return v - loud;
     }
     case 'weapon': {
-      // armour (walkers, the abbot) takes 0.6 off each hit in the deep zones; a sweep pays against swarms
-      const dmg = Math.max(p('damage', 1) * 0.2, p('damage', 1) - (deep ? 0.4 : 0));
+      // armour (walkers, the abbot) takes 1.2 off each hit; deep, about 4 in 10 foes wear it; a sweep pays against swarms
+      const d0 = p('damage', 1);
+      const dmg = deep ? 0.6 * d0 + 0.4 * Math.max(d0 * 0.2, d0 - 1.2) : d0;
       let v = (dmg / p('cooldown', 1)) * 40;
       if (param(it, 'sweep', false) && zone >= 1) v *= 1.4;
       if (p('glow') && zone === 2) v += 100;
-      return (param(it, 'aim', 'auto') === 'aimed' ? v * 0.6 : v + p('range', 1.3) * 2) - loud;
+      // aimed: you line up, but only they reach a seraph lamp (and the furnace saint) down its own line
+      return (param(it, 'aim', 'auto') === 'aimed' ? v * 0.6 + (zone >= 1 ? p('range', 6) * 3 : 0) : v + p('range', 1.3) * 2) - loud;
     }
     case 'body': {
       // the rime hood: worth it in the furnace, a chill anywhere else (it is taken off on the way home)
@@ -122,7 +149,7 @@ function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReade
 }
 
 /** the best loadout: greedy by worth, one camera, power modules added when the rest needs them */
-function bestLoadout(g: Game, zone: number, wantReader: boolean, lift: { power?: number; slots?: number } = {}): Set<object> {
+function bestLoadout(g: Game, zone: number, wantReader: boolean, lift: { power?: number; slots?: number } = {}, mode: Mode = 'explore'): Set<object> {
   const P = g.player;
   const all: { ref: object; mod: string; roll?: any }[] = [
     ...P.installed.map((i) => ({ ref: i as object, mod: i.mod, roll: i.roll })),
@@ -132,7 +159,7 @@ function bestLoadout(g: Game, zone: number, wantReader: boolean, lift: { power?:
   const powers = all.filter((a) => MODS[a.mod].family === 'power' && param(a, 'power', 0) > 0).sort((a, b) => param<number>(b, 'power', 0) - param<number>(a, 'power', 0));
   const rest = all
     .filter((a) => MODS[a.mod].family !== 'power')
-    .map((a) => ({ ...a, w: worth(g, a, zone, wantReader) }))
+    .map((a) => ({ ...a, w: worth(g, a, zone, wantReader, mode) }))
     .filter((a) => a.w > 0)
     // power is the scarce thing (docs/modules.md): rank by worth per power; an eye pays 15 a point
     .map((a) => {
@@ -191,7 +218,7 @@ export function play(seed: number, o: Opts): Run {
   const g = newGame(seed);
   startKit(g);
   const P = g.player;
-  const run: Run = { seed, style: o.style, ended: 'time', t: 0, marks: {}, snaps: [], steps: [], bought: [], resPeak: 0, resEnd: 0, kills: 0, homes: 0, recycled: 0, log: [], bound: { power: 0, slots: 0, both: 0, n: 0 }, generators: [], loadouts: {}, offs: 0 };
+  const run: Run = { seed, style: o.style, ended: 'time', t: 0, marks: {}, snaps: [], steps: [], bought: [], resPeak: 0, resEnd: 0, kills: 0, homes: 0, recycled: 0, log: [], bound: { power: 0, slots: 0, both: 0, n: 0 }, generators: [], loadouts: {}, offs: 0, everOn: [], setups: 0, income: 0 };
   const seen = new Set<string>();
   // things given up on, for a minute (a corner it could not get round, a lamp it could not reach)
   const bans = new Map<object, number>();
@@ -253,7 +280,11 @@ export function play(seed: number, o: Opts): Run {
     const lamps = foes.filter((e) => ['seraph', 'pyre', 'saint'].includes(e.enemy!.type));
     const inLine = (x: number, y: number) => lamps.some((e) => (Math.abs(e.x - x - 0.5) < 0.6 || Math.abs(e.y - y - 0.5) < 0.6) && dist(e, { x: x + 0.5, y: y + 0.5 }) > 1.5 && dist(e, { x: x + 0.5, y: y + 0.5 }) <= ENEMIES[e.enemy!.type].sense && clear(g, e.x, e.y, x + 0.5, y + 0.5));
     const lampReady = lamps.some((e) => g.t >= e.enemy!.readyAt - 0.6);
-    if (lamps.length && lampReady && inLine(px, py) && !lamps.every((e) => banned.has(e))) {
+    // an aimed weapon ready and the lamp down your line: trade the shot rather than step out (hp allowing)
+    const aimedNow = active(g, 'weapon').filter((i) => param(i, 'aim', 'auto') === 'aimed' && g.t >= ((i.data.readyAt as number) ?? 0));
+    const shotAt = (e: Entity) => (Math.abs(e.x - P.x) < 0.45 || Math.abs(e.y - P.y) < 0.45) && clear(g, P.x, P.y, e.x, e.y) && aimedNow.some((i) => dist(e, P) <= param<number>(i, 'range', 6));
+    const trade = hpFrac > 0.5 && lamps.some(shotAt);
+    if (lamps.length && lampReady && !trade && inLine(px, py) && !lamps.every((e) => banned.has(e))) {
       for (const [d, ox, oy] of [['n', 0, -1], ['s', 0, 1], ['e', 1, 0], ['w', -1, 0]] as const)
         if (cellAt(g, px + ox, py + oy) === Cell.floor && !inLine(px + ox, py + oy)) { why = 'out of line'; return `go ${d} 1`; }
     }
@@ -271,6 +302,12 @@ export function play(seed: number, o: Opts): Run {
           return 'shoot';
         }
       }
+    }
+    // a fight coming: switch to the battle setup (once saved, one command; the first time by hand, then saved)
+    if (foes.some((e) => dist(e, P) < 7 && (!ENEMIES[e.enemy!.type]?.hidden || dist(e, P) < 2.2))) battleUntil = g.t + 5;
+    if (g.t < battleUntil) {
+      const sw = setupStep('battle', bestLoadout(g, Math.max(targetZone(), zoneHere()), false, {}, 'battle'));
+      if (sw) return sw;
     }
     // something on you: hold still and let the weapons work
     if (close.length && P.path.length === 0) {
@@ -336,9 +373,13 @@ export function play(seed: number, o: Opts): Run {
       if (out) return 'remove ' + words(out.mod);
     }
     const pick = bestLoadout(g, Math.max(zt, zoneHere()), wantReader);
-    for (const i of P.installed) if (!pick.has(i)) return run.offs++, 'remove ' + labelOf(i);
+    // two setups (docs/modules.md): explore on, battle's extra weapons installed but off while slots allow
+    const keep = withBattle(pick, bestLoadout(g, Math.max(zt, zoneHere()), wantReader, {}, 'battle'));
+    for (const i of P.installed) if (!keep.has(i)) return run.offs++, 'remove ' + labelOf(i);
     for (const i of P.inv) if (i.kind === 'mod' && pick.has(i) && P.installed.length < P.slots) return 'install ' + labelOf(i);
-    for (const i of P.installed) if (!i.on && MODS[i.mod].power + powerUsed(g) <= powerMax(g)) return 'on ' + labelOf(i);
+    for (const i of P.inv) if (i.kind === 'mod' && keep.has(i) && P.installed.length < P.slots) return 'install ' + labelOf(i);
+    const sw = g.t < battleUntil ? null : setupStep('explore', pick);
+    if (sw) return sw;
     if (active(g, 'mind').some((i) => param(i, 'what', '') === 'reader') && P.inv.some((i) => i.kind === 'card')) return 'read card';
     // grind what the loadout leaves out (keep spare power modules: they come in when power runs short)
     const wouldRun = bestLoadout(g, Math.max(zt, zoneHere()), wantReader, { power: 99 });
@@ -381,6 +422,42 @@ export function play(seed: number, o: Opts): Run {
   }
 
   const labelOf = (i: { mod: string; roll?: any }) => (i.roll ? i.roll.tag + ' ' : '') + MODS[i.mod].name;
+
+  // ---- setups: what each saved setup holds (module ids, sorted), and the last `setup` tried
+  let battleUntil = -1;
+  const saved: Record<string, string> = {};
+  let tried = { name: '', at: -99 };
+  /** the explore pick plus the battle pick's extras, while slots last (slot boards take none) */
+  function withBattle(pick: Set<object>, fight: Set<object>): Set<object> {
+    const out = new Set(pick);
+    const used = () => [...out].filter((r) => !param(r as any, 'slots', 0)).length;
+    for (const r of fight) if (!out.has(r) && used() < P.slots) out.add(r);
+    return out;
+  }
+  /** one step toward having exactly `want`'s installed modules on, by `setup name` once it is saved */
+  function setupStep(name: Mode, want: Set<object>): string | null {
+    const D = P.installed.filter((i) => want.has(i));
+    const on = P.installed.filter((i) => i.on);
+    const sig = D.map((i) => i.mod).sort().join(',');
+    if (D.every((i) => i.on) && on.every((i) => want.has(i))) {
+      if (saved[name] === sig || !D.length) return null;
+      saved[name] = sig;
+      return `save setup ${name}`;
+    }
+    if (saved[name] === sig && !(tried.name === name && g.t - tried.at < 3)) {
+      tried = { name, at: g.t };
+      run.setups++;
+      return `setup ${name}`;
+    }
+    const isPow = (i: { mod: string }) => MODS[i.mod].family === 'power';
+    const off = on.find((i) => !want.has(i) && !isPow(i));
+    if (off) return 'off ' + labelOf(off);
+    const pw = D.find((i) => !i.on && isPow(i));
+    if (pw) return 'on ' + labelOf(pw);
+    const next = D.find((i) => !i.on && MODS[i.mod].power + powerUsed(g) <= powerMax(g));
+    if (next) return 'on ' + labelOf(next);
+    return null;
+  }
 
   function stepAway(e: Entity): string | null {
     const px = Math.floor(P.x);
@@ -437,7 +514,7 @@ export function play(seed: number, o: Opts): Run {
         const w = worth(g, it, zone, false);
         const powerShort = MODS[it.mod].family === 'power' && param(it, 'power', 0) > 0 && powerUsed(g) >= powerMax(g) - 1;
         const good = (w > worst * 1.15 && w > 20) || (P.installed.length < P.slots && w > 20) || powerShort;
-        out.push({ cmd: `buy ${k + 1}`, ok: good && afford(printer.priceOf(it)) });
+        out.push({ cmd: `buy ${k + 1}`, ok: good && afford(printer.priceAt(m, k, it)) });
       });
     } else if (m.kind === 'printer') {
       const pr = printer;
@@ -589,6 +666,7 @@ export function play(seed: number, o: Opts): Run {
       const moreSlots = value(bestLoadout(g, zb, false, { slots: 99 })) > now + 1;
       void pFree, void sFree;
       run.bound.n++;
+      for (const l of onNow()) if (!run.everOn.includes(l)) run.everOn.push(l);
       if (morePower && moreSlots) run.bound.both++;
       else if (morePower) run.bound.power++;
       else if (moreSlots) run.bound.slots++;
@@ -610,6 +688,7 @@ export function play(seed: number, o: Opts): Run {
     lastFlesh = P.flesh ?? 0;
     lastPow = Math.max(lastPow, pw);
     lastSlots = P.slots;
+    const before = resAll(g);
     const c = decide();
     if (o.debug && (process.env.ALL || typeof c === 'string' || run.log.length === 0 || !run.log[run.log.length - 1].endsWith('wait'))) run.log.push(`${g.t.toFixed(1)} ${Math.floor(P.x)},${Math.floor(P.y)} hp${P.hp.toFixed(1)} > ${typeof c === 'number' ? 'wait' : c + ' ' + why}${typeof c === 'number' ? ' ' + why + ' wait' : ''}`);
     if (typeof c === 'number') advance(c);
@@ -619,6 +698,7 @@ export function play(seed: number, o: Opts): Run {
       last = c;
       advance(same > 2 ? 1 : 0.2);
     }
+    run.income += Math.max(0, resAll(g) - before);
   }
   snap();
   run.loadouts.end = onNow();

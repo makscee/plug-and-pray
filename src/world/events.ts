@@ -8,15 +8,16 @@
 //   flare      the furnace only: a vent breathes fire, a pyre lamp kindles in it over a furnace module
 import { open } from '../core/grid';
 import { MODS } from '../core/mods';
+import { way } from '../core/verbs';
 import { dist, say, spawn, tickHooks } from '../core/game';
 import { hash, rng, type Rng } from '../core/rng';
 import type { Entity, Game, Item } from '../core/types';
 import { foe } from '../fight/spawn';
-import { FURNACE_KIT, lootMod } from './spawn';
+import { BETTER, FURNACE_KIT, lootMod, rollMult } from './spawn';
 import { zoneAt } from './zones';
 
 /** seconds between set pieces: this, plus up to SPREAD more */
-export const EVERY = 110;
+export const EVERY = 100;
 const SPREAD = 60;
 /** the first one waits this long into the run */
 const FIRST = 150;
@@ -69,13 +70,12 @@ export function nearCell(g: Game, r: Rng, min = 4, max = 8): [number, number] | 
   return [x + 0.5, y + 0.5];
 }
 
-/** "6 cells ne" and a button that walks the longer axis */
+/** "6 cells ne" and a button for the first leg of the way there (src/core/verbs.ts `way`) */
 function where(g: Game, x: number, y: number): (string | { text: string; cmd: string })[] {
   const [dx, dy] = [x - g.player.x, y - g.player.y];
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
-  const ax = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n';
-  const n = Math.max(1, Math.round(Math.abs(Math.abs(dx) > Math.abs(dy) ? dx : dy)));
-  return [`${Math.round(Math.hypot(dx, dy))} cells ${word}.  `, { text: `go ${ax} ${n}`, cmd: `go ${ax} ${n}` }];
+  const [d, n] = way.leg(g, x, y);
+  return [`${Math.round(Math.hypot(dx, dy))} cells ${word}.  `, { text: `go ${d} ${n}`, cmd: `go ${d} ${n}` }];
 }
 
 const item = (g: Game, x: number, y: number, it: Item, set: string): Entity => spawn(g, { kind: 'item', x, y, item: it, data: { set } });
@@ -103,8 +103,11 @@ export function stage(g: Game, kind: string, x: number, y: number, r: Rng): void
   } else if (kind === 'machine') {
     const it = lootMod(r, far + 1);
     if (it.kind === 'mod') {
-      const nums = Object.entries(MODS[it.mod]?.params ?? {}).filter(([, v]) => typeof v === 'number');
-      if (nums.length) it.roll = { key: r.pick(nums)[0], mult: 1.4, tag: 'attuned' };
+      const nums = Object.entries(MODS[it.mod]?.params ?? {}).filter(([k, v]) => typeof v === 'number' && BETTER[k]);
+      if (nums.length) {
+        const key = r.pick(nums)[0];
+        it.roll = { key, mult: rollMult(key, true), tag: 'attuned' };
+      }
     }
     item(g, x, y, it, 'machine');
     say(g, ['a machine dies against the wall, still ticking. something in it works, ', ...where(g, x, y)]);

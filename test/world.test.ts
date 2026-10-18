@@ -160,12 +160,12 @@ describe('the world', () => {
     expect(sides.size).toBeGreaterThan(1);
   });
 
-  it('the engine lies about a chunk past shard 3', () => {
+  it('the engine lies one or two chunks past shard 3', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const p = plan(seed);
       const [s3, e] = [p.shards[2], p.engine];
       expect(s3.join()).not.toBe(e.join());
-      expect(Math.hypot(e[0] - s3[0], e[1] - s3[1]), `seed ${seed}`).toBeLessThanOrEqual(2.3);
+      expect(Math.hypot(e[0] - s3[0], e[1] - s3[1]), `seed ${seed}`).toBeLessThanOrEqual(3.2);
       expect(Math.hypot(...e)).toBeGreaterThan(Math.hypot(...s3) - 0.01);
     }
   });
@@ -196,7 +196,7 @@ describe('the world', () => {
       for (const e of g.events) if (e.type === 'set') sets.push(e.data as string);
       g.ents = g.ents.filter((e) => !e.enemy); // nothing keeps it busy
     }
-    // 400 s: the first at 150 s, then every 110-170 s
+    // 400 s: the first at 150 s, then every 100-160 s
     expect(sets.length).toBeGreaterThanOrEqual(2);
     expect(sets[0]).not.toBe(sets[1]);
   });

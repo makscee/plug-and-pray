@@ -43,7 +43,10 @@ export function cell(g: Game, x: number, y: number): number {
   return c.cells[(j - cy * CHUNK) * CHUNK + (i - cx * CHUNK)];
 }
 
+/** cells changed so far (dug, drained, broken): the eyes rebuild when it moves */
+export let edits = 0;
 export function setCell(g: Game, x: number, y: number, v: number): void {
+  edits++;
   const i = Math.floor(x);
   const j = Math.floor(y);
   const cx = Math.floor(i / CHUNK);
