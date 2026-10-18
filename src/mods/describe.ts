@@ -1,7 +1,7 @@
 // What a module does, in plain words, built from its family and params (with the find's roll applied),
 // so every module and every attuned/cracked variant explains itself without a hand-written line.
 
-import { BETTER, def, param, RARITY_MULT, rarityKey, rarityOf, type Modish } from '../core/mods';
+import { BETTER, def, param, RARITY_MULT, rarityKey, rarityOf, size, type Modish } from '../core/mods';
 import { perkText } from './uniques';
 
 const n = (v: number) => (Math.round(v * 10) / 10).toString();
@@ -88,6 +88,7 @@ export function costs(m: Modish): string {
   const parts = [d.family === 'power' ? 'draws no power' : `uses ${d.power} power`];
   const word = rarity(m);
   if (word) parts.unshift(word === 'unique' ? '✦ unique' : word);
+  if (size(m) > 1) parts.push(`takes ${size(m)} slots`);
   if (d.warm) parts.push(`warms ${n(d.warm)} s`);
   const loud = param<number>(m, 'loud', 0);
   if (loud) parts.push(`loud: things notice you ${n(loud)} cells farther`);

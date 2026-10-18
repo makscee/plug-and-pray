@@ -4,7 +4,7 @@
 import { does } from '../mods/describe';
 import { dist, itemName, reach, say, spawn, tickHooks } from './game';
 import { DIRS, open } from './grid';
-import { active, def, label, MODS, param, powerMax, powerUsed, switchOff, switchOn, traits } from './mods';
+import { active, def, label, MODS, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits } from './mods';
 import type { Entity, Game, Inst, Item, Line, Res, Seg } from './types';
 
 export interface VerbDef {
@@ -211,7 +211,7 @@ verb('install', {
     const k = findItem(g, args);
     const it = p.inv[k];
     if (!it || it.kind !== 'mod') return say(g, 'no such module in your inventory. ', [{ text: 'inv', cmd: 'inv' }]);
-    if (p.installed.length >= p.slots) return say(g, `no free slot (${p.slots}). remove something, swap it in, or buy a slot at a printer.`);
+    if (slotsUsed(g) + size(it) > p.slots) return say(g, size(it) > 1 ? `${def(it).name} takes ${size(it)} slots, ${p.slots - slotsUsed(g)} free. remove something, swap it in, or buy a slot at a printer.` : `no free slot (${p.slots}). remove something, swap it in, or buy a slot at a printer.`);
     p.inv.splice(k, 1);
     const inst: Inst = { uid: g.nextId++, mod: it.mod, ...traits(it), on: false, readyAt: 0, data: {} };
     p.installed.push(inst);
@@ -260,7 +260,7 @@ verb('status', {
   help: 'your body: hp, slots, power',
   run(g) {
     const p = g.player;
-    say(g, `hp ${Math.ceil(p.hp)}/${p.maxHp}   slots ${p.installed.length}/${p.slots}   power ${powerUsed(g)}/${powerMax(g)}`);
+    say(g, `hp ${Math.ceil(p.hp)}/${p.maxHp}   slots ${slotsUsed(g)}/${p.slots}   power ${powerUsed(g)}/${powerMax(g)}`);
     for (const i of p.installed) say(g, [{ text: label(i), cmd: `${i.on ? 'off' : 'on'} ${def(i).name}` }, `  ${i.on ? (g.t >= i.readyAt ? 'on' : 'warming') : 'off'}  ${def(i).power}p`]);
   },
 });
