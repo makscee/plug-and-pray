@@ -3,6 +3,7 @@
 import { actions, exec } from '../core/verbs';
 import type { Game, Line } from '../core/types';
 import * as windows from './windows';
+import { lineKind } from './kinds';
 
 const KEEP = 120;
 
@@ -130,6 +131,7 @@ const sig = (l: Line) => l.map((s) => (typeof s === 'string' ? s : s.text)).join
 
 function line(l: Line, send: (cmd: string) => void): HTMLElement {
   const el = document.createElement('div');
+  el.className = 'ln ln-' + lineKind(l);
   for (const s of l) {
     if (typeof s === 'string') el.append(s);
     else if (!s.cmd) {
