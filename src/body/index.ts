@@ -3,7 +3,7 @@
 // saved setups and the clock of hours' foresight. Keys and windows live in ./input.ts and ./views.ts.
 
 import { dist, say, tickHooks } from '../core/game';
-import { active, def, label, param, powerMax, powerUsed, switchOff, switchOn } from '../core/mods';
+import { active, def, label, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits } from '../core/mods';
 import { Cell, DIRS, cell, clear, dirAngle, setCell } from '../core/grid';
 import { VERBS, addItem, findInst, findItem, instRef, verb } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
@@ -116,7 +116,7 @@ verb('install', {
     p.inv.splice(p.inv.indexOf(it), 1);
     p.slots = Math.min(MAX_SLOTS, p.slots + Math.round(slots));
     g.events.push({ type: 'install' });
-    say(g, `the board seats itself. slots ${p.installed.length}/${p.slots}.`);
+    say(g, `the board seats itself. slots ${slotsUsed(g)}/${p.slots}.`);
   },
 });
 
@@ -157,17 +157,18 @@ export function useSetup(g: Game, name: string): string[] | null {
   for (const m of [...left]) {
     const k = p.inv.findIndex((it) => it.kind === 'mod' && it.mod === m);
     if (k < 0) continue;
-    if (p.installed.length >= p.slots) {
+    while (slotsUsed(g) + size({ mod: m }) > p.slots) {
       const out = p.installed.filter((i) => !keep.has(i.uid) && !isPower(i)).sort((a, b) => Number(a.on) - Number(b.on))[0];
       if (!out) break;
       switchOff(g, out);
       p.installed = p.installed.filter((i) => i !== out);
-      addItem(g, { kind: 'mod', mod: out.mod, roll: out.roll });
+      addItem(g, { kind: 'mod', mod: out.mod, ...traits(out) });
       g.events.push({ type: 'remove', data: out.uid });
     }
+    if (slotsUsed(g) + size({ mod: m }) > p.slots) break;
     const [it] = p.inv.splice(k, 1);
     if (it.kind !== 'mod') continue;
-    const inst: Inst = { uid: g.nextId++, mod: it.mod, roll: it.roll, on: false, readyAt: 0, data: {} };
+    const inst: Inst = { uid: g.nextId++, mod: it.mod, ...traits(it), on: false, readyAt: 0, data: {} };
     p.installed.push(inst);
     if (!g.stats.mods.includes(it.mod)) g.stats.mods.push(it.mod);
     g.events.push({ type: 'install', data: inst.uid });
@@ -349,6 +350,8 @@ export const lightest = (g: Game): Inst | undefined =>
 export interface Room {
   /** taken out for a slot */
   remove?: Inst;
+  /** taken out too, when one slot is not enough (a module that takes two) */
+  more?: Inst[];
   /** switched off for power */
   off: Inst[];
 }
@@ -359,18 +362,25 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean): Room
   const top = WEIGHT[def(it).family] ?? 9;
   const light = (i: Inst) => def(i).family !== 'power' && weight(g, i) < 9 && weight(g, i) <= top;
   let remove: Inst | undefined;
-  if (!installed && p.installed.length >= p.slots) {
+  const more: Inst[] = [];
+  const need = installed ? 0 : slotsUsed(g) + size(it) - p.slots;
+  if (need > 0) {
     const off = p.installed.filter((i) => !i.on && def(i).family !== 'power').sort((a, b) => weight(g, a) - weight(g, b));
     const on = p.installed.filter((i) => i.on && light(i)).sort((a, b) => weight(g, a) - weight(g, b) || def(b).power - def(a).power);
     // an eye takes out another eye first, the weakest (playtest r3: it took the map and kept the pinhole)
     const eyes = def(it).family === 'camera' ? p.installed.filter((i) => def(i).family === 'camera').sort((a, b) => +a.on - +b.on || param<number>(a, 'res', 0) - param<number>(b, 'res', 0)) : [];
-    remove = eyes[0] ?? off[0] ?? on[0];
-    if (!remove) return `no slot gives way for ${def(it).name}: all ${p.slots} hold what weighs more.`;
+    // one that frees enough, in that order; else the first few until they do (v2: modules that take two)
+    const order = [...new Set([...eyes, ...off, ...on])];
+    remove = order.find((i) => size(i) >= need);
+    let freed = remove ? need : 0;
+    if (!remove) for (const i of order) if (freed < need) (remove ? more.push(i) : (remove = i)), (freed += size(i));
+    if (!remove || freed < need) return `no slot gives way for ${def(it).name}: all ${p.slots} hold what weighs more.`;
   }
-  let short = def(it).power - (powerMax(g) - powerUsed(g)) - (remove?.on ? def(remove).power : 0);
+  const out = remove ? [remove, ...more] : [];
+  let short = def(it).power - (powerMax(g) - powerUsed(g)) - out.reduce((s, r) => s + (r.on ? def(r).power : 0), 0);
   const off: Inst[] = [];
   if (short > 0) {
-    const can = p.installed.filter((i) => i.on && i !== remove && def(i).power > 0 && light(i));
+    const can = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && light(i));
     // one that frees enough, the lightest and cheapest; else the lightest, biggest first, until it fits
     const one = can.filter((i) => def(i).power >= short).sort((a, b) => weight(g, a) - weight(g, b) || def(a).power - def(b).power)[0];
     if (one) off.push(one), (short = 0);
@@ -382,7 +392,7 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean): Room
       }
     if (short > 0) return `not enough power for ${def(it).name}, and nothing lighter to switch off.`;
   }
-  return { remove, off };
+  return more.length ? { remove, more, off } : { remove, off };
 }
 
 verb('swap', {
@@ -399,11 +409,10 @@ verb('swap', {
     const room = makeRoom(g, it as { mod: string }, it === inst);
     if (typeof room === 'string') return say(g, room);
     const did: string[] = [];
-    if (room.remove) {
-      const r = room.remove;
+    for (const r of room.remove ? [room.remove, ...(room.more ?? [])] : []) {
       switchOff(g, r);
       p.installed = p.installed.filter((i) => i !== r);
-      addItem(g, { kind: 'mod', mod: r.mod, roll: r.roll });
+      addItem(g, { kind: 'mod', mod: r.mod, ...traits(r) });
       g.events.push({ type: 'remove', data: r.uid });
       did.push(`${label(r)} out`);
     }

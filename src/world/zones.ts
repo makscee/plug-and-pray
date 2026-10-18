@@ -7,7 +7,7 @@
 //   3 the furnace     furnace seraphs, walkers, hum packs; HEAT sears 0.15 hp/s unless something keeps it off. the furnace saint guards shard 3 and the engine.
 // The gate is felt, never a wall: `readiness` is what a careful player (and the sim) waits for.
 import { CHUNK } from '../core/grid';
-import { active, def, param, powerMax, powerUsed } from '../core/mods';
+import { active, def, param, powerMax, powerUsed, size, slotsUsed } from '../core/mods';
 import { makeRoom } from '../body';
 import { say, tickHooks } from '../core/game';
 import type { Game, Line } from '../core/types';
@@ -96,7 +96,7 @@ export function answers(g: Game, z: number): Line[] {
   const spare = powerMax(g) - powerUsed(g);
   const cmd = (it: { mod: string }) => {
     const n = def(it).name;
-    if (p.installed.length < p.slots && def(it).power <= spare) return `install ${n}`;
+    if (slotsUsed(g) + size(it) <= p.slots && def(it).power <= spare) return `install ${n}`;
     return typeof makeRoom(g, it, false) === 'string' ? `install ${n}` : `swap in ${n}`;
   };
   return [['you carry what answers it: ', ...mods.flatMap((it, k) => [k ? '  ' : '', { text: cmd(it), cmd: cmd(it) }])]];

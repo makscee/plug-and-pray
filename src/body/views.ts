@@ -4,7 +4,7 @@
 // Buttons type commands through window.thaw.send, like every button in the game.
 
 import { itemName } from '../core/game';
-import { def, param, powerMax, powerUsed } from '../core/mods';
+import { def, param, powerMax, powerUsed, slotsUsed } from '../core/mods';
 import { cell, Cell } from '../core/grid';
 import type { Game, Inst, Item } from '../core/types';
 import { VIEWS, view, type MakeView } from '../ui/views';
@@ -37,12 +37,12 @@ const ledger: MakeView = (el) => {
     update(g) {
       const p = g.player;
       const sets = Object.keys(setupsOf(g));
-      const s = JSON.stringify([p.inv, p.slots, p.installed.length, powerUsed(g), powerMax(g), sets]);
+      const s = JSON.stringify([p.inv, p.slots, slotsUsed(g), powerUsed(g), powerMax(g), sets]);
       if (s === sig) return;
       sig = s;
       const head = document.createElement('div');
       head.className = 'ledger-head';
-      head.textContent = `slots ${p.installed.length}/${p.slots} · power ${powerUsed(g)}/${powerMax(g)}`;
+      head.textContent = `slots ${slotsUsed(g)}/${p.slots} · power ${powerUsed(g)}/${powerMax(g)}`;
       const rows = p.inv.map((it) => {
         const r = document.createElement('div');
         r.className = 'ledger-row';

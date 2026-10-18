@@ -10,6 +10,7 @@ import type { Entity, Game, Inst } from '../core/types';
 import { ZONES, zoneAt } from '../world/zones';
 import { wake } from '../fight/mimic';
 import { light } from '../sight/lamp';
+import { perk, throughOne } from './uniques';
 
 export { light, loud } from '../sight/lamp';
 
@@ -41,9 +42,12 @@ export function eyeRange(g: Game, inst: { mod: string; roll?: Inst['roll'] }): n
 function eyeSees(g: Game, inst: Inst, e: Entity): boolean {
   const f = param<string>(inst, 'filter', 'color');
   const type = e.enemy!.type;
-  if (ENEMIES[type]?.hidden && f !== 'sonar' && f !== 'heat') return false;
+  const pk = perk(inst);
+  if (ENEMIES[type]?.hidden && f !== 'sonar' && f !== 'heat' && pk !== 'hidden') return false;
   if (f === 'heat' && !WARM.has(type)) return false;
-  return dist(e, g.player) <= eyeRange(g, inst) && clear(g, g.player.x, g.player.y, e.x, e.y);
+  if (dist(e, g.player) > eyeRange(g, inst)) return false;
+  // v2 unique: the saint's last lens sees through one wall
+  return clear(g, g.player.x, g.player.y, e.x, e.y) || (pk === 'xray' && throughOne(g, g.player.x, g.player.y, e.x, e.y));
 }
 
 /** does this scanner pick that enemy up (through walls)? */

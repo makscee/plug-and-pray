@@ -14,6 +14,7 @@ import { view } from '../ui/views';
 import { near, see, shoot, type Mode } from './scene';
 import { HOLLOW } from './marks';
 import { eyeRange } from '../mods/sense';
+import { perk } from '../mods/uniques';
 import { engaged } from './foes';
 import './lamp';
 import './scanner';
@@ -306,7 +307,7 @@ view('camera', (el, inst, g) => {
       // heat washes out in the furnace; sonar and heat show the hidden
       const range = eyeRange(g, inst);
       const name = param<string>(inst, 'filter', 'color');
-      const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color', hidden: name === 'sonar' || name === 'heat', filter: name });
+      const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color', hidden: name === 'sonar' || name === 'heat' || perk(inst) === 'hidden', filter: name, xray: perk(inst) === 'xray' });
       see(g, range);
       if (firstSight(g, inst, range)) inst.data.flashAt = g.t;
       // a failed read (a lost GL context, a frame the GPU dropped) comes back all zero: hold the
