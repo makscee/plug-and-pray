@@ -79,7 +79,7 @@ function familyDoes(m: Modish): string {
       if (w === 'reader') return 'reader · reads memory cards: read card';
       if (w === 'ledger') return `ledger · kills pay out ${n(p<number>('tithe') || 1)}× as often`;
       if (w === 'compass') return 'compass · points to what the cards promised';
-      if (w === 'reins') return `reins · tab takes them: the mouse looks, a click shoots, wasd walks the way you look${p<number>('big') >= 2 ? ' · shift dashes, hits marked' : ''}`;
+      if (w === 'reins') return `reins · tab takes them: the mouse looks, a click shoots, wasd walks the way you look${p<number>('big') >= 2 ? ` · held: fire ${Math.round(p<number>('rate') * 100)}% faster, ${Math.round(p<number>('fov'))}° wider · shift dashes through blows, hits marked` : ''}`;
       if (w === 'clock') return `clock · shows where enemies will be ${n(p<number>('ahead'))} s ahead, ${n(p<number>('range'))} cells`;
       return 'mind · ' + w;
     }

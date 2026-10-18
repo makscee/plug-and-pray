@@ -5,13 +5,14 @@
 // melee lunge (F, right click, or a click with no aimed weapon) throws you forward into what you face.
 // Tab again (or Esc) gives the cursor back. The mk2 reins add a dash (Shift) and hit markers. Pure core, no DOM:
 // the screen side is src/sight/fps.ts.
-import { dist, ENEMIES, say, strike, tickHooks } from '../core/game';
+import { dist, ENEMIES, hurtHooks, say, strike, tickHooks } from '../core/game';
 import { open } from '../core/grid';
 import { active, def, families, family, param } from '../core/mods';
 import { verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
 import { aimed, shotCooldown, volley } from '../fight/aim';
-import { haste } from '../mods/weapon';
+import { autoCooldown, copiesOf, hasteHooks } from '../mods/weapon';
+import { WIDEN } from '../sight/layers';
 import { mouseAims } from '../fight/eye';
 import { armed, warnUnarmed } from '../fight/unarmed';
 import { SPRITES } from '../sight/sprites';
@@ -42,13 +43,16 @@ export interface Fps {
   /** where the last shot ended (cells from you along the view) */
   shotLen: number;
   lungeAt: number;
+  /** a dash's i-frame: nothing hurts you until then */
+  ghostUntil: number;
+  ghostSaid?: number;
   /** walking velocity (cells/s, east and south) from the keys; src/core/game.ts's gyro walk is not used */
   move: [number, number] | null;
 }
 const state = new WeakMap<Game, Fps>();
 export function fps(g: Game): Fps {
   let s = state.get(g);
-  if (!s) state.set(g, (s = { big: false, dashUntil: -99, dashV: [0, 0], dashReady: 0, shotAt: -99, hitAt: -99, killAt: -99, shotLen: 0, lungeAt: -99, move: null }));
+  if (!s) state.set(g, (s = { big: false, dashUntil: -99, dashV: [0, 0], dashReady: 0, shotAt: -99, hitAt: -99, killAt: -99, shotLen: 0, lungeAt: -99, ghostUntil: -99, move: null }));
   return s;
 }
 /** the reins are taken and work: mouse-look and view-relative keys apply */
@@ -58,7 +62,8 @@ mouseAims.push(bigOn);
 
 /** walking speed in the big view (cells/s) */
 export const WALK = 2.6;
-export const DASH = { cells: 2.2, secs: 0.16, cooldown: 1.1 };
+/** iframe: from the dash's start, blows pass through you this long (v2r2 fight: mk2's dash dodged nothing) */
+export const DASH = { cells: 2.2, secs: 0.16, cooldown: 1.1, iframe: 0.3 };
 export const LUNGE = { cells: 0.6, secs: 0.12, reach: 0.7 };
 
 /** forward and side in -1..1 (W/S, D/A): free movement relative to the view */
@@ -160,7 +165,8 @@ export function lunge(g: Game): boolean {
   const fx = Math.sin(p.dir), fy = -Math.cos(p.dir);
   push(g, fx, fy, LUNGE.cells / LUNGE.secs, LUNGE.secs);
   let hit = false;
-  for (const w of active(g, 'weapon').filter((i) => param<string>(i, 'aim', 'auto') === 'auto')) {
+  // one strike per weapon: its copies only make it quicker (src/mods/weapon.ts)
+  for (const w of active(g, 'weapon').filter((i) => param<string>(i, 'aim', 'auto') === 'auto' && copiesOf(g, i)[0] === i)) {
     if (g.t < ((w.data.readyAt as number) ?? 0)) continue;
     const reach = param<number>(w, 'range', 1.3) + LUNGE.reach;
     // what is in front: within reach, inside a 40° cone of the view
@@ -172,7 +178,7 @@ export function lunge(g: Game): boolean {
       })
       .sort((a, b) => dist(a, p) - dist(b, p));
     if (!front.length) continue;
-    w.data.readyAt = g.t + param<number>(w, 'cooldown', 1) / haste(g);
+    w.data.readyAt = g.t + autoCooldown(g, w);
     for (const t of param(w, 'sweep', false) ? front : front.slice(0, 1)) {
       strike(g, t, param<number>(w, 'damage', 1));
       hit = true;
@@ -200,9 +206,31 @@ export function dash(g: Game): boolean {
   const r = Math.hypot(mx, my) || 1;
   push(g, mx / r, my / r, DASH.cells / DASH.secs, DASH.secs);
   s.dashReady = g.t + DASH.cooldown;
+  s.ghostUntil = g.t + DASH.iframe;
   g.events.push({ type: 'dash' });
   return true;
 }
+
+// mk2 held: weapons cool faster (param rate) and the view opens wider (param fov)
+const held2 = (g: Game): Inst | undefined => (bigOn(g) && mark(g) >= 2 ? reins(g) : undefined);
+hasteHooks.push((g) => {
+  const r = held2(g);
+  return r ? param<number>(r, 'rate', 0) : 0;
+});
+tickHooks.push((g) => {
+  const r = held2(g);
+  WIDEN.by = r ? param<number>(r, 'fov', 0) : 0;
+});
+// the dash's i-frame: a blow that lands mid-dash passes through
+hurtHooks.push((g, n) => {
+  const s = state.get(g);
+  if (!s || g.t >= s.ghostUntil || n <= 0) return n;
+  if (g.t - Number(s.ghostSaid ?? -99) > 4) {
+    s.ghostSaid = g.t;
+    say(g, 'you dash through it.');
+  }
+  return 0;
+});
 
 // walking and the burst (dash, lunge) move you, sliding along walls; leaving the big view or the eye stops you
 tickHooks.push((g, dt) => {
@@ -291,8 +319,9 @@ if (shoot) {
 export function weaponState(g: Game): { name: string; range: number; wait: number; cool: number }[] {
   return active(g, 'weapon').map((i) => {
     const aim = param<string>(i, 'aim', 'auto') === 'aimed';
-    const cool = aim ? shotCooldown(g, i) : param<number>(i, 'cooldown', 1) / haste(g);
-    return { name: def(i).name, range: param<number>(i, 'range', aim ? 6 : 1.3), wait: Math.max(0, ((i.data.readyAt as number) ?? 0) - g.t), cool };
+    const cool = aim ? shotCooldown(g, i) : autoCooldown(g, i);
+    const lead = aim ? i : copiesOf(g, i)[0];
+    return { name: def(i).name, range: param<number>(i, 'range', aim ? 6 : 1.3), wait: Math.max(0, ((lead.data.readyAt as number) ?? 0) - g.t), cool };
   });
 }
 

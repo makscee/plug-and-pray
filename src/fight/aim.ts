@@ -1,6 +1,7 @@
 // Aimed weapons: `shoot` fires one shot per aimed module down your facing; copies of a module
 // shorten its cooldown instead of adding burst.
-// With no foe in front, it first turns you to the nearest one you perceive within reach. The gyro heart turns `player.dir`
+// It first turns you to the nearest foe you perceive within reach (v2r2 fight: a foe 16° off at 3 cells
+// counted as in front, and every shot passed it by). The gyro heart turns `player.dir`
 // to the mouse. Their windows carry a shoot button.
 import { dist, say } from '../core/game';
 import { clear } from '../core/grid';
@@ -8,7 +9,7 @@ import { active, def, families, param } from '../core/mods';
 import { verb } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
 import { fire } from './shots';
-import { haste } from '../mods/weapon';
+import { COPY, haste } from '../mods/weapon';
 import { canHit } from '../mods/sense';
 import { offFacing, toward, turned } from './eye';
 
@@ -20,9 +21,6 @@ weapon.buttons = (g, inst) => (param<string>(inst, 'aim', 'auto') === 'aimed' ? 
 
 /** speed of your shots, cells per second */
 export const SHOT_SPEED = 12;
-/** a foe this far off your facing counts as in front */
-const CONE = (25 * Math.PI) / 180;
-
 /** foes you could shoot at from here: perceived (or in touch), in a clear line, within `range` */
 export function targets(g: Game, range: number): Entity[] {
   const p = g.player;
@@ -31,17 +29,19 @@ export function targets(g: Game, range: number): Entity[] {
     .sort((a, b) => dist(a, p) - dist(b, p));
 }
 
-/** turn to the nearest foe in reach unless one already stands in front; true if you turned */
+/** turn to the nearest foe in reach, always (a sidestepper is shot where it stands now); true if you turned */
 export function aimAt(g: Game, range: number): boolean {
   const near = targets(g, range);
-  if (!near.length || near.some((e) => offFacing(g, e) < CONE)) return false;
+  if (!near.length) return false;
+  const was = offFacing(g, near[0]);
   g.player.dir = toward(g, near[0]);
+  if (was < 0.01) return false;
   turned(g);
   return true;
 }
 
-/** each extra copy of one aimed module cuts its cooldown by this much (stacked) */
-export const COPY = 0.25;
+/** each extra copy of one aimed module cuts its cooldown by this much (stacked); auto weapons too (src/mods/weapon.ts) */
+export { COPY };
 
 /** what the next `shoot` fires: one shot per distinct aimed module whose copies are warm. Copies of
  *  one module never stack burst (playtest r1/r2: nail psalm stacks won most runs); each extra copy

@@ -58,8 +58,10 @@ export function plan(g: Game): Plan {
 /** the view's fov across, degrees: a scope's is across already (it has `wide`); a square eye's is widened to the screen */
 export function fovAcross(inst: Modish): number {
   const fov = param<number>(inst, 'fov', 60);
-  return param<number>(inst, 'wide', 0) ? fov : Math.min(110, fov * 1.25);
+  return (param<number>(inst, 'wide', 0) ? fov : Math.min(110, fov * 1.25)) + WIDEN.by;
 }
+/** degrees the view opens wider: the martyr's reins held (src/body/fps.ts sets it each tick) */
+export const WIDEN = { by: 0 };
 
 /** the view's rows: the eye's resolution, capped so a full-screen shot stays cheap */
 export const rowsOf = (inst: Modish): number => Math.max(16, Math.min(180, Math.round(param<number>(inst, 'res', 32))));
