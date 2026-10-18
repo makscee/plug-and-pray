@@ -7,11 +7,12 @@
 import { active, def, label, param, slotsUsed } from '../core/mods';
 import { cells, dist, itemName, say, tickHooks } from '../core/game';
 import { canRead, carriesReader } from '../world/vectors';
-import { bossDown, floorAt, FLOORS, floorOf, LAST, STAIRS, stairsAt } from '../world/floors';
+import { atStairs, bossDown, floorAt, FLOORS, floorOf, LAST, STAIRS, stairsAt, stairsOf } from '../world/floors';
 import { lightest, makeRoom, MAX_SLOTS } from '../body';
 import { DIRS, open } from '../core/grid';
 import { VERBS, verb, way } from '../core/verbs';
-import { route } from '../mods/pilot';
+import { route, walkThen } from '../mods/pilot';
+import { hollowBeside, secrets } from '../world/secrets';
 import { walks } from '../mods/gait';
 import { foundEye } from '../world/printer';
 import type { Entity, Game, Line } from '../core/types';
@@ -379,4 +380,37 @@ export function goalLine(g: Game): string {
   if (keeperDoor.at(g, 2.5)) return `${n}: the keeper's door. ${keeperDoor.ready(g, f) ? 'you look ready' : 'you are not ready: where says why'}`;
   if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`)) return `${n}: get past the keeper to the way down (stairs: ${name}, ${far} ${word})`;
   return `${n}: find the way down (stairs: unknown / ${word})`;
+}
+
+// ---- v2r4 ux: `descend` and `break` a few cells short walk you there and act, instead of refusing
+// ("the rope pit is open, 2 cells E: descend" answered "you are not at the stairs"; `where` said "here: break"
+// one cell from the spot `break` wanted)
+/** the stairs' cell when they are seen, open and within a few cells, but you are not at them */
+function stairsNear(g: Game): [number, number] | null {
+  const st = stairsOf(g);
+  if (!st || atStairs(g) || !bossDown(g) || !g.seen.has(`${Math.floor(st.x)},${Math.floor(st.y)}`) || dist(st, g.player) > 4) return null;
+  return [Math.floor(st.x), Math.floor(st.y)];
+}
+/** the floor cell to break a found hollow wall from, within a few cells, with a weapon on */
+function shellNear(g: Game): [number, number] | null {
+  if (!active(g, 'weapon').length || hollowBeside(g)?.found) return null;
+  const p = g.player;
+  const s = secrets(g)
+    .filter((o) => o.kind === 'hollow' && o.found && !o.done)
+    .map((o) => [o.x + o.fx, o.y + o.fy] as [number, number])
+    .filter(([x, y]) => Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) <= 4)
+    .sort((a, b) => Math.hypot(a[0] - p.x, a[1] - p.y) - Math.hypot(b[0] - p.x, b[1] - p.y))[0];
+  return s ?? null;
+}
+for (const [name, spot, what] of [['descend', stairsNear, 'the stairs'], ['break', shellNear, 'the cracked wall']] as const) {
+  const d = VERBS[name];
+  if (!d) continue;
+  const [when, run] = [d.when, d.run];
+  d.when = (g) => !when || when(g) || !!spot(g);
+  d.run = (g, args) => {
+    if (!when || when(g)) return run(g, args);
+    const at = spot(g);
+    if (at && walkThen(g, at[0], at[1], name)) return say(g, `you walk to ${what}, then ${name}.`);
+    say(g, d.whenFail?.(g) ?? `${name}: not here.`);
+  };
 }

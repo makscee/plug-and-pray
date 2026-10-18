@@ -4,7 +4,7 @@
 import { does } from '../mods/describe';
 import { dist, itemName, reach, say, spawn, tickHooks } from './game';
 import { DIRS, open } from './grid';
-import { active, def, label, MODS, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits } from './mods';
+import { active, def, label, MODS, ownSocket, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits } from './mods';
 import type { Entity, Game, Inst, Item, Line, Res, Seg } from './types';
 
 export interface VerbDef {
@@ -21,10 +21,11 @@ export function verb(name: string, d: VerbDef): void {
 }
 
 /** run a typed line: echo it, then the verb; every line the game prints goes to g.log */
-export function exec(g: Game, line: string): void {
+export function exec(g: Game, line: string, quiet = false): void {
   const words = line.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (!words.length) return;
-  say(g, [{ text: '> ' + words.join(' '), cmd: '' }]);
+  // quiet: a map walk's legs (its one line says where it goes: src/ui/maptips.ts)
+  if (!quiet) say(g, [{ text: '> ' + words.join(' '), cmd: '' }]);
   if (g.ended) return say(g, 'nothing answers.');
   const [v, ...args] = words;
   const d = VERBS[v];
@@ -226,7 +227,7 @@ verb('install', {
     const k = findItem(g, args);
     const it = p.inv[k];
     if (!it || it.kind !== 'mod') return say(g, 'no such module in your inventory. ', [{ text: 'inv', cmd: 'inv' }]);
-    if (slotsUsed(g) + size(it) > p.slots) return say(g, size(it) > 1 ? `${def(it).name} takes ${size(it)} slots, ${p.slots - slotsUsed(g)} free. remove something, swap it in, or buy a slot at a printer.` : `no free slot (${p.slots}). remove something, swap it in, or buy a slot at a printer.`);
+    if (slotsUsed(g) + size(it) > p.slots + ownSocket(g, it)) return say(g, size(it) > 1 ? `${def(it).name} takes ${size(it)} slots, ${p.slots - slotsUsed(g)} free. remove something, swap it in, or buy a slot at a printer.` : `no free slot (${p.slots}). remove something, swap it in, or buy a slot at a printer.`);
     p.inv.splice(k, 1);
     const inst: Inst = { uid: g.nextId++, mod: it.mod, ...traits(it), on: false, readyAt: 0, data: {} };
     p.installed.push(inst);
@@ -409,6 +410,11 @@ export function actions(g: Game): [string, Action[]][] {
   }
   if (ok(g, 'stop') && p.path.length > 1) move.push(a('stop'));
   const other = Object.keys(VERBS).filter((v) => !ARGS.has(v) && !HIDDEN.has(v) && !KEYED.has(v) && v !== 'stop' && ok(g, v)).map((v) => a(v));
+  // v2r4 ux: in a fight the console is short: what a fight wants comes first (`where` fell to a clipped third row)
+  if (other.some((x) => x.cmd === 'attack' || x.cmd === 'shoot')) {
+    const first = ['attack', 'shoot', 'where', 'unstuck'];
+    other.sort((a, b) => (first.indexOf(a.cmd) + 1 || 99) - (first.indexOf(b.cmd) + 1 || 99));
+  }
   const groups: [string, Action[]][] = [['move', move], ['other', other]];
   return groups.filter(([, xs]) => xs.length);
 }

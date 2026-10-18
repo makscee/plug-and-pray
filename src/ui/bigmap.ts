@@ -10,6 +10,7 @@ import { detailOf, mapView, walksOnClick } from '../world/mind';
 import type { View } from './views';
 import { frameHooks } from './index';
 import { TOP } from './windows';
+import { floorAt, floorOf } from '../world/floors';
 import './flow.css';
 
 let open: { root: HTMLElement; view: View; inst: Inst; g: Game } | null = null;
@@ -38,14 +39,24 @@ export function toggleBigMap(g: Game, keeper = false): void {
   if (!inst) return say(g, 'no map is on: install one (the map spool) and switch it on.');
   const span = Math.round(param<number>(inst, 'span', 33));
   // v2r3 ux: it stops above the console's last three lines (floor 1's keeper pop hid all but one)
-  const px = () => Math.max(8, Math.min(12, Math.floor((Math.min(innerHeight - 16, consoleCut()) - TOP - 70) / span)));
+  const tall = () => Math.min(innerHeight - 16, consoleCut()) - TOP - 70;
+  const px = () => Math.max(8, Math.min(12, Math.floor(tall() / span)));
+  // v2r4 ux: opened by hand, it shows the whole floor you have seen (the 33-cell window round you forgot the
+  // start, the card reader and the reliquary); the keeper's pop-up stays the room round you
+  const whole = !keeper;
+  const box = whole ? floorBox(g, span) : null;
+  const fit = (): [number, number, number] => {
+    const b = floorBox(g, span, box!);
+    const [cols, rows] = [b[2] - b[0] + 1, b[3] - b[1] + 1];
+    return [cols, rows, Math.max(4, Math.min(12, Math.floor(Math.min((innerWidth - 56) / cols, tall() / rows))))];
+  };
   const root = document.createElement('div');
   root.id = 'bigmap';
   const head = document.createElement('header');
   const name = document.createElement('b');
   name.textContent = inst.uid < 0 ? "the keeper's room" : label(inst);
   const how = document.createElement('span');
-  how.textContent = ` · ${span} cells · ${walksOnClick(g, inst) ? 'click a cell to walk there' : 'it takes no clicks'} · esc closes`;
+  how.textContent = ` · ${whole ? 'the floor so far' : `${span} cells`} · ${walksOnClick(g, inst) ? 'click a cell to walk there' : 'it takes no clicks'} · esc closes`;
   const x = document.createElement('button');
   x.textContent = '×';
   x.title = 'close (m or esc)';
@@ -55,7 +66,7 @@ export function toggleBigMap(g: Game, keeper = false): void {
   body.className = 'body';
   root.append(head, body);
   document.body.append(root);
-  open = { root, view: mapView(body, inst, g, px), inst, g };
+  open = { root, view: whole ? mapView(body, inst, g, undefined, { size: fit, hz: 8, origin: () => [box![0], box![1]], ownClicks: true }) : mapView(body, inst, g, px), inst, g };
   open.view.update(g, 0);
 }
 
@@ -72,6 +83,30 @@ frameHooks.push((g, dt) => {
     open.root.style.transform = 'translateX(-50%)';
   }
 });
+
+/** the cells [x0, y0, x1, y1] of this floor you have seen, and you, with a margin: at least `min` across and down.
+ *  Given `grow`, it only grows (it is the open map's frame: the picture never jumps back) */
+function floorBox(g: Game, min: number, grow?: number[]): number[] {
+  const f = floorOf(g);
+  const p = g.player;
+  let [x0, y0, x1, y1] = [Math.floor(p.x), Math.floor(p.y), Math.floor(p.x), Math.floor(p.y)];
+  for (const k of g.seen) {
+    const i = k.indexOf(',');
+    const x = +k.slice(0, i);
+    if (floorAt(x) !== f) continue;
+    const y = +k.slice(i + 1);
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  [x0, y0, x1, y1] = [x0 - 2, y0 - 2, x1 + 2, y1 + 2];
+  if (x1 - x0 + 1 < min) [x0, x1] = [Math.floor((x0 + x1 - min) / 2), Math.floor((x0 + x1 - min) / 2) + min - 1];
+  if (y1 - y0 + 1 < min) [y0, y1] = [Math.floor((y0 + y1 - min) / 2), Math.floor((y0 + y1 - min) / 2) + min - 1];
+  if (!grow) return [x0, y0, x1, y1];
+  [grow[0], grow[1], grow[2], grow[3]] = [Math.min(grow[0], x0), Math.min(grow[1], y0), Math.max(grow[2], x1), Math.max(grow[3], y1)];
+  return grow;
+}
 
 /** the y the big map keeps above: three lines up from the console output's bottom (the screen's bottom with no console) */
 function consoleCut(): number {

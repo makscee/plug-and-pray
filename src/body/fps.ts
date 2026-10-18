@@ -7,7 +7,7 @@
 // the screen side is src/sight/fps.ts.
 import { dist, ENEMIES, hurtHooks, say, strike, tickHooks } from '../core/game';
 import { open } from '../core/grid';
-import { active, def, families, family, param } from '../core/mods';
+import { active, def, families, family, param, socketed } from '../core/mods';
 import { verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
 import { aimed, shotCooldown, volley } from '../fight/aim';
@@ -258,7 +258,6 @@ function slide(g: Game, vx: number, vy: number, dt: number): void {
 
 /** the reins bring their own socket: the first time you wear a pair, your body grows a slot for them (v2-view: the
  *  scope used to be the eye and the fps in one module; the sims lost a weapon's slot to the reins without it) */
-const socketed = new WeakSet<Game>();
 tickHooks.push((g) => {
   if (socketed.has(g) || !g.player.installed.some((i) => param<string>(i, 'what', '') === 'reins')) return;
   socketed.add(g);

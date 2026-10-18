@@ -23,6 +23,9 @@ const BANNER = 5000;
 /** v2r2 ux: the offer as it first showed, so a pick greys its tile in place and the others keep their spots (a
  *  second click on the same spot picked a neighbour) */
 const firstOffer = new WeakMap<object, Item[]>();
+/** v2r4 ux: the tallest the rule line and the tile row have been for this cache (px): a pick never shrinks them, so
+ *  the take buttons stay where they were and "scrap the rest" never moves up under the pointer */
+const tallest = new WeakMap<object, { rule: number; row: number }>();
 
 function el_(tag: string, cls: string, text = ''): HTMLElement {
   const e = document.createElement(tag);
@@ -53,8 +56,9 @@ frameHooks.push((g) => {
   const k = JSON.stringify([c!.floor, c!.offer.map((i) => (i.kind === 'mod' ? label(i) : '')), c!.taken, bone, g.player.installed.map((i) => i.mod + i.on), g.player.slots]);
   if (k === key && el?.isConnected) return;
   key = k;
+  const again = !!el;
   el?.remove();
-  el = el_('div', 'kit-card');
+  el = el_('div', `kit-card${again ? ' again' : ''}`);
   const f = c!.floor;
   const free = freeLeft(c!);
   const cost = costOf(c!);
@@ -101,4 +105,10 @@ frameHooks.push((g) => {
   foot.append(scrap, later);
   el.append(head, rule, row, foot);
   document.body.append(el);
+  const t = tallest.get(c!) ?? { rule: 0, row: 0 };
+  tallest.set(c!, t);
+  t.rule = Math.max(t.rule, rule.getBoundingClientRect().height);
+  t.row = Math.max(t.row, row.getBoundingClientRect().height);
+  rule.style.minHeight = `${t.rule}px`;
+  row.style.minHeight = `${t.row}px`;
 });

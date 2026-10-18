@@ -16,7 +16,7 @@ import type { Entity, Game, Inst } from '../core/types';
 import { view, VIEWS } from '../ui/views';
 import { mapHooks } from '../world/mind';
 import { floors } from '../world/gen';
-import { walks } from './gait';
+import { walkPace, walks } from './gait';
 
 // --- the pilot -----------------------------------------------------------------------------------
 
@@ -67,6 +67,32 @@ export function route(g: Game, sx: number, sy: number, tx: number, ty: number, p
   }
   return { path, whole: bestH === 0 };
 }
+
+/** v2r4 ux: `descend`, `go in` and `break` a few cells short walked nowhere and refused. Within `reach` cells of
+ *  cell (tx, ty), with legs that walk: walk there over open floor and run `cmd` on arrival (a hit, or anything
+ *  typed that moves you, lets it go). True if the walk started */
+const errands = new WeakMap<Game, { x: number; y: number; cmd: string; hp: number }>();
+export function walkThen(g: Game, tx: number, ty: number, cmd: string, reach = 4): boolean {
+  const p = g.player;
+  if (!walks(g) || Math.hypot(tx + 0.5 - p.x, ty + 0.5 - p.y) > reach + 0.8) return false;
+  const r = route(g, Math.floor(p.x), Math.floor(p.y), tx, ty, Math.ceil(reach * 2), false, true);
+  if (!r.whole || r.path.length > reach * 2) return false;
+  p.path = r.path;
+  p.move = null;
+  p.pace = walkPace(g);
+  errands.set(g, { x: tx, y: ty, cmd, hp: p.hp });
+  return true;
+}
+tickHooks.push((g) => {
+  const e = errands.get(g);
+  if (!e) return;
+  const p = g.player;
+  const last = p.path[p.path.length - 1];
+  if (p.hp < e.hp || (last && (Math.floor(last[0]) !== e.x || Math.floor(last[1]) !== e.y))) return void errands.delete(g);
+  if (p.path.length) return;
+  errands.delete(g);
+  if (Math.floor(p.x) === e.x && Math.floor(p.y) === e.y) exec(g, e.cmd);
+});
 
 interface Trip { to: [number, number]; near: Set<number>; hurtAt: number; inst: Inst }
 const trips = new WeakMap<Game, Trip>();

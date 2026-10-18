@@ -17,6 +17,7 @@ import { BETTER, fresh, FURNACE_KIT, lootMod, rollMult } from './spawn';
 import { zoneAt } from './zones';
 import { farAt } from './floors';
 import { mapHooks } from './mind';
+import { inOpen, onScreen, openPart } from '../ui/maptips';
 
 /** seconds between set pieces: this, plus up to SPREAD more */
 export const EVERY = 100;
@@ -109,11 +110,20 @@ export const nearPieces = (g: Game): Piece[] => pieces(g, 12).filter((o) => o.r 
 // on the map: a hollow diamond where a set piece's finds lie (on the edge when off the map)
 mapHooks.draw.push((g, ctx, ox, oy, px) => {
   const [w, h] = [ctx.canvas.width, ctx.canvas.height];
+  // v2r4 ux: on the full-screen map only the finds in the open part show, each with its name (the legend is not there)
+  const free = ctx.canvas.closest('#backdrop') ? openPart() : null;
+  const names: [number, number, string][] = [];
   for (const o of pieces(g)) {
     let [x, y] = [(o.x - ox) * px, (o.y - oy) * px];
-    if (x < 0 || y < 0 || x >= w || y >= h) {
+    if (free) {
+      const s = onScreen(ctx.canvas, x, y)!;
+      if (!inOpen(free, s[0], s[1], 4)) continue;
+      if (!names.some(([a, b]) => Math.hypot(a - x, b - y) < 40)) names.push([x, y, o.name.replace(/^(a|an|the) /, '')]);
+    } else if (x < 0 || y < 0 || x >= w || y >= h) {
+      // inside the edges by its own size (v2r4 ux: a corner one was cut in half)
       const [dx, dy] = [x - w / 2, y - h / 2];
-      const k = (w / 2 - 6) / Math.max(Math.abs(dx), Math.abs(dy));
+      const m = Math.max(5, px * 0.8) + 3;
+      const k = Math.min((w / 2 - m) / Math.max(1e-6, Math.abs(dx)), (h / 2 - m) / Math.max(1e-6, Math.abs(dy)));
       [x, y] = [w / 2 + dx * k, h / 2 + dy * k];
     }
     const r = Math.max(5, px * 0.8);
@@ -128,6 +138,18 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
       ctx.closePath();
       ctx.stroke();
     }
+  }
+  const fs = Math.max(11, Math.min(18, Math.round(px * 1.3)));
+  ctx.font = `${fs}px VT323, monospace`;
+  ctx.textAlign = 'left';
+  for (const [x, y, name] of names) {
+    const r = Math.max(5, px * 0.8);
+    const tw = ctx.measureText(name).width;
+    const lx = x + r + 4 + tw > w ? x - r - 6 - tw : x + r + 4;
+    ctx.fillStyle = 'rgba(10, 8, 7, 0.85)';
+    ctx.fillRect(lx - 2, y + fs * 0.35 - fs * 0.8, tw + 4, fs);
+    ctx.fillStyle = '#b0f080';
+    ctx.fillText(name, lx, y + fs * 0.35);
   }
 });
 

@@ -7,7 +7,7 @@
 
 import { dist, itemName, reach } from '../core/game';
 import { Cell, cell, veinOf } from '../core/grid';
-import { def, label, param, powerMax, powerUsed, size, slotsUsed, working } from '../core/mods';
+import { def, label, ownSocket, param, powerMax, powerUsed, size, slotsUsed, working } from '../core/mods';
 import { inPlace, instRef, lastLegs, VERBS } from '../core/verbs';
 import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
@@ -90,7 +90,7 @@ const titleOf = (m: object): string | undefined => (m as { title?: string }).tit
 export function installBtn(g: Game, it: Item & { kind: 'mod' }): Btn {
   const p = g.player;
   const d = def(it);
-  const free = slotsUsed(g) + size(it) <= p.slots;
+  const free = slotsUsed(g) + size(it) <= p.slots + ownSocket(g, it);
   const spare = powerMax(g) - powerUsed(g);
   // playtest r3: a full board greyed install out; it offers the swap, saying what gives way
   const room = !free || d.power > spare ? makeRoom(g, it, false) : null;

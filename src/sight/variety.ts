@@ -212,6 +212,12 @@ const PROPS: Record<string, (add: Add, t: number, used: boolean) => void> = {
 
 /** the kit cache where you land: an open chest, its kit glowing in it while anything is left */
 function cacheProp(add: Add, t: number, full: boolean): void {
+  // v2r4 ux: taken or scrapped, the box is gone: a few dark staves on the floor where it stood (it stayed the same
+  // flat orange box with its brass line, in the middle of every landing's view)
+  if (!full) {
+    for (const [x, z, ry] of [[-0.18, 0.05, 0.4], [0.12, -0.1, -0.7], [0.05, 0.18, 1.3]]) add(geo.unit, SLAG, x, 0.015, z, 0.5, 0.03, 0.07, ry);
+    return;
+  }
   add(geo.unit, WOOD, 0, 0.16, 0, 0.7, 0.32, 0.45);
   add(geo.unit, BRASS, 0, 0.33, 0, 0.74, 0.03, 0.49);
   add(geo.unit, WOOD, 0, 0.5, -0.25, 0.7, 0.32, 0.04, 0);

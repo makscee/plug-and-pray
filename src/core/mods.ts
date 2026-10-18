@@ -98,6 +98,10 @@ export function label(item: Modish): string {
 export const size = (m: { mod: string }): number => Math.max(1, Math.round(Number(def(m).params.size ?? 1)));
 /** slots the installed modules fill */
 export const slotsUsed = (g: Game): number => g.player.installed.reduce((s, i) => s + size(i), 0);
+/** v2r4 ux: the reins bring a socket of their own (src/body/fps.ts grows it once a pair is in): the first pair fits
+ *  with every slot full. The games whose socket has grown */
+export const socketed = new WeakSet<Game>();
+export const ownSocket = (g: Game, it: { mod: string }): number => (MODS[it.mod]?.params?.what === 'reins' && !socketed.has(g) ? 1 : 0);
 
 export const working = (g: Game, inst: Inst): boolean => inst.on && g.t >= inst.readyAt;
 
