@@ -57,12 +57,15 @@ verb('crawl', {
   },
 });
 
+/** the four between-words for `face`: diagonal foes can be aimed at (playtest r1) */
+const DIAG: Record<string, [number, number]> = { ne: [1, -1], se: [1, 1], sw: [-1, 1], nw: [-1, -1] };
+
 verb('face', {
-  help: 'turn: face n (n e s w)',
+  help: 'turn: face n (n ne e se s sw w nw)',
   when: can('go'),
   run(g, [d]) {
-    const v = d && DIRS[d[0]];
-    if (!v) return say(g, 'face where? n e s w');
+    const v = d && (DIAG[d] ?? DIRS[d[0]]);
+    if (!v) return say(g, 'face where? n ne e se s sw w nw');
     g.player.dir = dirAngle(v[0], v[1]);
   },
 });

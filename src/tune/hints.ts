@@ -7,7 +7,7 @@
 import { active, param } from '../core/mods';
 import { say, tickHooks } from '../core/game';
 import { DIRS, open } from '../core/grid';
-import { VERBS, way } from '../core/verbs';
+import { VERBS, verb, way } from '../core/verbs';
 import { route } from '../mods/pilot';
 import type { Game, Line } from '../core/types';
 
@@ -83,15 +83,30 @@ function toward(g: Game, mod: string, sound: string): Line | null {
   const [dx, dy] = [e.x - p.x, e.y - p.y];
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
   const [ax, n] = way.leg(g, e.x, e.y);
-  return [`${sound}, ${Math.round(Math.hypot(dx, dy))} cells ${word}.  `, { text: `go ${ax} ${n}`, cmd: `go ${ax} ${n}` }];
+  const cmd = active(g, 'gait').some((i) => param(i, 'go', false)) ? `go ${ax} ${n}` : `crawl ${ax}`;
+  return [`${sound}, ${Math.round(Math.hypot(dx, dy))} cells ${word}.  `, { text: cmd, cmd }];
 }
 
 /** what the wake hint points at (the map marks them too, while they lie there) */
 export const HINTED = ['dawn-eye', 'card-reader'];
 
+/** the wake hint's lines: the dawn eye and the card reader (named as the map names them), while they lie out there */
+const hintLines = (g: Game) =>
+  [toward(g, 'dawn-eye', 'the dawn eye glints, waiting for a socket'), toward(g, 'card-reader', 'a card reader ticks, waiting for a card')].filter((l): l is Line => !!l);
+
 tickHooks.push((g) => {
   if (told.has(g) || !active(g, 'gait').some((i) => param(i, 'go', false))) return;
   told.add(g);
-  const lines = [toward(g, 'dawn-eye', 'a clear eye glints, waiting for a socket'), toward(g, 'card-reader', 'a card reader ticks, waiting for a card')].filter((l): l is Line => !!l);
-  if (lines.length) say(g, 'you hear:', ...lines, ['the walls bend; ', { text: 'listen', cmd: 'listen' }, ' finds the way; the map marks them.']);
+  const lines = hintLines(g);
+  if (lines.length) say(g, 'you hear:', ...lines, ['the walls bend; ', { text: 'listen', cmd: 'listen' }, ' finds the way; the map marks them; ', { text: 'where', cmd: 'where' }, ' says it again.']);
+});
+
+// playtest r2: the hint was said once and could not be asked again
+verb('where', {
+  help: 'where the dawn eye and the card reader lie, with a fresh first leg there, until you hold them',
+  run(g) {
+    const lines = hintLines(g);
+    if (!lines.length) return say(g, g.vectors.length ? ['nothing left the wake hint points at. the scripture points on: ', { text: 'vectors', cmd: 'vectors' }] : 'nothing left the wake hint points at.');
+    say(g, 'you hear:', ...lines);
+  },
 });

@@ -39,9 +39,11 @@ const STEPS = [
   // tuning (#1328): the legs' first hint names the card reader; listen gives cells and a compass word
   [0, '(g.ents.push({ id: 99999, kind: "item", x: 12.5, y: 8.5, item: { kind: "res", res: "bone", n: 1 } }), true)'], // the chamber holds only the halo now
   ['listen', 'JSON.stringify(g.log).includes("a card reader ticks") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],
-  // console: scrolled up, new lines leave the reader where they are
+  // console: scrolled up, new lines from the world leave the reader where they are; a command you
+  // type shows its answer (playtest r2)
   [0, '(document.querySelector(".win-console .out").scrollTop = 0, true)'],
-  ['status', 'document.querySelector(".win-console .out").scrollTop === 0'],
+  [0, '(g.log.push(["a far drip."]), true)'], [0.1, 'document.querySelector(".win-console .out").scrollTop === 0'],
+  ['status', '(o => o.scrollHeight - o.scrollTop - o.clientHeight < 4)(document.querySelector(".win-console .out"))'],
   [0, '(document.querySelector(".win-console .out").scrollTop = 1e9, true)'],
   // two eyes at once (Maks 10-18: one went dark while the other ran): warming shows static, and
   // both stay lit frame after frame

@@ -5,8 +5,8 @@
 import { dist, say, tickHooks } from '../core/game';
 import { active, def, label, param, powerMax, powerUsed, switchOff, switchOn } from '../core/mods';
 import { Cell, DIRS, cell, clear, dirAngle, setCell } from '../core/grid';
-import { VERBS, findItem, verb } from '../core/verbs';
-import type { Entity, Game } from '../core/types';
+import { VERBS, addItem, findInst, findItem, instRef, verb } from '../core/verbs';
+import type { Entity, Game, Inst } from '../core/types';
 import { walk } from '../mods/gait';
 
 const gaitWith = (g: Game, key: string) => active(g, 'gait').find((i) => param(i, key, false));
@@ -244,8 +244,17 @@ for (const name of ['on', 'install']) {
     ...base,
     run(g, args) {
       const n = g.log.length;
+      const had = new Set(g.player.installed);
       base.run(g, args);
-      if (hinted.has(g) || !g.log.slice(n).some((l) => l.some((s) => (typeof s === 'string' ? s : s.text).includes('not enough power')))) return;
+      if (!g.log.slice(n).some((l) => l.some((s) => (typeof s === 'string' ? s : s.text).includes('not enough power')))) return;
+      // the refused module, and a button that makes room for it by the swap rule
+      const inst = name === 'on' ? findInst(g, args, (i) => !i.on) : g.player.installed.find((i) => !had.has(i));
+      const room = inst && !inst.on ? makeRoom(g, inst, true) : null;
+      if (room && typeof room !== 'string' && inst) {
+        const text = `turn off ${room.off.map((i) => label(i)).join(' and ')} and turn on ${label(inst)}`;
+        say(g, ['or swap: ', { text, cmd: `swap in ${instRef(g, inst)}` }]);
+      }
+      if (hinted.has(g)) return;
       hinted.add(g);
       say(g, [
         'power runs out before slots do. switch something off, or keep two setups and swap: ',
@@ -257,3 +266,108 @@ for (const name of ['on', 'install']) {
     },
   };
 }
+
+// ---- install all: every carried module, until a slot or power runs out (the boot text's link, typed)
+
+const oneInstall = VERBS.install;
+verb('install', {
+  ...oneInstall,
+  help: 'put a module in a free slot: install pinhole eye, or install all',
+  run(g, args) {
+    if (args.join(' ') !== 'all') return oneInstall.run(g, args);
+    const mods = g.player.inv.filter((i) => i.kind === 'mod');
+    if (!mods.length) return say(g, 'you carry no modules.');
+    for (const it of mods) {
+      const n = g.log.length;
+      oneInstall.run(g, label(it).split(' '));
+      // the first refusal ends it: what it said is the one line about why
+      if (g.log.slice(n).some((l) => l.some((s) => /no free slot|stays off|motherboard is full/.test(typeof s === 'string' ? s : s.text)))) break;
+    }
+  },
+});
+
+// ---- swap in (playtest r2): a module that does not fit makes room, by one rule. What weighs least
+// gives way: off modules leave a slot first, then the lightest on ones that weigh no more than it.
+// Eyes, power and the last legs never give way.
+
+const WEIGHT: Partial<Record<string, number>> = { weapon: 4, body: 3, lamp: 3, scanner: 2, mind: 2, gait: 2, tool: 1 };
+const legs = (i: { mod: string }) => def(i).family === 'gait' && ['go', 'keys', 'free'].some((k) => param(i, k, false));
+function weight(g: Game, i: { mod: string }): number {
+  if (legs(i) && !g.player.installed.some((o) => o !== i && o.on && legs(o))) return 9;
+  return WEIGHT[def(i).family] ?? 9;
+}
+
+export interface Room {
+  /** taken out for a slot */
+  remove?: Inst;
+  /** switched off for power */
+  off: Inst[];
+}
+
+/** what to take out and switch off so `it` (carried, or installed and off) can be in and on; why not, if nothing can */
+export function makeRoom(g: Game, it: { mod: string }, installed: boolean): Room | string {
+  const p = g.player;
+  const top = WEIGHT[def(it).family] ?? 9;
+  const light = (i: Inst) => def(i).family !== 'power' && weight(g, i) < 9 && weight(g, i) <= top;
+  let remove: Inst | undefined;
+  if (!installed && p.installed.length >= p.slots) {
+    const off = p.installed.filter((i) => !i.on && def(i).family !== 'power').sort((a, b) => weight(g, a) - weight(g, b));
+    const on = p.installed.filter((i) => i.on && light(i)).sort((a, b) => weight(g, a) - weight(g, b) || def(b).power - def(a).power);
+    remove = off[0] ?? on[0];
+    if (!remove) return `no slot gives way for ${def(it).name}: all ${p.slots} hold what weighs more.`;
+  }
+  let short = def(it).power - (powerMax(g) - powerUsed(g)) - (remove?.on ? def(remove).power : 0);
+  const off: Inst[] = [];
+  if (short > 0) {
+    const can = p.installed.filter((i) => i.on && i !== remove && def(i).power > 0 && light(i));
+    // one that frees enough, the lightest and cheapest; else the lightest, biggest first, until it fits
+    const one = can.filter((i) => def(i).power >= short).sort((a, b) => weight(g, a) - weight(g, b) || def(a).power - def(b).power)[0];
+    if (one) off.push(one), (short = 0);
+    else
+      for (const i of can.sort((a, b) => weight(g, a) - weight(g, b) || def(b).power - def(a).power)) {
+        if (short <= 0) break;
+        off.push(i);
+        short -= def(i).power;
+      }
+    if (short > 0) return `not enough power for ${def(it).name}, and nothing lighter to switch off.`;
+  }
+  return { remove, off };
+}
+
+verb('swap', {
+  help: 'swap in censer: make room for a module (off or out with what weighs least) and turn it on',
+  run(g, args) {
+    const words = args[0] === 'in' ? args.slice(1) : args;
+    if (!words.length) return say(g, 'swap in what? swap in censer');
+    const p = g.player;
+    const inst = findInst(g, words, (i) => !i.on);
+    const k = inst && !inst.on ? -1 : findItem(g, words);
+    const it = k >= 0 ? p.inv[k] : inst;
+    if (!it || ('kind' in it && it.kind !== 'mod')) return say(g, 'swap in what? a module you carry, or one installed and off.');
+    if (it === inst && inst.on) return say(g, `${label(inst)} is on already.`);
+    const room = makeRoom(g, it as { mod: string }, it === inst);
+    if (typeof room === 'string') return say(g, room);
+    const did: string[] = [];
+    if (room.remove) {
+      const r = room.remove;
+      switchOff(g, r);
+      p.installed = p.installed.filter((i) => i !== r);
+      addItem(g, { kind: 'mod', mod: r.mod, roll: r.roll });
+      g.events.push({ type: 'remove', data: r.uid });
+      did.push(`${label(r)} out`);
+    }
+    for (const o of room.off) {
+      switchOff(g, o);
+      did.push(`${label(o)} off`);
+    }
+    const why = did.length ? `; ${did.join('; ')}.` : '.';
+    if (it === inst) {
+      const err = switchOn(g, inst);
+      return say(g, err ?? `${label(inst)} on${why}`);
+    }
+    const before = new Set(p.installed);
+    oneInstall.run(g, words);
+    const added = p.installed.find((i) => !before.has(i));
+    if (added) say(g, `${label(added)} ${added.on ? 'on' : 'in, off'}${why}`);
+  },
+});

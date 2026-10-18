@@ -291,6 +291,8 @@ const TEACH: Record<string, string> = {
   color: 'sees colour true: veins of glass, copper and ichor glint in the walls, and it names them. a needle or an auger drains them.',
 };
 const KINDS: Record<string, Kind> = { heat: 'hands', sonar: 'hollow', '1bit': 'script', edge: 'script' };
+/** the eye filters that show a hidden layer (the UI keeps such an eye's window open) */
+export const LAYERS = Object.keys(KINDS);
 
 /** how much of an eye's layer lies within two chunks: "rings hollow here: 3 shells within 2 chunks." */
 function layerHere(g: Game, f: string): string {
