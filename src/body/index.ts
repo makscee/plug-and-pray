@@ -517,6 +517,16 @@ verb('swap', {
   run(g, args) {
     const words = args[0] === 'in' ? args.slice(1) : args;
     if (!words.length) return say(g, 'swap in what? swap in censer');
+    // v3 econ (v3r2: the door card's "swap spark finger for frost coat", typed, asked "swap in what?"): as its button does
+    const at = words.indexOf('for');
+    if (at > 0 && at < words.length - 1 && VERBS.remove && VERBS.install) {
+      const out = findInst(g, words.slice(0, at));
+      if (!out) return say(g, `nothing installed called ${words.slice(0, at).join(' ')}.`);
+      const into = words.slice(at + 1);
+      if (findItem(g, into) < 0) return say(g, `you carry no ${into.join(' ')}.`);
+      VERBS.remove.run(g, instRef(g, out).split(' '));
+      return VERBS.install.run(g, into);
+    }
     const p = g.player;
     const inst = findInst(g, words, (i) => !i.on);
     const k = inst && !inst.on ? -1 : findItem(g, words);

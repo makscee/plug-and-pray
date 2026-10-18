@@ -62,7 +62,7 @@ export const BETTER: Record<string, 'up' | 'down'> = {
 };
 
 /** what a module is, rarity and name: v2 rarity rides on the item and the installed module alike */
-export type Modish = { mod: string; roll?: Roll; rarity?: Rarity; title?: string; level?: number };
+export type Modish = { mod: string; roll?: Roll; rarity?: Rarity; title?: string; level?: number; printed?: boolean };
 /** v2 rarity: fine and rare move the module's key number its better way */
 export const RARITY_MULT: Partial<Record<Rarity, number>> = { fine: 1.15, rare: 1.3 };
 /** the number rarity works: a weapon's damage, an eye's range, a lamp's radius, a generator's power, else the
@@ -76,7 +76,7 @@ export function rarityKey(m: { mod: string }): string | null {
 }
 export const rarityOf = (m: Modish): Rarity => m.rarity ?? 'common';
 /** the traits an item and its installed module share (roll, rarity, title): copied on install and remove */
-export const traits = (m: Modish) => ({ roll: m.roll, rarity: m.rarity, title: m.title, level: m.level });
+export const traits = (m: Modish) => ({ roll: m.roll, rarity: m.rarity, title: m.title, level: m.level, ...(m.printed ? { printed: true } : {}) });
 
 /** v3 modules (Maks 10-18: fewer finds, duplicates upgrade): levels I..III. Each level moves the module's ONE key
  *  number (levelKey) by LEVEL_STEP its better way; a power module gives +1 power a level instead */

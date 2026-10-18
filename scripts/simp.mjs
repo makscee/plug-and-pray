@@ -50,6 +50,9 @@ for (const style of styles) {
   console.log(`  deaths by floor: ${[0, 1, 2, 3, 4].map((z) => `f${z + 1} ${dead.filter((r) => r.deathZone === z).length}`).join(', ')}; to bosses ${dead.filter((r) => BOSSY.test(r.killer ?? '')).length}`);
   console.log(`  killers: ${Object.entries(dead.reduce((m, r) => ((m[`${r.killer} f${r.deathZone + 1}`] = (m[`${r.killer} f${r.deathZone + 1}`] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(', ')}`);
   console.log(`  module finds per run: mean ${mean(runs.map((r) => r.found ?? 0)).toFixed(1)}, median ${med(runs.map((r) => r.found ?? 0))}`);
+  const perF = (k) => [0, 1, 2, 3, 4].map((f) => `f${f + 1} ${mean(runs.map((r) => (r[k] ?? [])[f] ?? 0)).toFixed(1)}/${Math.max(0, ...runs.map((r) => (r[k] ?? [])[f] ?? 0))}`).join('  ');
+  console.log(`  modules per floor (mean/max): ${perF('foundF')}`);
+  console.log(`  printed per floor (mean/max): ${perF('printsF')}`);
   console.log(`  uniques per run: seen ${mean(runs.map((r) => r.uniques.seen.length)).toFixed(1)}, held ${mean(runs.map((r) => r.uniques.held.length)).toFixed(1)}, dealt ${mean(runs.map((r) => r.uniques.dealt)).toFixed(1)}`);
   // keepers: met, beaten, first-try (no break-off), by floor
   const rows = [];

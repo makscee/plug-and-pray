@@ -47,11 +47,12 @@ describe('r2 econ', () => {
     give(g);
     g.ents.push({ id: 997, kind: 'printer', x: g.player.x + 0.5, y: g.player.y, data: { far: 0, made: 0, greeted: true } });
     const c0 = res(g, 'copper');
+    // v3 econ: three prints a floor
     for (let k = 0; k < 6; k++) exec(g, 'print eye');
     const mods = g.player.inv.filter((i) => i.kind === 'mod');
-    expect(mods.length).toBe(6);
+    expect(mods.length).toBe(3);
     for (const m of mods) expect(m.kind === 'mod' && MODS[m.mod].family).toBe('camera');
-    expect(c0 - res(g, 'copper')).toBe(6 * 2);
+    expect(c0 - res(g, 'copper')).toBe(3 * 2);
   });
 
   it('the Engine drinks what you carry and grades the thaw', () => {

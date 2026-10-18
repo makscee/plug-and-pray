@@ -1,5 +1,5 @@
 // What a new chunk holds: loot by distance, enemies, printers. The start chamber is fixed:
-// you wake holding an eye, legs, a map and the spark finger (src/tune/start.ts); a halo at your feet, and in the
+// you wake holding an eye, legs, a map and the spark finger (src/tune/start.ts), and in the
 // four chunks around it (which one holds what turns with the seed, `opening`): the dawn eye; the card reader, a
 // first memory card and an ember cell; a printer with a second weapon beside it; a reliquary (shop).
 
@@ -10,7 +10,7 @@ import { hash, rng, type Rng } from '../core/rng';
 import { RES, type Chunk, type Game, type Item } from '../core/types';
 import { floors, generate, rooms } from './gen';
 import { nextLog } from './vectors';
-import { ZONES, zoneFar } from './zones';
+import { COLD, ZONES, zoneFar } from './zones';
 import { farOf, floorAt, floorOfChunk, HALF, inRoom, inside, isArrival, origin, stairsChunk, STRIDE } from './floors';
 
 /** v3 (Maks 10-18: "my first eye was behind a wall and I couldn't get it"): the first eye lies in the open, on the
@@ -164,13 +164,18 @@ function cache(g: Game, c: Chunk, f: number): void {
   placeCache(g, c.cx, c.cy, f);
   const r = rng(hash(g.seed, 12, f));
   if (f > 0 && f < ZONES.length - 1) spawn(g, { kind: 'item', x: c.cx * CHUNK + 10.5, y: c.cy * CHUNK + 6.5, item: { kind: 'res', res: r.pick(['bone', 'glass', 'copper'] as const), n: 3 + f } });
+  // v3 econ: the print → recycle loop paid the deep floors' power and upgrades; the cache pays a share of it now
+  if (f > 0 && f < ZONES.length - 1) spawn(g, { kind: 'item', x: c.cx * CHUNK + 11.5, y: c.cy * CHUNK + 6.5, item: { kind: 'res', res: 'bone', n: 2 + 2 * f } });
+  if (f > 0 && f < ZONES.length - 1) spawn(g, { kind: 'item', x: c.cx * CHUNK + 12.5, y: c.cy * CHUNK + 6.5, item: { kind: 'res', res: 'copper', n: 1 + f } });
 }
 
 export function fill(g: Game, c: Chunk): void {
   const at = (x: number, y: number) => [c.cx * CHUNK + x + 0.5, c.cy * CHUNK + y + 0.5] as const;
   const f = floorOfChunk(c.cx);
   if (isArrival(c.cx, c.cy)) {
-    if (f === 0) {
+    // v3 econ (v3r2: floor 1 was the same pile every run): the halo waits where you land on the cold floor (3), where
+    // a lamp is what lets you mend, not on floor 1 where it was the first thing recycled
+    if (f === COLD) {
       const [ex, ey] = at(8, 8);
       spawn(g, { kind: 'item', x: ex, y: ey, item: { kind: 'mod', mod: 'halo' } });
     }

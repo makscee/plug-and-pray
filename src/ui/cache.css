@@ -35,3 +35,14 @@
 
 /* a taken pick keeps its spot, greyed (v2r2 ux: the tiles reflowed under the pointer) */
 .kit-card .kit-taken { opacity: 0.35; justify-content: center; }
+
+/* v3 econ: a find or an upgrade, for a moment (src/ui/toast.ts): the kit card's look, small, never in the way */
+.toast { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 9004; pointer-events: none; display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 16px 10px 12px; background: #0d0a09f4; border: 2px solid var(--loot); box-shadow: 0 0 24px #e8bf5a40, 0 8px 24px #000c; animation: toast 2.6s ease-out both; }
+.toast.rar-rare { border-color: var(--rar-rare); }
+.toast p { margin: 0; }
+.toast .kit-icon.cell { margin: 0; flex: none; }
+.toast-text { min-width: 0; }
+.toast-head { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: var(--loot); }
+.toast-name { font-size: 24px; line-height: 1.05; color: var(--t-title); }
+.toast-line { font-size: 17px; color: var(--acc); }
+@keyframes toast { 0% { opacity: 0; transform: translate(-50%, -12px); } 10% { opacity: 1; transform: translateX(-50%); } 85% { opacity: 1; } 100% { opacity: 0; } }
