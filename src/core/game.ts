@@ -173,7 +173,8 @@ export function chase(g: Game, e: Entity, dt: number): void {
     // step toward the player's cell, preferring the longer axis, sliding along walls
     const dx = to.x - e.x;
     const dy = to.y - e.y;
-    const step = d.speed * dt;
+    // v2 uniques: ash from the penitent's heels, the drowned bell's ring: half speed
+    const step = d.speed * dt * (g.t < ((e.enemy!.data.slowUntil as number) ?? 0) ? 0.5 : 1);
     const tryMove = (mx: number, my: number) => {
       const nx = e.x + mx;
       const ny = e.y + my;

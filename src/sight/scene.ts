@@ -11,6 +11,7 @@ import { MODS } from '../core/mods';
 import type { Entity, Game } from '../core/types';
 import { flame, lamps } from './lamp';
 import { WARM } from '../mods/sense';
+import { throughOne } from '../mods/uniques';
 import { textures } from './textures';
 import { engaged, PUFF_TIME, puffs, struckAt } from './foes';
 import { frames, puff, SIZE, SPRITES, type SpriteDef } from './sprites';
@@ -241,6 +242,13 @@ const barFront = new THREE.MeshBasicMaterial({ color: 0xe03828, fog: false });
 const barFull = new THREE.MeshBasicMaterial({ color: 0xf0a050, fog: false });
 
 const spriteMats = new Map<THREE.Texture, THREE.Material>();
+/** seen through a wall (the saint's last lens): the sprite pale and see-through, over the stone */
+const throughMats = new Map<THREE.Texture, THREE.Material>();
+function throughMat(t: THREE.Texture): THREE.Material {
+  let mat = throughMats.get(t);
+  if (!mat) throughMats.set(t, (mat = new THREE.MeshBasicMaterial({ map: t, color: 0xa8c8ff, transparent: true, opacity: 0.6, alphaTest: 0.5, depthTest: false, fog: false, side: THREE.DoubleSide })));
+  return mat;
+}
 const heatMats = new Map<string, THREE.Material>();
 const depthSpriteMats = new Map<THREE.Texture, THREE.Material>();
 function spriteMat(t: THREE.Texture): THREE.Material {
@@ -308,7 +316,7 @@ export function frameOf(g: Game, e: Entity): number {
   return Math.floor(g.t * 3 + e.id * 0.37) % 2;
 }
 
-function addSprite(g: Game, e: Entity, mode: Mode, showHidden: boolean): void {
+function addSprite(g: Game, e: Entity, mode: Mode, showHidden: boolean, xray = false): void {
   const type = e.enemy!.type;
   const hidden = ENEMIES[type]?.hidden;
   // the hum hides from every eye but sonar and heat (src/mods/sense.ts: what an eye shows is what you can hit)
@@ -318,10 +326,15 @@ function addSprite(g: Game, e: Entity, mode: Mode, showHidden: boolean): void {
   if (mode === 'heat' && !WARM.has(type)) return;
   // nothing is drawn through a wall: only heat shows warmth through stone (playtest r1: a walker in a
   // wall drawn dead centre, the shots hitting stone)
-  if (mode !== 'heat' && !clear(g, g.player.x, g.player.y, e.x, e.y)) return;
+  // v2 unique: the saint's last lens shows what stands behind one wall, faint, over the stone
+  let through = false;
+  if (mode !== 'heat' && !clear(g, g.player.x, g.player.y, e.x, e.y)) {
+    if (!xray || mode !== 'color' || !throughOne(g, g.player.x, g.player.y, e.x, e.y)) return;
+    through = true;
+  }
   const f = frameOf(g, e);
   const size = sh.def.size;
-  const o = new THREE.Mesh(spriteGeo, mode === 'heat' ? heatSpriteMat(sh.mask[f], sh.def.heat) : mode === 'depth' ? depthSpriteMat(sh.mask[f]) : spriteMat(sh.color[f]));
+  const o = new THREE.Mesh(spriteGeo, through ? throughMat(sh.color[f]) : mode === 'heat' ? heatSpriteMat(sh.mask[f], sh.def.heat) : mode === 'depth' ? depthSpriteMat(sh.mask[f]) : spriteMat(sh.color[f]));
   // the art fills SIZE px; the sprite stands on the floor (or hovers by `lift`), a little bob when floating
   const bob = sh.def.lift ? Math.sin(g.t * 3 + e.id) * 0.04 : 0;
   // poses the fight slice asks for (src/fight/index.ts): a sweep's wind-up is wider, a rearing mite stands up
@@ -332,8 +345,9 @@ function addSprite(g: Game, e: Entity, mode: Mode, showHidden: boolean): void {
   o.scale.set(size * wide, size * rear, 1);
   o.position.set(e.x, sh.def.lift + (size * rear) / 2 + bob, e.y);
   o.rotation.y = -g.player.dir;
-  o.renderOrder = mode === 'heat' ? 2 : 1;
+  o.renderOrder = mode === 'heat' || through ? 2 : 1;
   ents.add(o);
+  if (through) return;
   // an hp bar over it once it is hurt or after you (colour eyes only)
   if (mode !== 'color') return;
   const max = Number(e.enemy!.data.maxHp ?? e.enemy!.hp) || 1;
@@ -374,14 +388,14 @@ void SIZE;
 void engaged;
 
 /** entities near you as their shapes; hidden enemies only on sonar and heat eyes */
-function place(g: Game, mode: Mode, hidden = false, filter = ''): void {
+function place(g: Game, mode: Mode, hidden = false, filter = '', xray = false): void {
   ents.clear();
   const p = g.player;
   addMarks(g, ents, mode, filter, { snap, range }, R);
   for (const e of g.ents) {
     if (Math.abs(e.x - p.x) > R || Math.abs(e.y - p.y) > R) continue;
     if (e.enemy) {
-      addSprite(g, e, mode, hidden);
+      addSprite(g, e, mode, hidden, xray);
       continue;
     }
     let l = lookOf(e);
@@ -453,6 +467,8 @@ export interface Shot {
   hidden?: boolean;
   /** the eye's filter: some things show on one filter only (marks.ts) */
   filter?: string;
+  /** v2 unique: sees through one wall (the saint's last lens) */
+  xray?: boolean;
 }
 
 const targets = new Map<string, THREE.WebGLRenderTarget>();
@@ -475,7 +491,7 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   const mode = s.mode ?? 'color';
   const p = g.player;
   build(g, p.x, p.y);
-  place(g, mode, !!s.hidden, s.filter);
+  place(g, mode, !!s.hidden, s.filter, !!s.xray);
   // the floor grid in the dark zones, on colour eyes only, brighter the darker the zone
   const dark = ZONES[zoneAt(p.x, p.y)]?.look.dark ?? 0;
   grid.visible = mode === 'color' && dark > 0;
