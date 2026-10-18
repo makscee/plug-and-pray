@@ -754,7 +754,7 @@ export function play(seed: number, o: Opts): Run {
   function machineOffers(m: Entity): { cmd: string; ok: boolean }[] {
     const out: { cmd: string; ok: boolean }[] = [];
     if (m.data?.altar) for (const [cmd, cost] of altar.offers(g, m)) out.push({ cmd, ok: afford(cost) && (cmd !== 'offer mend' || P.hp < P.maxHp * 0.5) && (cmd !== 'offer copper' || (resOf(g, 'bone') < 4 && resOf(g, 'copper') >= 4)) && (cmd !== 'offer bone' || (resOf(g, 'glass') < 1 && resOf(g, 'bone') >= 12)) });
-    if (m.data?.altar) upgrades(out);
+    // (v3 modules: upgrades at printers only: an altar's bone goes to hp and power)
     if (m.kind === 'printer' && m.data?.shop) {
       const zone = Math.max(targetZone(), zoneHere());
       const pick = bestLoadout(g, zone, true);
@@ -785,11 +785,13 @@ export function play(seed: number, o: Opts): Run {
     }
     return out;
   }
-  /** v3 modules: upgrade what is on: weapons first, then eyes, then the rest */
+  /** v3 modules: upgrade what is on: weapons first, then eyes, then the rest, keeping RB bone and RG glass for the altars */
+  const [RB, RG] = (process.env.UPRES ?? '4,1').split(',').map(Number);
   function upgrades(out: { cmd: string; ok: boolean }[]): void {
     const rank = (f: string) => ['weapon', 'camera', 'body', 'gait', 'lamp', 'power'].indexOf(f) + 1 || 9;
     for (const i of P.installed.filter((i) => i.on && up.upgradeCost(i)).sort((a, b) => rank(MODS[a.mod].family) - rank(MODS[b.mod].family)))
-      out.push({ cmd: 'upgrade ' + labelOf(i), ok: afford(up.upgradeCost(i)!) });
+      // with a reserve left for the altars' hp and power (upgrading first cost seed 1 its floor-3 hp)
+      out.push({ cmd: 'upgrade ' + labelOf(i), ok: afford({ ...up.upgradeCost(i)!, bone: (up.upgradeCost(i)!.bone ?? 0) + RB, glass: (up.upgradeCost(i)!.glass ?? 0) + RG }) });
   }
   const afford = (c: Partial<Record<Res, number>>) => Object.entries(c).every(([r, n]) => resOf(g, r as Res) >= (n as number));
 

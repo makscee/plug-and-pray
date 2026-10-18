@@ -9,7 +9,7 @@ import { altarNear } from './altar';
 import { affords, fmt, glassTip, pay, printerNear, type Cost } from './printer';
 
 /** what raising it to level 2 and to level 3 costs */
-export const UPGRADE_COST: Record<number, Cost> = { 2: { bone: 4, copper: 2, glass: 1 }, 3: { bone: 8, copper: 4, glass: 3 } };
+export const UPGRADE_COST: Record<number, Cost> = { 2: { bone: 3, copper: 1, glass: 1 }, 3: { bone: 6, copper: 3, glass: 2 } };
 /** what the next level costs, or null at the top */
 export const upgradeCost = (m: Modish): Cost | null => (moduleLevel(m) >= maxLevel(m) ? null : UPGRADE_COST[moduleLevel(m) + 1]);
 

@@ -59,11 +59,14 @@ describe('v3 modules: levels', () => {
     expect(upgradeCost(bagMods(g)[0])).toEqual(UPGRADE_COST[2]);
     exec(g, 'upgrade nail psalm');
     expect(bagMods(g)[0].level ?? 1).toBe(1);
-    expect(text(g)).toMatch(/wants 4 bone/);
-    g.player.inv.push({ kind: 'res', res: 'bone', n: 12 }, { kind: 'res', res: 'copper', n: 6 }, { kind: 'res', res: 'glass', n: 4 });
+    expect(text(g)).toMatch(new RegExp(`wants ${UPGRADE_COST[2].bone} bone`));
+    const [b2, c2, g2] = [UPGRADE_COST[2].bone!, UPGRADE_COST[2].copper!, UPGRADE_COST[2].glass!];
+    const [b3, c3, g3] = [UPGRADE_COST[3].bone!, UPGRADE_COST[3].copper!, UPGRADE_COST[3].glass!];
+    expect(b3).toBeGreaterThan(b2);
+    g.player.inv.push({ kind: 'res', res: 'bone', n: b2 + b3 }, { kind: 'res', res: 'copper', n: c2 + c3 }, { kind: 'res', res: 'glass', n: g2 + g3 });
     exec(g, 'upgrade nail psalm');
     expect(bagMods(g)[0].level).toBe(2);
-    expect([res(g, 'bone'), res(g, 'copper'), res(g, 'glass')]).toEqual([8, 4, 3]);
+    expect([res(g, 'bone'), res(g, 'copper'), res(g, 'glass')]).toEqual([b3, c3, g3]);
     exec(g, 'upgrade nail psalm');
     expect(bagMods(g)[0].level).toBe(3);
     expect([res(g, 'bone'), res(g, 'copper'), res(g, 'glass')]).toEqual([0, 0, 0]);
