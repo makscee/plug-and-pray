@@ -3,7 +3,7 @@ import '../src/mods';
 import { newGame, tick } from '../src/core/game';
 import { chunk } from '../src/core/grid';
 import { exec } from '../src/core/verbs';
-import { origin } from '../src/world/floors';
+import { origin, stairsChunk } from '../src/world/floors';
 import { zoneOf, zoneAt, ZONES } from '../src/world/zones';
 import { MAX_CORE } from '../src/world/altar';
 
@@ -34,7 +34,9 @@ describe('zones', () => {
   it('an altar sells power and flesh for good, at a climbing price', () => {
     const g = newGame(1);
     const altar = (() => {
-      chunk(g, 1, 1);
+      // v5: the cradle's altar is the arm end opposite the keeper
+      const [sx, sy] = stairsChunk(1, 0);
+      chunk(g, -sx, -sy);
       return g.ents.find((e) => e.data?.altar)!;
     })();
     expect(altar).toBeTruthy();

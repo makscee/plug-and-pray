@@ -56,7 +56,7 @@ describe('v2 flow', () => {
     const g = newGame(7);
     expect(goalLine(g)).toMatch(/install your kit/);
     kit(g);
-    expect(goalLine(g)).toMatch(/^floor 1: find the stairs \(somewhere [NESW]{1,2}\)$/);
+    expect(goalLine(g)).toMatch(/^floor 1: walk to the keeper's room, \d+ cells? [NESW]{1,2}$/);
   });
 
   it('where points at the card reader that has the card beside it', () => {

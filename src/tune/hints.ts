@@ -417,9 +417,10 @@ export function goalLine(g: Game): string {
     const sealed = eye?.data?.sealed as [number, number] | undefined;
     if (sealed && Math.abs(Math.floor(p.x) - sealed[0]) + Math.abs(Math.floor(p.y) - sealed[1]) <= 1)
       return `${n}: your first eye is behind this cracked wall: break it`;
-    if (eye && !eyeHinted(g)) return `${n}: no eye yet. walk (map click or arrows) to find one`;
     if (eye) {
       const w = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(eye.x - p.x, -(eye.y - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8].toUpperCase();
+      // v5 ("make sure the game is straightforward"): the way to the eye is said from the start, not "walk to find one"
+      if (!eyeHinted(g)) return `${n}: no eye yet: walk ${w} to find one (map click or arrows)`;
       return `${n}: no eye yet: the ◆ on the map, ${cells(Math.round(Math.hypot(eye.x - p.x, eye.y - p.y)))} ${w} (where)`;
     }
   }
@@ -434,8 +435,9 @@ export function goalLine(g: Game): string {
   }
   if (bossDown(g)) return `${n}: ${name} is open, ${far} ${word}: descend`;
   if (keeperDoor.at(g, 2.5)) return `${n}: the keeper's door. ${keeperDoor.ready(g, f) ? (keeperDoor.risky?.(g, f) ? 'risky: likely a retreat or two' : 'you look ready') : 'not ready: where says why'}`;
-  if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`)) return `${n}: beat the keeper, then the stairs (${name}, ${far} ${word})`;
-  return `${n}: find the stairs (somewhere ${word})`;
+  // v5: floors are crosses, the keeper's room the end of one arm: always its way and distance, never "somewhere"
+  if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`)) return `${n}: beat the keeper, ${far} ${word}; then ${name}`;
+  return `${n}: walk to the keeper's room, ${far} ${word}`;
 }
 
 // ---- v2r4 ux: `descend` and `break` a few cells short walk you there and act, instead of refusing

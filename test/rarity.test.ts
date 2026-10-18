@@ -72,7 +72,7 @@ describe('v2 rarity', () => {
     }
   });
 
-  it('a run deals each unique once, and the cradle keeps one in a corner chunk', () => {
+  it('a run deals each unique once, and the cradle keeps one in a side arm end', () => {
     for (let seed = 1; seed <= 10; seed++) {
       const g = newGame(seed);
       const [cx, cy] = relicChunk(seed);

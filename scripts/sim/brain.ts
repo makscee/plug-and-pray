@@ -289,12 +289,12 @@ export function play(seed: number, o: Opts): Run {
   };
   const zoneHere = () => zones.zoneAt(P.x, P.y);
   /** seconds a careful player spends on a floor before it takes on the keeper anyway */
-  const PATIENCE = 420;
+  const PATIENCE = 240; // v5: floors are crosses of 9 chunks (were 13-25): a person looks round them in half the time
   /** and at least this long: a person looks round a floor (its cache, its loot, a printer) before its keeper */
-  const MIN_STAY = 150;
-  const RUSH_STAY = 75;
+  const MIN_STAY = 60;
+  const RUSH_STAY = 30;
   /** the readiness of each floor's boss loadout (src/fight/bosses.ts LOADOUTS, what the bosses are balanced for) */
-  const KEEPER_NEED = [32, 55, 80, 150, 300];
+  const KEEPER_NEED = [32, 55, 80, 150, 300].map((n) => n * 0.6); // v5: keepers have 0.6 of their hp (src/fight/bosses.ts KEEPER_HP)
   let floorSince = 0;
   let floorWas = 0;
   /** until when it walks at a keeper it could not reach from where it stood */

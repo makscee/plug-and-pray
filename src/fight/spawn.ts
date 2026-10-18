@@ -38,12 +38,13 @@ export function table(far: number): [string, number, number][] {
   if (z >= ZONES.length - 1) return []; // the heart: its keeper alone (src/world/floors.ts)
   if (z === 0) return [['mite', 0.85, 2], ['mite', 0.2, 2], ['seraph', 0.25, 1]]; // v2 balance: melee only now, so one second pack in five (was 0.35)
   // r1 pace: the nave's first ring (by the cradle's border) holds pairs, not threes: a step, not a cliff
-  if (z === 1) return far < 2.8 ? [['mite', 0.8, 2], ['mite', 0.15, 2], ['seraph', 0.2, 1], ['mimic', 0.1, 1]] : [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
+  if (z === 1) return far < 2.8 ? [['mite', 0.8, 2], ['mite', 0.15, 2], ['seraph', 0.2, 1], ['mimic', 0.1, 1]] : [['mite', 0.8, 3], ['mite', 0.2, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
   // r1 pace: a touch lighter than it was, so the furnace (below) is the hardest zone
-  if (z === 2) return [['mite', 0.55, 3], ['walker', 0.5, 1], ['seraph', 0.3, 1], ['hum', 0.3, 1], ['mimic', 0.15, 1]];
+  // v5 ("2 times shorter"): fewer filler packs on floors 2-4 (mites 0.55 → 0.4 here, the furnace's second pack 0.3 → 0.1)
+  if (z === 2) return [['mite', 0.4, 3], ['walker', 0.5, 1], ['seraph', 0.3, 1], ['hum', 0.3, 1], ['mimic', 0.15, 1]];
   // r1 pace: the furnace is the hardest zone: hum packs and more mimics on top of its lamps and walkers
   // v2 floors: the whole furnace floor is crossed now (it was a stretch to the engine): a little lighter
-  return [['mite', 0.6, 3], ['mite', 0.3, 3], ['walker', 0.5, 1], ['pyre', 0.4, 1], ['hum', 0.2, 2], ['mimic', 0.2, 1]];
+  return [['mite', 0.6, 3], ['mite', 0.1, 3], ['walker', 0.5, 1], ['pyre', 0.4, 1], ['hum', 0.2, 2], ['mimic', 0.2, 1]];
 }
 
 /** a foe made for its zone: hp scaled here, its damage by `FOE.damage` in the hurt hook */
