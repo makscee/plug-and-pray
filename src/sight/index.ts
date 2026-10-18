@@ -20,6 +20,7 @@ import './lamp';
 import './scanner';
 import { firstSight } from './codex';
 import { clean } from '../tune/start';
+import { wrapCamera } from './fps';
 
 /** the facing as a compass word, and the turn to its left and right */
 export const WORDS = ['n', 'e', 's', 'w'];
@@ -401,3 +402,6 @@ frameHooks.push((g) => {
   staged = true;
   stageSight(g);
 });
+
+// v2: scopes (the FPS eyes) get their own window and the big view (src/sight/fps.ts)
+wrapCamera();

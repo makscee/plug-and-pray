@@ -328,6 +328,26 @@ export function play(seed: number, o: Opts): Run {
         if (side) return `go ${side[0]} 1`;
       }
     }
+    // v2 bolts (src/fight/bolts.ts): one flying at you, close: step across its path
+    if (!P.path.length) {
+      const bolt = g.ents.find((sh) => {
+        const d = sh.data as { shot?: boolean; foe?: boolean; kind?: string; vx: number; vy: number } | undefined;
+        if (!d?.shot || !d.foe || !d.kind || dist(sh, P) > 2.2) return false;
+        const v = Math.hypot(d.vx, d.vy) || 1;
+        const [rx, ry] = [P.x - sh.x, P.y - sh.y];
+        return rx * d.vx + ry * d.vy > 0 && Math.abs(rx * d.vy - ry * d.vx) / v < 0.5;
+      });
+      if (bolt) {
+        const d = bolt.data as { vx: number; vy: number };
+        const v = Math.hypot(d.vx, d.vy) || 1;
+        const off = (x: number, y: number) => Math.abs((x + 0.5 - bolt.x) * d.vy - (y + 0.5 - bolt.y) * d.vx) / v;
+        const side = ([['n', 0, -1], ['s', 0, 1], ['e', 1, 0], ['w', -1, 0]] as const)
+          // never into a foe's reach
+          .filter(([, ox, oy]) => cellAt(g, px + ox, py + oy) === Cell.floor && !foes.some((e) => dist(e, { x: px + ox + 0.5, y: py + oy + 0.5 }) < 1.8))
+          .sort((a, b) => off(px + b[1], py + b[2]) - off(px + a[1], py + a[2]))[0];
+        if (side && off(px + side[1], py + side[2]) > 0.6) { why = 'dodge a bolt'; return `go ${side[0]} 1`; }
+      }
+    }
     // a seraph has you in its line: step out
     const lamps = foes.filter((e) => ['seraph', 'pyre', 'saint'].includes(e.enemy!.type));
     const inLine = (x: number, y: number) => lamps.some((e) => (Math.abs(e.x - x - 0.5) < 0.6 || Math.abs(e.y - y - 0.5) < 0.6) && dist(e, { x: x + 0.5, y: y + 0.5 }) > 1.5 && dist(e, { x: x + 0.5, y: y + 0.5 }) <= ENEMIES[e.enemy!.type].sense && clear(g, e.x, e.y, x + 0.5, y + 0.5));
