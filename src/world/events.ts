@@ -147,7 +147,7 @@ export function stage(g: Game, kind: string, x: number, y: number, r: Rng): void
     say(g, ['feet in step, coming your way: a patrol, ', ...where(g, x, y)]);
   } else if (kind === 'reliquary') {
     // never a module you already have, if four rolls can help it (playtest r2 pace)
-    item(g, x, y, fresh(g, lootMod(r, far + 2), r, far + 2), 'reliquary');
+    item(g, x, y, fresh(g, lootMod(r, far + 2, undefined, !g.floor), r, far + 2), 'reliquary');
     item(g, x, y, { kind: 'res', res: r.pick(['bone', 'glass'] as const), n: r.int(2, 4) }, 'reliquary');
     say(g, ['a seal breaks somewhere close. a reliquary stands open, ', ...where(g, x, y)]);
   } else if (kind === 'collapse') {
@@ -155,7 +155,7 @@ export function stage(g: Game, kind: string, x: number, y: number, r: Rng): void
     (RUBBLE[z] ?? RUBBLE[1]).forEach((type, k) => (mark(foe(g, type, x + k * 0.3, y), 'collapse').enemy!.data.noticed = true));
     say(g, ['the vault groans and gives. rubble, and something shaken awake in it, ', ...where(g, x, y)]);
   } else if (kind === 'machine') {
-    const it = fresh(g, lootMod(r, far + 1), r, far + 1);
+    const it = fresh(g, lootMod(r, far + 1, undefined, !g.floor), r, far + 1);
     if (it.kind === 'mod') {
       const nums = Object.entries(MODS[it.mod]?.params ?? {}).filter(([k, v]) => typeof v === 'number' && BETTER[k]);
       if (nums.length) {

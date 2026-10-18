@@ -25,6 +25,9 @@ family('weapon', {
     // only what you perceive (an eye, a scanner) or can touch; the hidden only when perceived (src/mods/sense.ts)
     const near = g.ents.filter((e) => e.enemy && dist(e, p) <= range && clear(g, p.x, p.y, e.x, e.y) && canHit(g, e)).sort((a, b) => dist(a, p) - dist(b, p));
     if (!near.length) return;
+    // a boss in reach comes first, its brood second (v2 r1 fun: the queen's mites soaked every hit)
+    const boss = near.findIndex((e) => e.enemy!.data.boss);
+    if (boss > 0) near.unshift(...near.splice(boss, 1));
     inst.data.readyAt = g.t + param<number>(inst, 'cooldown', 1) / haste(g);
     // a sweeping weapon (the censer flail) hits everything in reach, the rest the nearest
     const dmg = param<number>(inst, 'damage', 1);

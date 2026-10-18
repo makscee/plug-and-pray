@@ -65,7 +65,7 @@ const STEPS = [
   [0, 'document.querySelector(".hpbar")?.textContent.includes("10/10")'],
   [0, '(g.player.core = 20, g.player.slots = 8, g.player.inv.push({ kind: "mod", mod: "nail-psalm" }), true)'],
   ['install nail'], [1.2, 'document.querySelector("[data-cmd=shoot]") !== null'],
-  ['face w'], [0, '(g.ents.push({ id: 9999, kind: "enemy", x: g.player.x - 3, y: g.player.y, enemy: { type: "mite", hp: 1.5, readyAt: 0, data: {} } }), true)'],
+  ['face w'], [0, '(g.ents.push({ id: 9999, kind: "enemy", x: g.player.x - 3, y: g.player.y, enemy: { type: "mite", hp: 1.2, readyAt: 0, data: {} } }), true)'],
   ['shoot'], [0.4, '!g.ents.some(e => e.id === 9999) && JSON.stringify(g.log).includes("the mite bursts")'],
   // body slice (self-contained: back in the start chamber, power not under test, every slot full)
   [0, '(Object.assign(g.player, { x: 8.5, y: 8.5, path: [], core: 20, installed: [], slots: 0 }), ["slot-board","slot-board","slot-board","slot-board","ledger","servo-gait","clock-of-hours","gyro-heart"].forEach(m => g.player.inv.push({ kind: "mod", mod: m })), window.full = g.player.slots, true)'],

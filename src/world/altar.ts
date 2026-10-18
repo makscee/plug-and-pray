@@ -26,8 +26,10 @@ export function powerCost(g: Game): Cost {
   return c;
 }
 export const MEND: Cost = { bone: 2 };
+/** v2 r1 fun (bone-starved on floors 1–2, copper piling up): an altar takes copper for bone, 2 for 1 */
+export const TITHE: Cost = { copper: 2 };
 /** max hp an altar can add, two at a time */
-export const MAX_FLESH = 12;
+export const MAX_FLESH = 18; // v2 balance: was 12; the keepers' ember hearts add 2 each (src/fight/bosses.ts)
 export function fleshCost(g: Game): Cost {
   const n = (g.player.flesh ?? 0) / 2;
   const c: Cost = { bone: 4 + 2 * n, copper: 1 + Math.floor(n / 2) };
@@ -99,6 +101,7 @@ export function offers(g: Game, _e: Entity): [string, Cost][] {
   for (const i of attunable(g)) out.push([`attune ${def(i).name}`, attuneCost(i)]);
   for (const i of temperable(g)) out.push([`temper ${def(i).name}`, temperCost(i)]);
   if (g.player.hp < g.player.maxHp * 0.7) out.push(['offer mend', MEND]);
+  out.push(['offer copper', TITHE]);
   return out;
 }
 
@@ -114,6 +117,7 @@ const menu = (g: Game) => [
   g.player.core < MAX_CORE ? [{ text: 'offer power', cmd: 'offer power' }, `  +1 power for good: ${fmt(powerCost(g))}`] : ['  power: the core is full.'],
   (g.player.flesh ?? 0) < MAX_FLESH ? [{ text: 'offer flesh', cmd: 'offer flesh' }, `  +2 max hp for good: ${fmt(fleshCost(g))}`] : ['  flesh: as much as it can give.'],
   [{ text: 'offer mend', cmd: 'offer mend' }, `  mend fully: ${fmt(MEND)}`],
+  [{ text: 'offer copper', cmd: 'offer copper' }, `  1 bone for ${fmt(TITHE)}`],
   ...attunable(g).map((i) => [{ text: `attune ${def(i).name}`, cmd: `attune ${def(i).name}` }, `  ${attuneText(i)} for good: ${fmt(attuneCost(i))}`]),
   ...temperable(g).map((i) => {
     const to = temperTo(i);
@@ -123,7 +127,7 @@ const menu = (g: Game) => [
 ];
 
 verb('offer', {
-  help: 'at an altar: offer power, offer flesh, offer mend',
+  help: 'at an altar: offer power, offer flesh, offer mend, offer copper (2 copper for 1 bone)',
   when: (g) => !!altarNear(g),
   whenFail: noAltar,
   run(g, [what]) {
@@ -154,6 +158,14 @@ verb('offer', {
       pay(g, MEND);
       p.hp = p.maxHp;
       return say(g, 'the altar closes your wounds.');
+    }
+    if (what === 'copper') {
+      if (!affords(g, TITHE)) return say(g, `the altar wants ${fmt(TITHE)}.`);
+      pay(g, TITHE);
+      const b = p.inv.find((i) => i.kind === 'res' && i.res === 'bone');
+      if (b && b.kind === 'res') b.n++;
+      else p.inv.push({ kind: 'res', res: 'bone', n: 1 });
+      return say(g, 'the altar melts the copper down and gives back bone: +1 bone.');
     }
     // r4: `offer bone` says what the altar takes rather than the bare menu again
     if (what) return say(g, `the altar takes no single ${what}. it takes these, and pays in power, flesh or mending:`, ...menu(g));

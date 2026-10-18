@@ -115,6 +115,9 @@ export function ray(g: Game, dir: number, range: number): { foe: Entity | null; 
   return { foe: best, len: bestD };
 }
 
+/** a shot down the crosshair lands harder (v2 r1 fight: the FPS floors were balanced without it; +25% feels better than −20% boss hp) */
+export const FPS_DAMAGE = 1.25;
+
 /** fire every ready aimed weapon down the view: a hitscan as far as each one reaches. Returns hits. */
 export function fpsFire(g: Game): number {
   const ready = volley(g);
@@ -134,7 +137,7 @@ export function fpsFire(g: Game): number {
     if (!foe) continue;
     hits++;
     foe.enemy!.data.noticed = true;
-    strike(g, foe, param<number>(i, 'damage', 1));
+    strike(g, foe, param<number>(i, 'damage', 1) * FPS_DAMAGE);
     s.hitAt = g.t;
     if (!g.ents.includes(foe)) s.killAt = g.t;
   }

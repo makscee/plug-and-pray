@@ -269,7 +269,7 @@ function names(g: Game, s: Secret): [number, number, string] | null {
 function pay(g: Game, s: Secret, x: number, y: number, extra: Entity['item'][]): string {
   const r = rng(hash(g.seed, 93, s.x, s.y));
   const far = Math.hypot(Math.floor(s.x / CHUNK), Math.floor(s.y / CHUNK));
-  const items = [lootMod(r, far + 1.5), ...extra];
+  const items = [lootMod(r, far + 1.5, undefined, !g.floor), ...extra];
   for (const it of items) spawn(g, { kind: 'item', x, y, item: it! });
   return items.map((it) => itemName(it!)).join(', ');
 }
