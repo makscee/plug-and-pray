@@ -3,7 +3,9 @@
 // weighs you against the keeper behind it: its hp and blows, your damage, and what is missing. The door is
 // where the way in meets the room; you stand a cell outside it. src/ui/door.ts shows the keeper there too.
 
-import { cell, Cell } from '../core/grid';
+import { cell, Cell, DIRS, open } from '../core/grid';
+import { doorIn, walkPace } from '../mods/gait';
+import { endTrip, route } from '../mods/pilot';
 import { dist, say, tickHooks } from '../core/game';
 import { active, def, MODS, param } from '../core/mods';
 import type { Game, Line } from '../core/types';
@@ -109,8 +111,8 @@ export function keeperLine(g: Game, f = floorOf(g)): Line[] {
   const kill = c.dps > 0 ? ` (${secs(c.hp / c.dps)} to bring it down)` : '';
   const head = `the keeper: ${c.name}, ${c.hp} hp, hits up to ${c.damage.toFixed(1)}. you deal ${c.dps.toFixed(1)}/s${kill}.`;
   const verdict: Line = c.ready
-    ? ['ready. ', { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in', cmd: `go ${d.dir} 3` }] : [])]
-    : [`you are not ready: ${c.why.join('; ')}. `, { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in anyway', cmd: `go ${d.dir} 3` }] : [])];
+    ? ['ready. ', { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in', cmd: 'go in' }] : [])]
+    : [`you are not ready: ${c.why.join('; ')}. `, { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in anyway', cmd: 'go in' }] : [])];
   return [[head], verdict];
 }
 
@@ -134,5 +136,65 @@ tickHooks.push((g) => {
   s.add(f);
   say(g, ...keeperLine(g, f));
 });
+
+// ---- v2r2 fun: every walk stops at the door (map clicks, goto, go, the pilot, keys, the gyro heart), not
+// only `where`'s. Going in takes `go in`, from the door card or the console. It runs before the room's wake
+// hook (src/world/floors.ts): a step that would cross into the room is taken back to where you stood.
+
+/** per game: the floor you chose to go in on (`go in`), and where you last stood outside the room */
+const gate = new WeakMap<Game, { inOn: number; out: [number, number] | null; said: number }>();
+const gateOf = (g: Game) => {
+  let s = gate.get(g);
+  if (!s) gate.set(g, (s = { inOn: -1, out: null, said: -99 }));
+  return s;
+};
+/** the door is shut to walks: its keeper sleeps and you did not say `go in` */
+export const shut = (g: Game, f = floorOf(g)): boolean => f !== LAST && !bossDown(g, f) && !bossWoke(g, f) && gateOf(g).inOn !== f;
+
+tickHooks.unshift((g) => {
+  if (g.ended) return;
+  const p = g.player;
+  const f = floorOf(g);
+  const s = gateOf(g);
+  if (!inRoom(g.seed, f, p.x, p.y)) return void (s.out = [p.x, p.y]);
+  if (!shut(g, f) || !s.out) return;
+  [p.x, p.y] = s.out;
+  p.path = [];
+  p.move = null;
+  endTrip(g);
+  g.events.push({ type: 'door' });
+  const d = doorOf(g, f);
+  // a map walk's next leg bumps the door again at once: said once
+  if (g.t - s.said < 3) return void (s.said = g.t);
+  s.said = g.t;
+  say(g, [`you stop at the keeper's door. `, { text: 'go in', cmd: 'go in' }, ' when you are ready.']);
+  // the console's weighing too, the first time on this floor
+  if (d && !told.get(g)?.has(f)) {
+    if (!told.has(g)) told.set(g, new Set());
+    told.get(g)!.add(f);
+    say(g, ...keeperLine(g, f));
+  }
+});
+
+/** `go in`: through the door you stand at, a few cells into the room, with whatever legs you have */
+doorIn.at = (g) => !!atDoor(g, 2.5);
+doorIn.run = (g) => {
+  const f = floorOf(g);
+  const d = atDoor(g, 2.5);
+  if (!d) return void say(g, bossWoke(g, f) || bossDown(g, f) ? 'the door stands open already.' : "go in where? you are not at a keeper's door.");
+  gateOf(g).inOn = f;
+  const p = g.player;
+  const [dx, dy] = DIRS[d.dir];
+  // to the door's cell first (you may stand beside it), then three cells in
+  const path: [number, number][] = [];
+  const [sx, sy] = [Math.floor(p.x), Math.floor(p.y)];
+  const [ex, ey] = [Math.floor(d.x), Math.floor(d.y)];
+  if (sx !== ex || sy !== ey) path.push(...route(g, sx, sy, ex, ey, 12, false, true).path);
+  for (let k = 1; k <= 3 && open(g, d.x + dx * k, d.y + dy * k); k++) path.push([d.x + dx * k, d.y + dy * k]);
+  p.path = path;
+  p.move = null;
+  p.pace = walkPace(g);
+  say(g, 'you go in.');
+};
 
 Object.assign(keeperDoor, { at: atDoor, of: doorOf, line: keeperLine, ready: (g: Game, f: number) => keeperCheck(g, f).ready });

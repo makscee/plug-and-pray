@@ -44,6 +44,9 @@ export class Screen {
     this.g = g;
     this.con = new Console(g);
     this.panels = new Panels(g, (c) => this.con.send(c));
+    // v2r2 fun: on floor 1 only the eyes, the map and the weapons open; legs (the console has the moves),
+    // power, body, lamps, scanners, tools and the rest start as chips in the dock
+    windows.startsDocked.test = (el) => !this.g.floor && /^m\d+$/.test(el.dataset.win ?? '') && !/fam-(camera|weapon)\b/.test(el.className) && !el.querySelector('canvas.map');
   }
 
   /** every frame: windows follow the installed modules, views redraw, the console prints */
