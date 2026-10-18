@@ -193,7 +193,7 @@ const bones = (g: Game) => g.player.inv.reduce((n, i) => n + (i.kind === 'res' &
 verb('read', {
   help: 'read a memory card: read card (needs the card reader: installed it reads free, carried it wants a bone)',
   when: (g) => reading(g) || carriesReader(g),
-  whenFail: () => 'read: you need a card reader, installed or carried.',
+  whenFail: (g) => (g.player.installed.some((i) => i.mod === 'card-reader' && !i.on) ? 'read: your card reader is off. on card reader' : 'read: you need a card reader, installed or carried.'),
   run(g) {
     const k = g.player.inv.findIndex((i) => i.kind === 'card');
     if (k < 0) return say(g, 'you carry no memory card.');

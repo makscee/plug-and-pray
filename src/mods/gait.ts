@@ -3,7 +3,7 @@
 
 import { active, family, param } from '../core/mods';
 import { DIRS, dirAngle, open } from '../core/grid';
-import { say } from '../core/game';
+import { say, tickHooks } from '../core/game';
 import { verb } from '../core/verbs';
 import type { Game } from '../core/types';
 
@@ -44,7 +44,30 @@ verb('go', {
     g.player.pace = 2.5;
     const n = walk(g, d[0], Math.min(9, Math.max(1, Number(k) || 1)));
     if (!n) say(g, 'a wall.');
+    else ending.set(g, d[0]);
   },
+});
+
+// playtest r3: every `go` ended facing the wall at its end, and every wall looks alike: the eye read as
+// frozen. On arrival, facing a wall, you turn to the longest open run (straight back only when it is
+// more than twice as long as any side way)
+const ending = new WeakMap<Game, string>();
+tickHooks.push((g) => {
+  const d = ending.get(g);
+  const p = g.player;
+  if (!d || p.path.length) return;
+  ending.delete(g);
+  const [x, y] = [Math.floor(p.x) + 0.5, Math.floor(p.y) + 0.5];
+  if (open(g, x + DIRS[d][0], y + DIRS[d][1])) return;
+  const back = { n: 's', s: 'n', e: 'w', w: 'e' }[d];
+  let best: [string, number] | null = null;
+  for (const r of ['n', 'e', 's', 'w']) {
+    let n = 0;
+    while (n < 9 && open(g, x + DIRS[r][0] * (n + 1), y + DIRS[r][1] * (n + 1))) n++;
+    const score = r === back ? n / 2 : n;
+    if (n && (!best || score > best[1])) best = [r, score];
+  }
+  if (best) p.dir = dirAngle(DIRS[best[0]][0], DIRS[best[0]][1]);
 });
 
 verb('crawl', {

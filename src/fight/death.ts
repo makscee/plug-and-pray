@@ -2,6 +2,7 @@
 // took, and one line on what would have helped, by rule. Pure: src/main.ts draws the card.
 import { ENEMIES, hurtHooks } from '../core/game';
 import type { Game } from '../core/types';
+import { def } from '../core/mods';
 import { ZONES, zoneAt, HEAT } from '../world/zones';
 import { light } from '../sight/lamp';
 import { perceives } from '../mods/sense';
@@ -31,6 +32,9 @@ export function lesson(g: Game): string {
   const last = blowsOf(g).slice(-3);
   const killer = last[last.length - 1];
   if (!killer) return 'mend before the next fight.';
+  // playtest r3: it recommended the bell a swap had switched off
+  const wpn = g.player.installed.filter((i) => def(i).family === 'weapon');
+  if (wpn.length && !wpn.some((i) => i.on)) return `your ${def(wpn[0]).name} was off: no weapon on. switch it on before the next fight.`;
   const kinds = new Set(last.map((b) => b.type));
   const dark = ZONES[zoneAt(g.player.x, g.player.y)].look.dark >= 0.3 && light(g) <= 0;
   if (killer.type === 'heat') return 'a rime hood, or anything heatproof, keeps the furnace off.';
