@@ -161,7 +161,9 @@ export function offers(g: Game, e: Entity): (Item | null)[] {
     for (let k = 0; k < 20 && out.length < 3; k++) {
       // a reliquary reaches one tier past its printer neighbours: that is what it is for
       const it = lootMod(r, far + 2);
-      if (it.kind === 'mod' && !out.some((o) => o.kind === 'mod' && o.mod === it.mod)) out.push(it);
+      // playtest r3: not one you carry or wear already
+      const owned = (m: string) => g.player.inv.some((o) => o.kind === 'mod' && o.mod === m) || g.player.installed.some((o) => o.mod === m);
+      if (it.kind === 'mod' && !out.some((o) => o.kind === 'mod' && o.mod === it.mod) && (k >= 14 || !owned(it.mod))) out.push(it);
     }
     // r2 hook: the reliquary by the start keeps a layer eye on its middle shelf until its first reroll
     if (firstShop(e) && !d.rolls) {
@@ -233,6 +235,9 @@ const warned = new WeakMap<Game, number>();
 verb('recycle', {
   help: 'grind a carried module into resources: recycle pinhole',
   run(g, args) {
+    // playtest r3: bare `recycle` lists what you can grind
+    const mods = g.player.inv.filter((i): i is Extract<Item, { kind: 'mod' }> => i.kind === 'mod' && Object.keys(scrapOf(i)).length > 0);
+    if (!args.length) return say(g, mods.length ? 'recycle what?' : 'you carry nothing that grinds.', ...mods.map((i): Line => [{ text: `recycle ${label(i)}`, cmd: `recycle ${label(i)}` }, `  ${fmt(scrapOf(i))}`]));
     const k = findItem(g, args);
     const it = g.player.inv[k];
     if (!it || it.kind !== 'mod') return say(g, findInst(g, args) ? 'remove it from its slot first.' : 'no such module in your inventory.');

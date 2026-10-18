@@ -315,8 +315,13 @@ verb('install', {
 
 const WEIGHT: Partial<Record<string, number>> = { weapon: 4, body: 3, lamp: 3, scanner: 2, mind: 2, gait: 2, tool: 1 };
 const legs = (i: { mod: string }) => def(i).family === 'gait' && ['go', 'keys', 'free'].some((k) => param(i, k, false));
+// playtest r3: the map and the last weapon that is on never give way either (a swap took the map, and
+// an eye's swap switched the only bell off mid-fight)
+const weapon = (i: { mod: string }) => def(i).family === 'weapon';
 function weight(g: Game, i: { mod: string }): number {
   if (legs(i) && !g.player.installed.some((o) => o !== i && o.on && legs(o))) return 9;
+  if (param<string>(i, 'what', '') === 'map') return 9;
+  if (weapon(i) && (i as Inst).on && !g.player.installed.some((o) => o !== i && o.on && weapon(o))) return 9;
   return WEIGHT[def(i).family] ?? 9;
 }
 
@@ -336,7 +341,9 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean): Room
   if (!installed && p.installed.length >= p.slots) {
     const off = p.installed.filter((i) => !i.on && def(i).family !== 'power').sort((a, b) => weight(g, a) - weight(g, b));
     const on = p.installed.filter((i) => i.on && light(i)).sort((a, b) => weight(g, a) - weight(g, b) || def(b).power - def(a).power);
-    remove = off[0] ?? on[0];
+    // an eye takes out another eye first, the weakest (playtest r3: it took the map and kept the pinhole)
+    const eyes = def(it).family === 'camera' ? p.installed.filter((i) => def(i).family === 'camera').sort((a, b) => +a.on - +b.on || param<number>(a, 'res', 0) - param<number>(b, 'res', 0)) : [];
+    remove = eyes[0] ?? off[0] ?? on[0];
     if (!remove) return `no slot gives way for ${def(it).name}: all ${p.slots} hold what weighs more.`;
   }
   let short = def(it).power - (powerMax(g) - powerUsed(g)) - (remove?.on ? def(remove).power : 0);
@@ -394,3 +401,6 @@ verb('swap', {
     if (added) say(g, `${label(added)} ${added.on ? 'on' : 'in, off'}${why}`);
   },
 });
+
+// playtest r3: `uninstall` is what a new player types for remove
+if (VERBS.remove && !VERBS.uninstall) VERBS.uninstall = { ...VERBS.remove, help: 'the same as remove' };

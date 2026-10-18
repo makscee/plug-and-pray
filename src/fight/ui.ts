@@ -125,6 +125,8 @@ frameHooks.push((g) => {
   document.querySelector('.shard-fanfare')?.remove();
   const el = document.createElement('div');
   el.className = 'shard-fanfare';
+  // playtest r3: mid-fight it covered the elite still hitting you; then it is a slim line at the top
+  if (g.ents.some((e) => e.kind === 'enemy' && Math.hypot(e.x - g.player.x, e.y - g.player.y) < 8)) el.classList.add('live');
   el.innerHTML = `<div class="shard-pulse"></div><p>SCRIPTURE SHARD ${f.n} of 3</p>`;
   document.body.append(el);
   setTimeout(() => el.remove(), 4200);

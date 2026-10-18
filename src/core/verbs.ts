@@ -191,7 +191,7 @@ verb('install', {
     const k = findItem(g, args);
     const it = p.inv[k];
     if (!it || it.kind !== 'mod') return say(g, 'no such module in your inventory. ', [{ text: 'inv', cmd: 'inv' }]);
-    if (p.installed.length >= p.slots) return say(g, `no free slot (${p.slots}). remove something first.`);
+    if (p.installed.length >= p.slots) return say(g, `no free slot (${p.slots}). remove something, swap it in, or buy a slot at a printer.`);
     p.inv.splice(k, 1);
     const inst: Inst = { uid: g.nextId++, mod: it.mod, roll: it.roll, on: false, readyAt: 0, data: {} };
     p.installed.push(inst);
@@ -332,7 +332,7 @@ verb('listen', {
 export const allMods = () => Object.keys(MODS);
 
 /** verbs that need a word after them; the actions bar spells those out itself */
-const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'crawl', 'face', 'step', 'print', 'save', 'setup', 'conjure', 'read', 'goto', 'buy', 'info', 'recycle', 'swap']);
+const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'crawl', 'face', 'step', 'print', 'save', 'setup', 'conjure', 'read', 'goto', 'buy', 'info', 'recycle', 'swap', 'uninstall']);
 const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].when!(g));
 
 export interface Action { label: string; cmd: string }

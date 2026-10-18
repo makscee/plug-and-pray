@@ -14,7 +14,7 @@ import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear } from '../wor
 import { altarNear, offers as altarOffers } from '../world/altar';
 import { nearPieces } from '../world/events';
 import { img, type Of } from './icons';
-import { setupsOf } from '../body';
+import { makeRoom, setupsOf } from '../body';
 
 type Send = (cmd: string) => void;
 /** a button: a command, or greyed with a note saying why */
@@ -152,8 +152,12 @@ export class Panels {
       let lines: string[];
       if (it.kind === 'mod') {
         const d = def(it);
-        const install: Btn = !free ? { label: 'install', note: 'no free slot' }
-          : d.power > spare ? { label: 'install', cmd: `install ${label(it)}`, note: `it stays off: needs ${d.power}⚡︎, ${spare} spare` }
+        // playtest r3: a full board greyed install out; it offers the swap, saying what gives way
+        const room = !free || d.power > spare ? makeRoom(g, it, false) : null;
+        const gives = room && typeof room !== 'string' ? [...(room.remove ? [`takes out ${label(room.remove)}`] : []), ...room.off.map((o) => `turns off ${label(o)}`)].join(', ') : '';
+        const install: Btn = room && typeof room !== 'string' ? { label: 'swap in', cmd: `swap in ${label(it)}`, note: gives || 'swap in' }
+          : !free ? { label: 'install', note: 'no free slot: printers sell slots' }
+          : d.power > spare ? { label: 'install', cmd: `install ${label(it)}`, note: `it stays off: needs ${d.power}⚡︎, ${spare} free` }
           : { label: 'install', cmd: `install ${label(it)}` };
         const scrap = scrapOf(it);
         const recycle: Btn = Object.keys(scrap).length ? { label: 'recycle', cmd: `recycle ${label(it)}`, note: `recycle: ${fmt(scrap)}` } : { label: 'recycle', note: 'it will not break' };

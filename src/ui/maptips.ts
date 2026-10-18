@@ -3,10 +3,10 @@
 // the legend; a line under the map keys the diamond and has a zoom link (6 or 9 px a cell) and `where`.
 // Playtest r2: a click on the map with no pilot walks the first straight leg toward that cell.
 
-import { ENEMIES, itemName, say } from '../core/game';
+import { ENEMIES, itemName, say, tickHooks } from '../core/game';
 import { active, param } from '../core/mods';
-import { VERBS } from '../core/verbs';
-import { firstLeg, HINTED } from '../tune/hints';
+import { exec, VERBS, way } from '../core/verbs';
+import { cradleShop, firstLeg, HINTED } from '../tune/hints';
 import { cell, Cell, veinOf } from '../core/grid';
 import type { Game } from '../core/types';
 import { mapCell, mapHooks } from '../world/mind';
@@ -23,6 +23,8 @@ function targets(g: Game): { x: number; y: number; name: string }[] {
     if (e) out.push({ x: e.x, y: e.y, name: itemName(e.item!) });
   }
   for (const v of g.vectors) if (!v.found) out.push({ x: v.x, y: v.y, name: v.what });
+  const shop = cradleShop(g);
+  if (shop) out.push({ x: shop.x, y: shop.y, name: 'a reliquary' });
   return out;
 }
 
@@ -135,7 +137,27 @@ mapHooks.click.push((g, x, y) => {
   if (!leg) return say(g, 'no open way there that you know of.');
   const goes = active(g, 'gait').some((i) => param(i, 'go', false));
   send(goes ? `go ${leg[0]} ${leg[1]}` : `crawl ${leg[0]}`);
+  if (goes) trips.set(g, { x, y, hp: p.hp, at: `${Math.floor(p.x)},${Math.floor(p.y)}`, legs: 1, log: g.log.length });
   if (toldPilot.has(g)) return;
   toldPilot.add(g);
-  say(g, 'the first leg of the way there. a pilot (the wayfinder moth) walks all of it.');
+  say(g, 'the stepper walks it leg by leg, until you arrive or something hits you. a pilot (the wayfinder moth) walks it faster.');
+});
+
+// playtest r3 (fresh A): a map click walked one leg per click. With the stepper it keeps walking leg
+// after leg toward the clicked cell, until you arrive, get hit, type anything, or a leg gets nowhere
+const trips = new WeakMap<Game, { x: number; y: number; hp: number; at: string; legs: number; log: number }>();
+tickHooks.push((g) => {
+  const t = trips.get(g);
+  if (!t) return;
+  const p = g.player;
+  const hit = p.hp < t.hp;
+  t.hp = p.hp;
+  if (p.path.length && !hit) return;
+  const here = `${Math.floor(p.x)},${Math.floor(p.y)}`;
+  const typed = g.log.slice(t.log).some((l) => typeof l[0] === 'object' && l[0].text.startsWith('> '));
+  const leg = firstLeg(g, t.x + 0.5, t.y + 0.5) && way.long(g, t.x + 0.5, t.y + 0.5);
+  if (hit || typed || here === t.at || here === `${t.x},${t.y}` || ++t.legs > 40 || !leg || !active(g, 'gait').some((i) => param(i, 'go', false))) return void trips.delete(g);
+  t.at = here;
+  exec(g, `go ${leg[0]} ${leg[1]}`);
+  t.log = g.log.length;
 });

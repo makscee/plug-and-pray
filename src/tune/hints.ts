@@ -4,12 +4,13 @@
 // Playtest r1: those buttons, listen's and a `go` into a wall all follow the pilot's pathfinder over
 // open floor, so a button walks the first straight leg of a real way there, never into a wall.
 
-import { active, param } from '../core/mods';
-import { say, tickHooks } from '../core/game';
+import { active, def, param } from '../core/mods';
+import { dist, say, tickHooks } from '../core/game';
+import { nearestOpen } from '../world/vectors';
 import { DIRS, open } from '../core/grid';
 import { VERBS, verb, way } from '../core/verbs';
 import { route } from '../mods/pilot';
-import type { Game, Line } from '../core/types';
+import type { Entity, Game, Line } from '../core/types';
 
 const told = new WeakSet<Game>();
 /** how far (path cells) a hint looks for a way */
@@ -79,20 +80,54 @@ if (go)
 function toward(g: Game, mod: string, sound: string): Line | null {
   const p = g.player;
   const e = g.ents.find((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === mod && !e.data?.mimic);
-  if (!e || g.player.inv.some((i) => i.kind === 'mod' && i.mod === mod)) return null;
-  const [dx, dy] = [e.x - p.x, e.y - p.y];
+  // playtest r3: one you wear counts too (it pointed at a second dawn eye)
+  if (!e || [...p.inv, ...p.installed].some((i) => 'mod' in i && i.mod === mod)) return null;
+  return toCell(g, e.x, e.y, sound);
+}
+
+/** "<sound>, 21 cells se. first: [go s 5]": the leg is the start of a real way there (playtest r3: the
+ * straight word and the leg read as a disagreement, and an axis leg walked into a dead end) */
+function toCell(g: Game, x: number, y: number, sound: string): Line {
+  const p = g.player;
+  const [dx, dy] = [x - p.x, y - p.y];
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
-  const [ax, n] = way.leg(g, e.x, e.y);
+  const [ax, n] = way.long(g, x, y);
   const cmd = active(g, 'gait').some((i) => param(i, 'go', false)) ? `go ${ax} ${n}` : `crawl ${ax}`;
-  return [`${sound}, ${Math.round(Math.hypot(dx, dy))} cells ${word}.  `, { text: cmd, cmd }];
+  return [`${sound}, ${Math.round(Math.hypot(dx, dy))} cells ${word}. first: `, { text: cmd, cmd }];
 }
 
 /** what the wake hint points at (the map marks them too, while they lie there) */
 export const HINTED = ['dawn-eye', 'card-reader'];
 
-/** the wake hint's lines: the dawn eye and the card reader (named as the map names them), while they lie out there */
-const hintLines = (g: Game) =>
-  [toward(g, 'dawn-eye', 'the dawn eye glints, waiting for a socket'), toward(g, 'card-reader', 'a card reader ticks, waiting for a card')].filter((l): l is Line => !!l);
+/** the reliquary by the start, until you have stood at it (playtest r3: its layer eye is the best early
+ * hook, and three hint-following runs never found it) */
+export const cradleShop = (g: Game): Entity | undefined =>
+  g.ents.filter((e) => e.kind === 'printer' && e.data?.shop && ((e.data?.far as number) ?? 0) < 1.5 && !e.data?.greeted && dist(e, g.player) < 40).sort((a, b) => dist(a, g.player) - dist(b, g.player))[0];
+
+/** the wake hint's lines: the dawn eye, the card reader (named as the map names them) and the cradle's reliquary, while they lie out there */
+const hintLines = (g: Game) => {
+  const shop = cradleShop(g);
+  return [
+    toward(g, 'dawn-eye', 'the dawn eye glints, waiting for a socket'),
+    toward(g, 'card-reader', 'a card reader ticks, waiting for a card'),
+    shop ? toCell(g, shop.x, shop.y, 'glass doors chime: a reliquary keeps an eye for hidden things') : null,
+  ].filter((l): l is Line => !!l);
+};
+
+// playtest r3: the take line named `read card` as plain text in a burst; a skimmer never read the card
+const take = VERBS.take;
+if (take)
+  VERBS.take = {
+    ...take,
+    run(g, args) {
+      const had = g.player.inv.filter((i) => i.kind === 'card' || (i.kind === 'mod' && i.mod === 'card-reader')).length;
+      take.run(g, args);
+      const now = g.player.inv.filter((i) => i.kind === 'card' || (i.kind === 'mod' && i.mod === 'card-reader')).length;
+      const read = VERBS.read;
+      if (now > had && g.player.inv.some((i) => i.kind === 'card') && read && (!read.when || read.when(g)))
+        say(g, ['a card to read, it points somewhere: ', { text: '[read card]', cmd: 'read card' }]);
+    },
+  };
 
 tickHooks.push((g) => {
   if (told.has(g) || !active(g, 'gait').some((i) => param(i, 'go', false))) return;
@@ -103,10 +138,37 @@ tickHooks.push((g) => {
 
 // playtest r2: the hint was said once and could not be asked again
 verb('where', {
-  help: 'where the dawn eye and the card reader lie, with a fresh first leg there, until you hold them',
+  help: 'what to head for next: the dawn eye, the card reader, a card to read, the nearest vector',
   run(g) {
     const lines = hintLines(g);
-    if (!lines.length) return say(g, g.vectors.length ? ['nothing left the wake hint points at. the scripture points on: ', { text: 'vectors', cmd: 'vectors' }] : 'nothing left the wake hint points at.');
-    say(g, 'you hear:', ...lines);
+    if (lines.length) say(g, 'you hear:', ...lines);
+    // playtest r3: past the dawn eye it went silent, with a card that points at the shard in the bag
+    const more = after(g);
+    if (more.length) return say(g, ...more);
+    if (!lines.length) say(g, 'nothing left the wake hint points at.');
   },
 });
+
+/** past the wake hint: a card to read, the nearest vector, a printer when slots are full */
+function after(g: Game): Line[] {
+  const p = g.player;
+  const out: Line[] = [];
+  if (p.inv.some((i) => i.kind === 'card'))
+    out.push(
+      VERBS.read && (!VERBS.read.when || VERBS.read.when(g))
+        ? ['a memory card waits to be read: ', { text: 'read card', cmd: 'read card' }]
+        : p.installed.some((i) => i.mod === 'card-reader' && !i.on)
+          ? ['a memory card waits; your card reader is off: ', { text: 'on card reader', cmd: 'on card reader' }]
+          : ['a memory card waits for a card reader.'],
+    );
+  const v = nearestOpen(g);
+  if (v) out.push(toCell(g, v.x, v.y, `the ${v.what}`));
+  // a loose module of a kind you don't wear yet (a pinhole swapped out for the dawn eye is no reason)
+  const loose = p.inv.some((i) => i.kind === 'mod' && !p.installed.some((o) => def(o).family === def(i).family));
+  if (loose && p.installed.length >= p.slots) {
+    const pr = g.ents.filter((e) => e.kind === 'printer' && !e.data?.shop).sort((a, b) => dist(a, p) - dist(b, p))[0];
+    out.push(pr ? toCell(g, pr.x, pr.y, 'slots are full; a printer sells slots') : ['slots are full; a printer sells slots.']);
+  }
+  return out;
+}
+

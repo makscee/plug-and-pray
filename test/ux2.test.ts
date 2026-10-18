@@ -49,10 +49,11 @@ describe('ux (playtest r2)', () => {
   it('swap in makes room by weight: never an eye, power or the last legs', () => {
     const g = newGame(1);
     kit(g);
+    addItem(g, { kind: 'mod', mod: 'card-reader' });
     exec(g, 'install all');
     const p = g.player;
-    p.slots = 4;
-    // power 3/4 used; a censer (lamp, 1) fits power but not a slot
+    p.slots = 5;
+    // power 4/4 used; a censer (lamp, 1) takes the reader's slot and power (r3: never the map or the last weapon)
     addItem(g, { kind: 'mod', mod: 'censer' });
     const r = makeRoom(g, { mod: 'censer' }, false);
     expect(typeof r).toBe('object');
@@ -62,6 +63,8 @@ describe('ux (playtest r2)', () => {
     expect(p.installed.some((i) => i.mod === 'censer' && i.on)).toBe(true);
     expect(p.installed.some((i) => i.mod === 'pinhole-eye' && i.on)).toBe(true);
     expect(p.installed.some((i) => i.mod === 'stepper-relay' && i.on)).toBe(true);
+    expect(p.installed.some((i) => i.mod === 'map-spool' && i.on)).toBe(true);
+    expect(p.installed.some((i) => i.mod === 'spark-finger' && i.on)).toBe(true);
   });
 
   it('a power refusal offers a swap button', () => {

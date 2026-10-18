@@ -156,8 +156,8 @@ function room(el: HTMLElement, self: boolean): boolean {
   if (spot) return moveTo(el, spot), true;
   const r = rank(el);
   const lower = modWins()
-    // a layer eye just installed or just showing its layer may also dock an older one of rank 0
-    .filter((o) => o !== el && !o.classList.contains('min') && !o.dataset.moved && (rank(o) > r || (r === 0 && !!el.dataset.fresh && rank(o) === 0)))
+    // an eye just installed or just showing its layer may also dock an older one of its rank (r3: the new eye opens big)
+    .filter((o) => o !== el && !o.classList.contains('min') && !o.dataset.moved && (rank(o) > r || (r < 1 && !!el.dataset.fresh && rank(o) === r)))
     .sort((a, b) => rank(b) - rank(a) || a.offsetWidth * a.offsetHeight - b.offsetWidth * b.offsetHeight);
   const gone: HTMLElement[] = [];
   for (const o of lower) {
@@ -205,7 +205,7 @@ export function promote(el: HTMLElement): void {
   if (!el.classList.contains('min') || el.dataset.hand || el.dataset.moved) return;
   const r = rank(el);
   if (r >= 3 && short()) return;
-  if (!modWins().some((o) => !o.classList.contains('min') && (rank(o) > r || (r === 0 && !!el.dataset.fresh))) && !free(el)) return;
+  if (!modWins().some((o) => !o.classList.contains('min') && (rank(o) > r || (r < 1 && !!el.dataset.fresh))) && !free(el)) return;
   const was = el.dataset.was;
   el.classList.remove('min');
   moveTo(el, [0, TOP]);
