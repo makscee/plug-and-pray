@@ -5,7 +5,7 @@
 import { frameHooks } from '../ui';
 import { exec } from '../core/verbs';
 import type { Game } from '../core/types';
-import { CARD, beat, card, light, melt, summary } from './timeline';
+import { CARD, beat, card, light, melt, offeringOf, summary, tallyShown, weigh } from './timeline';
 import './end.css';
 import { clean } from '../tune/start';
 
@@ -14,6 +14,8 @@ interface End {
   el: HTMLElement;
   wins: HTMLElement[];
   card?: HTMLElement;
+  /** the tally rows, shown one by one (the last is the total and the grade) */
+  rows?: HTMLElement[];
 }
 
 const ends = new WeakMap<Game, End>();
@@ -55,9 +57,28 @@ function showCard(g: Game, e: End): void {
     e.el.remove();
     (window as unknown as { thaw: { restart(): void } }).thaw.restart();
   });
-  c.append(p, b);
+  // the offering: what the engine took, line by line, then the total and the grade
+  const o = offeringOf(g) ?? weigh(g);
+  const tally = document.createElement('div');
+  tally.className = 'tally';
+  const head = document.createElement('p');
+  head.className = 'head';
+  head.textContent = o.total ? 'it drank what you carried:' : 'you carried nothing to give it.';
+  const rows = o.lines.map(([r, n]) => {
+    const row = document.createElement('p');
+    row.className = 'row';
+    row.innerHTML = `<span>${r}</span><span>${n}</span>`;
+    return row;
+  });
+  const total = document.createElement('p');
+  total.className = 'row total';
+  total.innerHTML = `<span>${o.total}</span><span class="grade">${o.grade}</span>`;
+  rows.push(total);
+  tally.append(head, ...rows);
+  c.append(tally, p, b);
   e.el.append(c);
   e.card = c;
+  e.rows = rows;
 }
 
 frameHooks.push((g, dt) => {
@@ -78,6 +99,10 @@ frameHooks.push((g, dt) => {
   });
   if (card(t) && !e.card) showCard(g, e);
   if (e.card) e.card.style.opacity = Math.min(1, (t - CARD) / 1.2).toFixed(3);
+  if (e.rows) {
+    const n = tallyShown(t, e.rows.length - 1);
+    e.rows.forEach((r, k) => r.classList.toggle('on', k < n));
+  }
 });
 
 // ?scene=end stages the ending for judging: a few modules installed, then the engine; the sequence plays at once.
@@ -88,6 +113,7 @@ frameHooks.push((g) => {
   staged = true;
   clean(g);
   Object.assign(g.player, { slots: 5, core: 12 });
+  g.player.inv.push({ kind: 'res', res: 'bone', n: 31 }, { kind: 'res', res: 'glass', n: 14 }, { kind: 'res', res: 'copper', n: 17 }, { kind: 'res', res: 'ichor', n: 6 });
   for (const mod of ['vidicon-tube', 'stepper-relay', 'map-spool', 'thaw-engine']) {
     g.player.inv.push({ kind: 'mod', mod });
     exec(g, `install ${mod.replace(/-/g, ' ')}`);

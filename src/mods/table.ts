@@ -34,7 +34,7 @@ mods([
   { id: 'stepper-relay', name: 'stepper relay', family: 'gait', power: 1, warm: 0.5, tier: 0, params: { go: true }, text: 'clicks your legs forward one cell at a time. go n 3.' },
   { id: 'spark-finger', name: 'spark finger', family: 'weapon', power: 1, warm: 0.5, tier: 0, params: { damage: 1, cooldown: 1.2, range: 1.5, aim: 'auto' }, text: 'it bites whatever comes close.' },
   // sight (#1321): eyes that trade sharpness, speed and colour; scanners through walls; lamps that draw things
-  { id: 'carrion-eye', name: 'carrion eye', family: 'camera', power: 1, warm: 0.5, tier: 0, params: { res: 96, fps: 12, fov: 70, range: 8, filter: '1bit', noise: 0.1 }, text: 'a crow saw the world in two colours and never blinked.' },
+  { id: 'carrion-eye', name: 'carrion eye', family: 'camera', power: 2, warm: 0.5, tier: 0, params: { res: 96, fps: 12, fov: 70, range: 8, filter: '1bit', noise: 0.1 }, text: 'a crow saw the world in two colours and never blinked.' }, // r2 decide: was 1 power; it reads scripture, its reach costs
   { id: 'bat-psalter', name: 'bat psalter', family: 'camera', power: 2, warm: 1, tier: 0, params: { res: 64, fps: 6, fov: 90, range: 10, colors: 8, filter: 'sonar', loud: 3 }, text: 'it sings into the dark and reads the answer. everything hears it sing.' },
   { id: 'ember-iris', name: 'ember iris', family: 'camera', power: 2, warm: 2, tier: 1, params: { res: 48, fps: 3, fov: 60, range: 12, colors: 6, filter: 'heat', noise: 0.15 }, text: 'it sees only what is warm. walls are rumours.' },
   { id: 'lattice-eye', name: 'lattice eye', family: 'camera', power: 3, warm: 1, tier: 1, params: { res: 128, fps: 10, fov: 75, range: 11, filter: 'edge' }, text: 'a lacemaker\'s eye: every thing is its outline.' },

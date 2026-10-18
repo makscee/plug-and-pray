@@ -5,7 +5,8 @@ import { newGame, tick } from '../src/core/game';
 import { addItem, exec } from '../src/core/verbs';
 import { Cell, cell, chunk } from '../src/core/grid';
 import type { Game } from '../src/core/types';
-import { hide, secrets, type Secret } from '../src/world/secrets';
+import { cradleEye, hide, secrets, type Secret } from '../src/world/secrets';
+import { offers, priceAt } from '../src/world/printer';
 import { generate } from '../src/world/gen';
 import { opening } from '../src/world/spawn';
 import { codexOf, firstSight } from '../src/sight/codex';
@@ -69,7 +70,9 @@ describe('secrets', () => {
 
   it('a hollow wall shows only to sonar; break opens the niche and pays', () => {
     const g = newGame(3);
-    const s = world(g).find((x) => x.kind === 'hollow')!;
+    // not the cradle's: the scratched wall beside it names it, so a lattice eye would find it too
+    const [sx, sy] = opening(3).shop;
+    const s = world(g).find((x) => x.kind === 'hollow' && (Math.floor(x.x / 16) !== sx || Math.floor(x.y / 16) !== sy))!;
     face(g, s);
     wear(g, 'dawn-eye', 'lattice-eye', 'spark-finger');
     run(g, 0.2);
@@ -115,14 +118,33 @@ describe('secrets', () => {
     expect(text(g)).toMatch(/floor plate/);
   });
 
-  it('every seed hides a scratched wall by the printer beside the start', () => {
-    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+  it('every seed hides a scratched wall and a hollow wall by the reliquary beside the start, and it sells a layer eye', () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
       const g = newGame(seed);
-      const [px, py] = opening(seed).printer;
+      const [px, py] = opening(seed).shop;
       chunk(g, px, py);
-      const s = secrets(g).find((x) => x.kind === 'script' && Math.floor(x.x / 16) === px && Math.floor(x.y / 16) === py);
-      expect(s).toBeTruthy();
+      const shop = g.ents.find((e) => e.kind === 'printer' && e.data?.shop)!;
+      const by = (kind: string) => secrets(g).find((x) => x.kind === kind && Math.hypot(x.x + 0.5 - shop.x, x.y + 0.5 - shop.y) < 7);
+      expect(by('script'), `seed ${seed}`).toBeTruthy();
+      const eye = cradleEye(seed);
+      if (eye === 'bat-psalter') expect(by('hollow'), `seed ${seed}`).toBeTruthy();
+      // the layer eye on the middle shelf, for the copper you wake with
+      const it = offers(g, shop)[1]!;
+      expect(it.kind === 'mod' && it.mod).toBe(eye);
+      expect(priceAt(shop, 1, it)).toEqual({ copper: 2 });
     }
+  });
+
+  it('a layer eye marks the secret it names on the map and in vectors', () => {
+    const g = newGame(2);
+    const [px, py] = opening(2).shop;
+    chunk(g, px, py);
+    // from where you wake: the reliquary's hollow wall lies a chunk off
+    g.ents = g.ents.filter((e) => !e.enemy);
+    wear(g, 'bat-psalter');
+    run(g, 0.2);
+    expect(text(g)).toMatch(/marked on your map: hollow wall/);
+    expect(g.vectors.some((v) => v.what === 'hollow wall')).toBe(true);
   });
 
   it('first sight goes in the codex once', () => {

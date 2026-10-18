@@ -8,9 +8,10 @@ import { dist, say, tickHooks } from '../core/game';
 import { def, label } from '../core/mods';
 import { does } from '../mods/describe';
 import { hash, rng } from '../core/rng';
-import { addItem, findInst, findItem, verb } from '../core/verbs';
+import { addItem, findInst, findItem, goThere, verb } from '../core/verbs';
 import type { Entity, Game, Item, Line, Res } from '../core/types';
 import { lootMod } from './spawn';
+import { cradleEye } from './secrets';
 import { ZONES, zoneFar } from './zones';
 
 export const MAX_SLOTS = 8;
@@ -28,7 +29,7 @@ export const PRICES = {
 export function slotCost(g: Game): Cost {
   // balance pass: the run starts with 6 slots, so the price starts there
   const n = Math.max(0, g.player.slots - 6);
-  const c: Cost = { bone: 6 + 3 * n, glass: 3 + n, copper: 2 + 2 * n };
+  const c: Cost = { bone: 6 + 3 * n, glass: n ? 3 + n : 2, copper: 2 + 2 * n }; // r2 econ: slot 7 wants 2 glass, not 3
   if (n >= 1) c.ichor = n;
   return c;
 }
@@ -50,20 +51,39 @@ function pay(g: Game, c: Cost): void {
   g.player.inv = g.player.inv.filter((i) => i.kind !== 'res' || i.n > 0);
 }
 
+/** r2 decide: out of reach, say where the printer or reliquary is */
+function noMachine(g: Game, shop: boolean): Line {
+  const name = shop ? 'reliquary' : 'printer';
+  const e = g.ents.filter((o) => o.kind === 'printer' && !!o.data?.shop === shop && dist(o, g.player) < 10).sort((a, b) => dist(a, g.player) - dist(b, g.player))[0];
+  if (!e) return [`no ${name} here.`];
+  const [far, go] = goThere(g, e.x, e.y, true);
+  return [`no ${name} within reach: step closer, it stands ${far}. `, go];
+}
+
 export const printerNear = (g: Game): Entity | undefined =>
   g.ents.filter((e) => e.kind === 'printer' && !e.data?.shop && dist(e, g.player) < 1.6).sort((a, b) => dist(a, g.player) - dist(b, g.player))[0];
+
+/** r2 econ: aimed prints, a module of one family for 2 copper more than a random one ("print eye") */
+export const AIMED: Record<string, string> = { weapon: 'weapon', eye: 'camera', body: 'body', lamp: 'lamp', scanner: 'scanner', legs: 'gait', mind: 'mind', tool: 'tool' };
+export const AIM_COPPER = 2;
+export const aimedCost = (far: number): Cost => {
+  const c = { ...modCost(far) };
+  c.copper = (c.copper ?? 0) + AIM_COPPER;
+  return c;
+};
 
 function menu(g: Game, e: Entity): Line[] {
   const far = (e.data?.far as number) ?? 0;
   const slot: Line = g.player.slots >= MAX_SLOTS ? ['  slots: the board is full (8).'] : [{ text: 'print slot', cmd: 'print slot' }, `  +1 slot: ${fmt(slotCost(g))}`];
-  return [slot, [{ text: 'print module', cmd: 'print module' }, `  a module: ${fmt(modCost(far))}`]];
+  const aimed: Line = ['  or one kind: ', ...Object.keys(AIMED).flatMap((k, n) => [...(n ? [' '] : []), { text: k, cmd: `print ${k}` }]), `: ${fmt(aimedCost(far))}`];
+  return [slot, [{ text: 'print module', cmd: 'print module' }, `  a module: ${fmt(modCost(far))}`], aimed];
 }
 
 verb('print', {
-  help: 'at a printer: print slot, print module',
+  help: 'at a printer: print slot, print module, or one kind for 2 copper more: print weapon, eye, body, lamp, scanner, legs, mind, tool',
   run(g, [what]) {
     const e = printerNear(g);
-    if (!e) return say(g, 'no printer within reach.');
+    if (!e) return say(g, noMachine(g, false));
     const far = (e.data?.far as number) ?? 0;
     if (what === 'slot') {
       if (g.player.slots >= MAX_SLOTS) return say(g, 'the board is full: eight slots.');
@@ -74,13 +94,14 @@ verb('print', {
       g.events.push({ type: 'print', at: [e.x, e.y] });
       return say(g, `the printer grinds out a slot board. slots: ${g.player.slots}.`);
     }
-    if (what === 'module') {
-      const c = modCost(far);
+    const fam = AIMED[what];
+    if (what === 'module' || fam) {
+      const c = fam ? aimedCost(far) : modCost(far);
       if (!affords(g, c)) return say(g, `the printer wants ${fmt(c)}.`);
       pay(g, c);
       const made = ((e.data!.made as number) ?? 0) + 1;
       e.data!.made = made;
-      const it: Item = lootMod(rng(hash(g.seed, 51, e.id, made)), far);
+      const it: Item = lootMod(rng(hash(g.seed, 51, e.id, made)), far, fam);
       addItem(g, it);
       g.events.push({ type: 'print', at: [e.x, e.y] });
       if (it.kind === 'mod') say(g, ['the printer spits out: ', { text: label(it), cmd: `install ${label(it)}` }]);
@@ -124,6 +145,8 @@ const noCopper = (c: Cost): Cost => {
 };
 /** the price of the k-th relic at this reliquary */
 export function priceAt(e: Entity, k: number, it: Item): Cost {
+  // r2 hook: its layer eye costs the copper you wake with, so the first hidden layer is a choice in the first minute
+  if (firstShop(e) && !e.data?.rolls && it.kind === 'mod' && e.data?.layer === it.mod) return { copper: 2 };
   const c = priceOf(it);
   return firstShop(e) && k === 0 ? noCopper(c) : c;
 }
@@ -139,6 +162,13 @@ export function offers(g: Game, e: Entity): (Item | null)[] {
       // a reliquary reaches one tier past its printer neighbours: that is what it is for
       const it = lootMod(r, far + 2);
       if (it.kind === 'mod' && !out.some((o) => o.kind === 'mod' && o.mod === it.mod)) out.push(it);
+    }
+    // r2 hook: the reliquary by the start keeps a layer eye on its middle shelf until its first reroll
+    if (firstShop(e) && !d.rolls) {
+      const eye = cradleEye(g.seed);
+      out.splice(0, out.length, ...out.filter((o) => o.kind !== 'mod' || o.mod !== eye).slice(0, 2));
+      out.splice(1, 0, { kind: 'mod', mod: eye });
+      d.layer = eye;
     }
     d.offers = out;
   }
@@ -159,7 +189,7 @@ verb('buy', {
   help: 'at a reliquary: buy 1, buy 2, buy 3',
   run(g, [which]) {
     const e = shopNear(g);
-    if (!e) return say(g, 'no reliquary within reach.');
+    if (!e) return say(g, noMachine(g, true));
     const list = offers(g, e);
     const k = Number(which) - 1;
     const it = list[k];
@@ -177,9 +207,10 @@ verb('buy', {
 verb('reroll', {
   help: 'at a reliquary: new relics for a price',
   when: (g) => !!shopNear(g),
+  whenFail: (g) => noMachine(g, true),
   run(g) {
     const e = shopNear(g);
-    if (!e) return say(g, 'no reliquary within reach.');
+    if (!e) return say(g, noMachine(g, true));
     if (!affords(g, PRICES.reroll)) return say(g, `a reroll wants ${fmt(PRICES.reroll)}.`);
     pay(g, PRICES.reroll);
     e.data!.rolls = ((e.data!.rolls as number) ?? 0) + 1;
@@ -190,7 +221,14 @@ verb('reroll', {
 
 // ---- recycling: a carried module back to resources
 
+/** the chance a tier-0 module grinds out one glass besides */
+export const SCRAP_GLASS = 0.5;
+/** modules ground so far, per game: seeds the glass roll */
+const ground = new WeakMap<Game, number>();
 export const scrapOf = (it: Item): Cost => (it.kind === 'mod' && def(it).family !== 'unique' ? PRICES.scrap[Math.min(2, def(it).tier)] : {});
+
+/** when the last card-reader warning was given, per game */
+const warned = new WeakMap<Game, number>();
 
 verb('recycle', {
   help: 'grind a carried module into resources: recycle pinhole',
@@ -198,8 +236,19 @@ verb('recycle', {
     const k = findItem(g, args);
     const it = g.player.inv[k];
     if (!it || it.kind !== 'mod') return say(g, findInst(g, args) ? 'remove it from its slot first.' : 'no such module in your inventory.');
-    const c = scrapOf(it);
+    const c = { ...scrapOf(it) };
     if (!Object.keys(c).length) return say(g, 'this one will not break. it is waiting for something.');
+    // r2: your only card reader, with a card still unread: ask once (a playtester ground both and had to buy one back)
+    const p = g.player;
+    const readers = p.inv.filter((i) => i.kind === 'mod' && i.mod === 'card-reader').length + p.installed.filter((i) => i.mod === 'card-reader').length;
+    if (it.mod === 'card-reader' && readers === 1 && p.inv.some((i) => i.kind === 'card') && (warned.get(g) ?? -99) < g.t - 20) {
+      warned.set(g, g.t);
+      return say(g, ['that is your only card reader, and you carry a card no one has read. ', { text: 'recycle it anyway', cmd: 'recycle card reader' }]);
+    }
+    // r2 econ: a tier-0 module grinds out a glass half the time (glass was the early lock)
+    const made = (ground.get(g) ?? 0) + 1;
+    ground.set(g, made);
+    if (def(it).tier === 0 && rng(hash(g.seed, 57, made)).chance(SCRAP_GLASS)) c.glass = (c.glass ?? 0) + 1;
     g.player.inv.splice(k, 1);
     for (const [r, n] of Object.entries(c)) addItem(g, { kind: 'res', res: r as Res, n: n! });
     g.events.push({ type: 'recycle' });
