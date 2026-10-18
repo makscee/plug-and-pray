@@ -47,6 +47,9 @@ export function modCost(far: number): Cost {
 const have = (g: Game, res: Res) => g.player.inv.reduce((n, i) => n + (i.kind === 'res' && i.res === res ? i.n : 0), 0);
 export const fmt = (c: Cost) => Object.entries(c).map(([r, n]) => `${n} ${r}`).join(', ');
 export const affords = (g: Game, c: Cost) => Object.entries(c).every(([r, n]) => have(g, r as Res) >= n!);
+/** v2r4 run (no glass, 20 bone, nothing said where glass comes from): a price short of glass says how to get it */
+export const glassTip = (g: Game, c: Cost, altar = false): string =>
+  (c.glass ?? 0) <= have(g, 'glass') ? '' : altar ? ' short of glass: offer bone here, 4 bone for 1 glass.' : ' short of glass: an altar grinds 4 bone into 1 (offer bone), and a leech needle drains glass veins.';
 
 function pay(g: Game, c: Cost): void {
   for (const [r, n] of Object.entries(c)) {
@@ -109,7 +112,7 @@ verb('print', {
     if (what === 'slot') {
       if (g.player.slots >= MAX_SLOTS) return say(g, 'the board is full: eight slots.');
       const c = slotCost(g);
-      if (!affords(g, c)) return say(g, `the printer wants ${fmt(c)}.`);
+      if (!affords(g, c)) return say(g, `the printer wants ${fmt(c)}.${glassTip(g, c)}`);
       pay(g, c);
       g.player.slots++;
       g.events.push({ type: 'print', at: [e.x, e.y] });
@@ -118,7 +121,7 @@ verb('print', {
     const fam = AIMED[what];
     if (what === 'module' || fam) {
       const c = fam ? aimedCost(far) : modCost(far);
-      if (!affords(g, c)) return say(g, `the printer wants ${fmt(c)}.`);
+      if (!affords(g, c)) return say(g, `the printer wants ${fmt(c)}.${glassTip(g, c)}`);
       pay(g, c);
       const made = ((e.data!.made as number) ?? 0) + 1;
       e.data!.made = made;
@@ -241,7 +244,7 @@ verb('buy', {
     if (!it) return say(g, 'the reliquary shows:', ...shopMenu(g, e));
     if (shutEye(g, it)) return say(g, `the eye's glass stays shut. your own first eye lies out on this floor: find it, and the reliquary opens to you.`);
     const c = priceAt(e, k, it);
-    if (!affords(g, c)) return say(g, `the reliquary wants ${fmt(c)}.`);
+    if (!affords(g, c)) return say(g, `the reliquary wants ${fmt(c)}.${glassTip(g, c)}`);
     pay(g, c);
     list[k] = null;
     addItem(g, it);
@@ -257,7 +260,7 @@ verb('reroll', {
   run(g) {
     const e = shopNear(g);
     if (!e) return say(g, noMachine(g, true));
-    if (!affords(g, PRICES.reroll)) return say(g, `a reroll wants ${fmt(PRICES.reroll)}.`);
+    if (!affords(g, PRICES.reroll)) return say(g, `a reroll wants ${fmt(PRICES.reroll)}.${glassTip(g, PRICES.reroll)}`);
     pay(g, PRICES.reroll);
     e.data!.rolls = ((e.data!.rolls as number) ?? 0) + 1;
     delete e.data!.offers;

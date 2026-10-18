@@ -7,8 +7,8 @@
 
 import { dist, itemName, reach } from '../core/game';
 import { Cell, cell, veinOf } from '../core/grid';
-import { def, label, ownSocket, powerMax, powerUsed, size, slotsUsed, working } from '../core/mods';
-import { inPlace, instRef, VERBS } from '../core/verbs';
+import { def, label, ownSocket, param, powerMax, powerUsed, size, slotsUsed, working } from '../core/mods';
+import { inPlace, instRef, lastLegs, VERBS } from '../core/verbs';
 import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { costs, does } from '../mods/describe';
@@ -393,7 +393,9 @@ export class Panels {
       if (first >= 0 && first < k) [p.inv[first], p.inv[k]] = [p.inv[k], p.inv[first]];
       // dropped onto an installed module: that one comes out and this one goes in (v2r1 ux)
       const out = onto ? this.instOf(onto) : undefined;
-      if (out) return inPlace(this.g, it, () => this.send(`remove ${instRef(this.g, out)}; install ${label(it)}`));
+      // (your last legs out for something that is not legs: the remove asks first, and nothing goes in yet)
+      if (out && lastLegs(this.g, out) && !['go', 'keys', 'free'].some((k) => param(it, k, false))) return this.send(`remove ${instRef(this.g, out)}`);
+      if (out) return inPlace(this.g, it, () => this.send(`remove ${instRef(this.g, out)}${lastLegs(this.g, out) ? ' anyway' : ''}; install ${label(it)}`));
       const b = installBtn(this.g, it);
       return inPlace(this.g, it, () => this.send(b.cmd!));
     }

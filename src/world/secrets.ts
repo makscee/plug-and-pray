@@ -391,7 +391,7 @@ const TEACH: Record<string, string> = {
   sonar: 'hears walls as echoes. a wall that rings hollow is a shell: break it, there is a niche behind.',
   '1bit': 'sees in black and white what colour hides: scripture scratched into the walls, and mimics breathing.',
   edge: 'traces every scratch: scripture cut into the walls shows as lines.',
-  color: 'sees colour true: veins of glass, copper and ichor glint in the walls, and it names them. a needle or an auger drains them.',
+  color: 'sees colour true: veins of glass, copper and ichor glint in the walls, and it names them. a needle or an auger drains them (no tool: an altar grinds 4 bone into 1 glass).',
 };
 const KINDS: Record<string, Kind> = { heat: 'hands', sonar: 'hollow', '1bit': 'script', edge: 'script' };
 /** the eye filters that show a hidden layer (the UI keeps such an eye's window open) */
@@ -503,7 +503,7 @@ tickHooks.push((g) => {
     told.add(e.id);
     g.events.push({ type: 'reveal', at: [e.x, e.y], data: 'breath' });
     eye.data.flashAt = g.t;
-    say(g, `the ${eyeName(eye)} sees the ${e.item ? itemName(e.item) : 'thing'} on the floor rise and fall. it breathes. a mimic, waiting for a hand.`);
+    say(g, `the ${eyeName(eye)} sees the ${e.item ? itemName(e.item).replace(/^the /, '') : 'thing'} on the floor rise and fall. it breathes. a mimic, waiting for a hand.`);
   }
 });
 

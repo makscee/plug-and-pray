@@ -1,8 +1,9 @@
 // No weapon on (Maks 10-18: "sounds like I do make hits but I actually don't"). An attack with nothing to
 // strike with says so plainly, with a button that arms you; foes closing in on an unarmed body bring it
 // up on their own (once every so often), with a dull click instead of a hit sound (src/audio).
-import { dist, say, tickHooks } from '../core/game';
-import { active, def, label, powerMax, powerUsed } from '../core/mods';
+import { dist, REACH, say, tickHooks } from '../core/game';
+import { active, def, label, param, powerMax, powerUsed } from '../core/mods';
+import { canHit } from '../mods/sense';
 import { verb, VERBS } from '../core/verbs';
 import type { Game, Line, Seg } from '../core/types';
 import { aimed } from './aim';
@@ -76,6 +77,12 @@ verb('attack', {
     if (tipped.has(g)) return;
     tipped.add(g);
     const w = active(g, 'weapon')[0];
+    // v2r4 run: a lamp 2 cells off, unseen with no eye, never got hit while `attack` said "stand by it"
+    const reach = Math.max(...active(g, 'weapon').map((i) => param<number>(i, 'range', 1.3)));
+    const foe = g.ents.filter((e) => e.enemy?.data.noticed).sort((a, b) => dist(a, g.player) - dist(b, g.player))[0];
+    const d = foe ? dist(foe, g.player) : 99;
+    if (foe && d <= 8 && (d > reach || !canHit(g, foe)))
+      return say(g, d > reach ? `it is ${d.toFixed(1)} cells off; your ${label(w)} reaches ${reach}. step in.` : `you can't see it ${d.toFixed(1)} cells off: step right next to it (${REACH} cells) and your ${label(w)} strikes.`);
     say(g, `your ${label(w)} strikes by itself whatever comes close. stand by it.`);
   },
 });

@@ -359,10 +359,17 @@ const legs = (i: { mod: string }) => def(i).family === 'gait' && ['go', 'keys', 
 // playtest r3: the map and the last weapon that is on never give way either (a swap took the map, and
 // an eye's swap switched the only bell off mid-fight)
 const weapon = (i: { mod: string }) => def(i).family === 'weapon';
+/** a weapon that strikes by itself, all round: what you have against a swarm (a nail psalm only shoots one) */
+const swarm = (i: { mod: string }) => weapon(i) && param<string>(i, 'aim', 'auto') !== 'aimed';
+/** v2r4 run: a floor-2 pick (the nail psalm) took out the choir bell, the last thing that hit mites, and the choir's
+ *  brood killed you: the last swarm weapon that is on gives way only to another one */
+export const lastSwarm = (g: Game, i: Inst, it?: { mod: string }): boolean =>
+  i.on && swarm(i) && !(it && swarm(it)) && !g.player.installed.some((o) => o !== i && o.on && swarm(o));
 function weight(g: Game, i: { mod: string }): number {
   if (legs(i) && !g.player.installed.some((o) => o !== i && o.on && legs(o))) return 9;
   if (param<string>(i, 'what', '') === 'map') return 9;
   if (weapon(i) && (i as Inst).on && !g.player.installed.some((o) => o !== i && o.on && weapon(o))) return 9;
+  if (lastSwarm(g, i as Inst)) return 9;
   return WEIGHT[def(i).family] ?? 9;
 }
 
@@ -380,6 +387,7 @@ const weaker = (i: Modish, it: Modish): boolean => worth(i) < worth(it) || (wort
 function kept(g: Game, i: Inst, it: { mod: string }): boolean {
   if (param<string>(i, 'what', '') === 'map') return true;
   if (legs(i) && !legs(it) && !g.player.installed.some((o) => o !== i && legs(o))) return true;
+  if (lastSwarm(g, i, it)) return true;
   if (def(i).family === 'camera') return def(it).family !== 'camera' ? !g.player.installed.some((o) => o !== i && o.on && def(o).family === 'camera' && worth(o) >= worth(i)) : !weaker(i, it);
   return false;
 }
@@ -438,7 +446,8 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
     const map = (i: Inst) => last && seeing && param<string>(i, 'what', '') === 'map';
     const w = (i: Inst) => (eye(i) ? 0 : map(i) ? (seeing ? 4.5 : 8) : weapon(i) ? 6 : weight(g, i));
     const armed = () => p.installed.filter((i) => i.on && weapon(i) && !out.includes(i) && !off.includes(i)).length;
-    const spare = (i: Inst) => !weapon(i) || armed() > 1;
+    const swarms = () => p.installed.filter((i) => i.on && swarm(i) && !out.includes(i) && !off.includes(i)).length;
+    const spare = (i: Inst) => !weapon(i) || (armed() > 1 && (!swarm(i) || swarm(it) || swarms() > 1));
     // (with no eye a spare weapon gives way in the map's place)
     const all = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && (light(i) || eye(i) || map(i) || (last && !seeing && weapon(i))));
     // a weapon only when the rest cannot cover it

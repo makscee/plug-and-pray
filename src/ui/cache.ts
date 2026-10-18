@@ -87,7 +87,8 @@ frameHooks.push((g) => {
     const name = el_('p', `name rar-${rarityOf(it)}`, label(it));
     const meta = el_('p', 'kit-meta', `${d.family}${d.power ? ` · ${d.power}⚡︎` : ''}${size(it) > 1 ? ` · ${size(it)} slots` : ''}${it.mod === KIT[f]?.[0] ? ' · headline' : ''}`);
     const text = el_('p', 'kit-text', d.text);
-    const fit = el_('p', 'kit-fit', fitOf(g, it));
+    const fitText = fitOf(g, it);
+    const fit = el_('p', `kit-fit${fitText.startsWith('⚠') ? ' kit-warn' : ''}`, fitText);
     const b = el_('button', 'kit-pick', free ? 'take' : `take · ${cost} bone`) as HTMLButtonElement;
     b.dataset.cmd = `pick ${n + 1}`;
     if (!free && bone < cost) b.disabled = true;

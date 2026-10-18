@@ -108,6 +108,22 @@ function toward(g: Game, mod: string, sound: string): Line | null {
   return line;
 }
 
+/** the last leg `where` gave, per game: toward which cell, which way, from where */
+const lastLeg = new WeakMap<Game, { key: string; dir: string; at: [number, number] }>();
+const BACK: Record<string, string> = { n: 's', s: 'n', e: 'w', w: 'e' };
+/** the first straight leg of a way over floor you have mapped, or null when the map knows no way there */
+function knownLeg(g: Game, x: number, y: number): [string, number] | null {
+  const p = g.player;
+  const [sx, sy] = [Math.floor(p.x), Math.floor(p.y)];
+  const { path, whole } = route(g, sx, sy, Math.floor(x), Math.floor(y), 120);
+  if (!whole || !path.length) return null;
+  const [dx, dy] = [Math.round(path[0][0] - sx - 0.5), Math.round(path[0][1] - sy - 0.5)];
+  let n = 1;
+  while (n < Math.min(9, path.length) && Math.round(path[n][0] - path[n - 1][0]) === dx && Math.round(path[n][1] - path[n - 1][1]) === dy) n++;
+  const d = Object.keys(DIRS).find((k) => DIRS[k][0] === dx && DIRS[k][1] === dy);
+  return d ? [d, n] : null;
+}
+
 /** "<sound>, 21 cells se. first: [go s 5]": the leg is the start of a real way there (playtest r3: the
  * straight word and the leg read as a disagreement, and an axis leg walked into a dead end) */
 function toCell(g: Game, x: number, y: number, sound: string, act = 'take'): Line {
@@ -116,7 +132,23 @@ function toCell(g: Game, x: number, y: number, sound: string, act = 'take'): Lin
   // r4: on it or beside it, the leg ping-ponged (go n 1, go s 1); say what to do here instead
   if (Math.abs(Math.floor(x) - Math.floor(p.x)) + Math.abs(Math.floor(y) - Math.floor(p.y)) <= 1) return [`${sound}: here. `, { text: act, cmd: act }];
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
-  const [ax, n] = way.long(g, x, y);
+  let [ax, n] = way.long(g, x, y);
+  // v2r4 run: behind unmapped wall it said go e 3, then go w 3 from there: a leg that turns straight back on the
+  // last one for the same place goes by mapped floor instead, or says to explore
+  const key = `${Math.floor(x)},${Math.floor(y)}`;
+  const here: [number, number] = [Math.floor(p.x), Math.floor(p.y)];
+  const last = lastLeg.get(g);
+  if (last?.key === key && last.dir === BACK[ax] && (last.at[0] !== here[0] || last.at[1] !== here[1])) {
+    const known = knownLeg(g, x, y);
+    if (!known || known[0] === ax) {
+      const runs = openRuns(g, here[0] + 0.5, here[1] + 0.5).filter(([d]) => d !== ax && d !== last.dir).sort((a, b) => b[1] - a[1]);
+      const [ex, en] = runs[0] ?? [last.dir, 3];
+      lastLeg.set(g, { key, dir: ex, at: here });
+      return [`${sound}, ${cells(Math.round(Math.hypot(dx, dy)))} ${word}. no known way yet: explore `, { text: `go ${ex} ${en}`, cmd: walks(g) ? `go ${ex} ${en}` : `crawl ${ex}` }, ' and the map fills.'];
+    }
+    [ax, n] = known;
+  }
+  lastLeg.set(g, { key, dir: ax, at: here });
   // v2r2 fun: with a pilot as legs, its goto where it knows the way; the gyro heart walks `go` too
   const cmd = VERBS.goto?.when?.(g) && g.seen.has(`${Math.floor(x)},${Math.floor(y)}`) ? `goto ${Math.floor(x)} ${Math.floor(y)}` : walks(g) ? `go ${ax} ${n}` : `crawl ${ax}`;
   return [`${sound}, ${cells(Math.round(Math.hypot(dx, dy)))} ${word}. first: `, { text: cmd, cmd }];
@@ -229,10 +261,19 @@ function after(g: Game): Line[] {
     out.push(['no card reader: ', { text: 'print mind', cmd: 'print mind' }, ' at a printer.']);
   // v2r2 ux: a rare boss drop was left on the floor while `where` pointed past it
   const r = rareNear(g);
-  if (r) out.push(toCell(g, r.x, r.y, `✦ the ${itemName(r.item!)} lies where it fell`));
+  if (r) out.push(toCell(g, r.x, r.y, `✦ the ${itemName(r.item!).replace(/^the /, '')} lies where it fell`));
   out.push(wayDown(g));
   const v = g.vectors.filter((v) => !v.found && v.what !== 'way down').sort((a, b) => dist(a, p) - dist(b, p))[0];
   if (v) out.push(toCell(g, v.x, v.y, `the ${v.what}`));
+  // v2r4 run: the door card said "temper at an altar", or bone piled up with no glass, and nothing named an altar
+  const res = (r: string) => p.inv.reduce((n, i) => n + (i.kind === 'res' && i.res === r ? i.n : 0), 0);
+  const f = floorOf(g);
+  const unready = !bossDown(g) && !!keeperDoor.of(g, f) && !keeperDoor.ready(g, f);
+  if (unready || (res('glass') < 1 && res('bone') >= 4)) {
+    const al = g.ents.filter((e) => e.data?.altar && floorAt(e.x) === f && g.seen.has(`${Math.floor(e.x)},${Math.floor(e.y)}`)).sort((a, b) => dist(a, p) - dist(b, p))[0];
+    const why = unready ? 'an altar tempers, mends and adds hp' : 'an altar grinds 4 bone into 1 glass';
+    out.push(al ? toCell(g, al.x, al.y, why, 'offer') : [`${why}; none seen on this floor yet: `, { text: 'listen', cmd: 'listen' }, ' hears them.']);
+  }
   // a loose module of a kind you don't wear yet (a pinhole swapped out for the dawn eye is no reason)
   const loose = p.inv.some((i) => i.kind === 'mod' && !p.installed.some((o) => def(o).family === def(i).family));
   // v2r2 fun: at the cap no printer sells slots, so it says nothing
@@ -315,7 +356,7 @@ export function goalLine(g: Game): string {
   // v2-view: the run wakes blind; the first goal is an eye (the ◆ on the map)
   const held = p.inv.find((i) => i.kind === 'mod' && def(i).family === 'camera');
   if (!f && !p.installed.some((i) => def(i).family === 'camera')) {
-    if (held && held.kind === 'mod') return `${n}: install the ${label(held)}: your first sight`;
+    if (held && held.kind === 'mod') return `${n}: install the ${label(held).replace(/^the /, '')}: your first sight`;
     const eye = g.ents.find((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === 'pinhole-eye' && !e.data?.mimic);
     const sealed = eye?.data?.sealed as [number, number] | undefined;
     if (sealed && Math.abs(Math.floor(p.x) - sealed[0]) + Math.abs(Math.floor(p.y) - sealed[1]) <= 1)
@@ -333,7 +374,7 @@ export function goalLine(g: Game): string {
   const rare = bossDown(g) ? rareNear(g) : undefined;
   if (rare) {
     const w = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(rare.x - p.x, -(rare.y - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8].toUpperCase();
-    return `${n}: ✦ take the ${itemName(rare.item!)} where it fell, ${cells(Math.round(dist(rare, p)))} ${w}; then ${name}, ${far} ${word}`;
+    return `${n}: ✦ take the ${itemName(rare.item!).replace(/^the /, '')} where it fell, ${cells(Math.round(dist(rare, p)))} ${w}; then ${name}, ${far} ${word}`;
   }
   if (bossDown(g)) return `${n}: ${name} is open, ${far} ${word}: descend`;
   if (keeperDoor.at(g, 2.5)) return `${n}: the keeper's door. ${keeperDoor.ready(g, f) ? 'you look ready' : 'you are not ready: where says why'}`;
