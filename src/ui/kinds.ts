@@ -12,6 +12,8 @@ export function lineKind(l: Line): Kind {
   if (first && typeof first !== 'string' && !first.cmd && first.text.startsWith('> ')) return 'cmd';
   const t = sig(l).trim().toLowerCase();
   if (/^⚠|no weapon on|not enough power|nothing installed|: unknown|no free slot|is full|still cooling|is warming up \(|refuse|too hard|will not|you carry no|can't|cannot|wants \d|short \d/.test(t)) return 'warn';
+  // a teaching line that names a hit is still a tip, never the red fight bar (v2r2 ux: the stepper's walking tip)
+  if (/^the stepper walks it|^drag it from the inventory/.test(t)) return 'info';
   if (/\bhits? you\b|^you hit |you miss|^you stop|took you|burns you|open: hit it|a mimic|turns its light on you|bursts\.|gutters out|burns down|folds into|comes apart|falls silent|goes out\.|goes quiet|splits\.|^it stops\./.test(t)) return 'combat';
   if (/^\+\d|^you take|^conjured|drinks the vein|^you grind|shard|^the printer grinds out|knits you|core runs warmer|stitches you|closes your wounds/.test(t)) return 'loot';
   if (/^◆|^the [a-z' ]+ (eye|lens)\b|a vein of|handprints|vector:|the engine:|^you hear/.test(t)) return 'info';

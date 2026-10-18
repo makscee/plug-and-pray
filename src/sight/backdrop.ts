@@ -11,10 +11,13 @@
 
 import { cell, clear, veinOf } from '../core/grid';
 import { def, MODS, param } from '../core/mods';
+import { cells, say } from '../core/game';
+import { verb } from '../core/verbs';
 import type { Game, Inst } from '../core/types';
 import { frameHooks } from '../ui';
-import { resettle } from '../ui/windows';
-import { bestMap } from '../ui/bigmap';
+import { consoleAt, mapBack, resettle, TOP } from '../ui/windows';
+import { hintTargets } from '../ui/maptips';
+import { bestMap, bigMapOpen, closeBigMap, toggleBigMap } from '../ui/bigmap';
 import { mapView, MARK_INK } from '../world/mind';
 import type { View } from '../ui/views';
 import { eyeRange } from '../mods/sense';
@@ -26,7 +29,7 @@ import { near, shoot } from './scene';
 import { HOLLOW } from './marks';
 import { secrets } from '../world/secrets';
 import { addBlur, addLag, addNoise, blank, creases, FILTERS, foeOutside, heatRamp, MODES, staticFrame } from './index';
-import { fovAcross, plan, rowsOf, type Layer } from './layers';
+import { fovAcross, plan, rowsOf, shownLayers, turnLayers, type Layer } from './layers';
 import { bigOn, reins } from '../body/fps';
 import './backdrop.css';
 
@@ -60,6 +63,10 @@ interface Bd {
   shown: string;
   /** the overlay has something on it */
   drawn: boolean;
+  /** v2r2 ux: the map fading out over the first eye's static (performance.now() it is gone by) */
+  fadeUntil: number;
+  /** a boss fight was on last frame */
+  boss: boolean;
 }
 let bd: Bd | null = null;
 
@@ -83,7 +90,7 @@ function make(g: Game): Bd {
   tag.className = 'bd-tag';
   root.append(mapBox, over, tag);
   document.body.prepend(root);
-  return { g, root, mapBox, map: null, base: null, baseOf: -1, layers: new Map(), over, oc: over.getContext('2d')!, tag, glints: [], glintNext: 0, shown: '', drawn: true };
+  return { g, root, mapBox, map: null, base: null, baseOf: -1, layers: new Map(), over, oc: over.getContext('2d')!, tag, glints: [], glintNext: 0, shown: '', drawn: true, fadeUntil: 0, boss: false };
 }
 
 /** a picture canvas w×h (made again when the size changes), placed under the overlay */
@@ -117,8 +124,38 @@ frameHooks.push((g) => {
     if (b.shown) requestAnimationFrame(resettle);
     b.shown = shown;
   }
-  b.mapBox.hidden = mode !== 'map';
-  if (mode === 'map') drawMap(g, b);
+  // v2r2 ux: the first eye is a moment, not a loss: the map fades into the eye's static, then the edge flashes
+  // gold and one line says what happened (once a run)
+  if (mode !== 'map' && b.map && !leftMap.has(g)) {
+    leftMap.add(g);
+    b.fadeUntil = performance.now() + 1400;
+  }
+  const fading = mode !== 'map' && performance.now() < b.fadeUntil;
+  b.mapBox.hidden = mode !== 'map' && !fading;
+  // a boss wakes: the map comes back out of the dock (it outranks everything in a boss fight)
+  const boss = document.body.classList.contains('boss-on');
+  if (boss && !b.boss) {
+    requestAnimationFrame(mapBack);
+    // v2r2 fight: on floors 1 and 2 a coarse eye can hide the keeper: the big map comes up once, its radar dots the fight
+    const f = g.floor ?? 0;
+    const coarse = !pl.base || rowsOf(pl.base) < 64 || param<string>(pl.base, 'filter', 'color') !== 'color';
+    if (f <= 1 && coarse && !mappedOn(g).has(f) && !bigOn(g) && bestMap(g) && !bigMapOpen()) {
+      mappedOn(g).add(f);
+      toggleBigMap(g);
+      say(g, 'the keeper wakes. your map comes up big, so you can see it move: m or esc puts it away.');
+    }
+  }
+  if (!boss && b.boss && bigMapOpen() && mappedOn(g).has(g.floor ?? 0)) closeBigMap();
+  b.boss = boss;
+  b.mapBox.classList.toggle('bd-fade', fading);
+  if (mode === 'view' && !firstView.has(g)) {
+    firstView.add(g);
+    if (!g.floor) {
+      pl.base!.data.flashAt = g.t;
+      say(g, `◆ first sight. coarse and close, but yours; it sharpens as you find better eyes. the map stays: M, and a click on it still walks you.`);
+    }
+  }
+  if (mode === 'map' || fading) drawMap(g, b);
   else if (b.map) {
     b.map.view.dispose?.();
     b.map = null;
@@ -139,7 +176,7 @@ frameHooks.push((g) => {
   // the layers: one canvas each, the rest hidden
   const keep = new Set<number>();
   if (mode === 'view')
-    for (const { inst, layer } of pl.layers) {
+    for (const { inst, layer } of shownLayers(g, pl.layers)) {
       if (layer === 'glint') glintsOf(g, b, inst, pl.base!);
       if (layer === 'glint' || layer === 'rest') continue;
       keep.add(inst.uid);
@@ -150,11 +187,18 @@ frameHooks.push((g) => {
       l.cv.remove();
       b.layers.delete(uid);
     }
-  if (mode !== 'view' || !pl.layers.some((l) => l.layer === 'glint')) b.glints = [];
+  if (mode !== 'view' || !shownLayers(g, pl.layers).some((l) => l.layer === 'glint')) b.glints = [];
   overlay(g, b, pl.base);
-  tag(g, b, pl.base);
+  tag(g, b, pl.base, pl.layers.filter((l) => l.layer !== 'rest').length);
   cost = cost * 0.9 + (performance.now() - t0) * 0.1;
 });
+
+/** per run: the screen has left the map once (the fade), and shown a view once (the line) */
+const leftMap = new WeakSet<Game>();
+/** the floors whose keeper the big map came up for (once a floor) */
+const bigMapped = new WeakMap<Game, Set<number>>();
+const mappedOn = (g: Game): Set<number> => bigMapped.get(g) ?? (bigMapped.set(g, new Set()), bigMapped.get(g)!);
+const firstView = new WeakSet<Game>();
 
 /** the screen's cost a frame, ms (smoothed): the test hook reads it */
 let cost = 0;
@@ -179,7 +223,8 @@ function drawMap(g: Game, b: Bd): void {
     b.mapBox.replaceChildren();
   }
   if (!inst) return;
-  if (!b.map) b.map = { inst, view: mapView(b.mapBox, inst, g, undefined, { size: () => mapSize(inst), hz: 20 }) };
+  // v2r2 ux: you sit at 40% of the height, so the console hides less of what lies south
+  if (!b.map) b.map = { inst, view: mapView(b.mapBox, inst, g, undefined, { size: () => mapSize(inst), hz: 20, at: 0.4 }) };
   b.map.view.update(g, 0);
 }
 
@@ -214,8 +259,10 @@ function drawBase(g: Game, b: Bd, inst: Inst): void {
   // a failed read (a lost GL context) comes back all zero: keep the last frame for this one read
   if (!MODES[name] && blank(px) && !fresh) return;
   if (!MODES[name]) addBlur(px, h, Math.round(param<number>(inst, 'blur', 0)), w);
-  (FILTERS[name] ?? FILTERS.color)(px, h, { colors: param<number>(inst, 'colors', 0), noise: param<number>(inst, 'noise', 0), t: g.t, range, w });
-  addNoise(px, h, param<number>(inst, 'noise', 0), Math.random, w);
+  // v2r2 fight: a noisy eye steadies with a foe after you near (the carrion eye hid the bell at 5 cells)
+  const noise = engagedWithin(g, 6) ? 0 : param<number>(inst, 'noise', 0);
+  (FILTERS[name] ?? FILTERS.color)(px, h, { colors: param<number>(inst, 'colors', 0), noise, t: g.t, range, w });
+  addNoise(px, h, noise, Math.random, w);
   const lag = param<number>(inst, 'lag', 0);
   if (lag > 0) {
     if (!p.prev || p.prev.length !== px.length) p.prev = new Float32Array(px.length);
@@ -357,9 +404,11 @@ function overlay(g: Game, b: Bd, base: Inst | null): void {
       c.fillStyle = '#7a6a5a';
       c.font = '22px VT323, monospace';
       c.textAlign = 'center';
-      c.fillText(g.player.installed.length ? 'no eye and no map: you are blind. install one.' : 'you wake blind. install your kit: the map will be your sight.', W / 2, H / 2);
+      const warming = g.player.installed.some((i) => i.on && param<string>(i, 'what', '') === 'map');
+      c.fillText(warming ? 'the map warms…' : g.player.installed.length ? 'no eye and no map: you are blind. install one.' : 'you wake blind. install your kit: the map will be your sight.', W / 2, H * 0.4);
       return;
     }
+    chevrons(g, b, c, W);
     const px = mapSize(b.map!.inst)[2];
     for (const r of rs) {
       const ink = INK[param<string>(r, 'finds', '')] ?? MARK_INK.thing;
@@ -461,6 +510,9 @@ function overlay(g: Game, b: Bd, base: Inst | null): void {
   }
 }
 
+/** a foe after you within r cells */
+const engagedWithin = (g: Game, r: number): boolean => g.ents.some((e) => e.enemy?.data.noticed && Math.hypot(e.x - g.player.x, e.y - g.player.y) < r);
+
 /** anything after you near enough for the edge arrow to name */
 const engagedNear = (g: Game): boolean => g.ents.some((e) => e.enemy?.data.noticed && Math.abs(e.x - g.player.x) < 8 && Math.abs(e.y - g.player.y) < 8);
 
@@ -498,22 +550,82 @@ function dot(c: CanvasRenderingContext2D, x: number, y: number, r: number, ink: 
   c.globalAlpha = 1;
 }
 
+// ---- the chevrons: what the goal and `where` point at, off the open part of the map
+
+/** v2r2 ux: the goal's ◆ lay under the console or off the screen. Each hint target outside the part of the map no
+ *  window covers (left of the panels, under the goal line, above the console) gets a chevron on that part's edge,
+ *  pointing at it, with its name and how far */
+function chevrons(g: Game, b: Bd, c: CanvasRenderingContext2D, W: number): void {
+  const me = onMap(b, g.player.x, g.player.y);
+  if (!me) return;
+  const con = document.querySelector<HTMLElement>('.win-console')?.getBoundingClientRect();
+  const [l, t, r, bt] = [14, TOP + 14, W - 284 - 14, (con && con.height ? con.top : consoleAt()[1]) - 14];
+  c.font = '18px VT323, monospace';
+  for (const tg of hintTargets(g)) {
+    const at = onMap(b, tg.x, tg.y);
+    if (!at || (at[0] >= l && at[0] <= r && at[1] >= t && at[1] <= bt)) continue;
+    // where the line from you to it leaves the open part
+    const [dx, dy] = [at[0] - me[0], at[1] - me[1]];
+    const k = Math.min(1, dx > 0 ? (r - me[0]) / dx : dx < 0 ? (l - me[0]) / dx : 1, dy > 0 ? (bt - me[1]) / dy : dy < 0 ? (t - me[1]) / dy : 1);
+    const [x, y] = [me[0] + dx * k, me[1] + dy * k];
+    const a = Math.atan2(dy, dx);
+    c.save();
+    c.translate(x, y);
+    c.rotate(a);
+    c.fillStyle = '#f0a050';
+    c.strokeStyle = '#000';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(9, 0);
+    c.lineTo(-7, -9);
+    c.lineTo(-3, 0);
+    c.lineTo(-7, 9);
+    c.closePath();
+    c.stroke();
+    c.fill();
+    c.restore();
+    const txt = `◆ ${tg.name.replace(/^(a|an|the) /, '')} ${cells(Math.round(Math.hypot(tg.x - g.player.x, tg.y - g.player.y)))}`;
+    const tw = c.measureText(txt).width;
+    // the label inward of the chevron, kept inside the open part
+    const lx = Math.max(l, Math.min(r - tw, x - Math.cos(a) * 26 - tw / 2));
+    const ly = Math.max(t + 12, Math.min(bt - 4, y - Math.sin(a) * 22 + 5));
+    c.fillStyle = 'rgba(10, 8, 7, 0.88)';
+    c.fillRect(lx - 4, ly - 14, tw + 8, 18);
+    c.fillStyle = '#f0a050';
+    c.textAlign = 'left';
+    c.fillText(txt, lx, ly);
+  }
+}
+
 // ---- the tag in the corner: what the screen is, and the reins' mode
 
-function tag(g: Game, b: Bd, base: Inst | null): void {
+function tag(g: Game, b: Bd, base: Inst | null, all: number): void {
   const r = reins(g);
   let t: string;
   let cls = '';
+  // v2r2 ux: what is layered stays said, the reins text beside it
+  const n = mode === 'view' ? all : 0;
+  const more = n ? ` · +${n} layer${n > 1 ? 's' : ''}${n > 2 ? ' (2 shown, L turns)' : ''}` : '';
   if (r) {
     const on = bigOn(g);
-    t = on ? '◉ reins · tab: cursor' : '○ cursor · tab or click the view: reins';
+    t = (on ? '◉ reins · tab: cursor' : '○ cursor · tab or click the view: reins') + more;
     cls = on ? 'reins' : 'cursor';
   } else if (mode === 'map') t = b.map ? 'no eye: the map is your sight · click to walk' : 'no eye, no map';
   else if (mode === 'static') t = 'an eye warms up…';
-  else {
-    const n = b.layers.size + (b.glints.length ? 1 : 0);
-    t = `${def(base!).name} · ${rowsOf(base!)} px${n ? ` · +${n} layer${n > 1 ? 's' : ''}` : ''}`;
-  }
+  else t = `${def(base!).name} · ${rowsOf(base!)} px${more}`;
   if (b.tag.textContent !== t) b.tag.textContent = t;
   if (b.tag.className !== `bd-tag ${cls}`) b.tag.className = `bd-tag ${cls}`;
 }
+
+// v2r2 ux: three or more layers were noise; two draw at once and this turns which
+verb('layers', {
+  help: 'with three or more layer eyes on, show the next two of them over the view (key l)',
+  when: (g) => plan(g).layers.filter((l) => l.layer !== 'rest').length > 2,
+  whenFail: () => 'layers: fewer than three layer eyes are on; they all show already.',
+  run(g) {
+    turnLayers(g);
+    const pl = plan(g);
+    const names = shownLayers(g, pl.layers).map((l) => `${def(l.inst).name} (${l.layer})`);
+    say(g, `the view now layers: ${names.join(' and ')}.`);
+  },
+});

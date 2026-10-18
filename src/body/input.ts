@@ -155,6 +155,7 @@ addEventListener(
     else if (k === 't') tidy();
     else if (k === 'p') togglePause();
     else if (k === 'm') thaw().send('map');
+    else if (k === 'l') thaw().send('layers');
     else if (k >= '1' && k <= '4') {
       const name = Object.keys(setupsOf(g))[Number(k) - 1];
       thaw().send(name ? `setup ${name}` : 'setup');
@@ -173,9 +174,15 @@ const reinsView = () => document.getElementById('bigview');
 /** whether the pointer was locked to the reins' overlay, to tell a lock lost (Esc) from one never had */
 let locked = false;
 
+/** the reins flipped by a key, a click or a lost lock: no "> big" echo in the console (v2r2 ux: four in a row) */
+function flip(g: Game): void {
+  const d = VERBS.big;
+  if (d && (!d.when || d.when(g))) d.run(g, []);
+}
+
 /** take the reins (the mouse with them) or give the cursor back */
 export function takeReins(g: Game, on: boolean): void {
-  if (on !== bigOn(g)) exec(g, 'big');
+  if (on !== bigOn(g)) flip(g);
   const view = reinsView();
   if (on && view && document.pointerLockElement !== view) {
     // shown at once: a lock asked for in this same key press or click
@@ -189,7 +196,7 @@ if (typeof document !== 'undefined')
     const now = !!document.pointerLockElement && document.pointerLockElement === reinsView();
     // the browser let the mouse go (Esc): the cursor is yours again, for the windows
     const g = thaw()?.g;
-    if (locked && !now && g && bigOn(g)) exec(g, 'big');
+    if (locked && !now && g && bigOn(g)) flip(g);
     locked = now;
   });
 

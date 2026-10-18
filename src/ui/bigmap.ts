@@ -6,7 +6,7 @@ import { say } from '../core/game';
 import { active, label, param } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 import { verb } from '../core/verbs';
-import { detailOf, mapView } from '../world/mind';
+import { detailOf, mapView, walksOnClick } from '../world/mind';
 import type { View } from './views';
 import { frameHooks } from './index';
 import './flow.css';
@@ -38,7 +38,7 @@ export function toggleBigMap(g: Game): void {
   const name = document.createElement('b');
   name.textContent = label(inst);
   const how = document.createElement('span');
-  how.textContent = ` · ${span} cells · ${param(inst, 'click', false) ? 'click a cell to walk there' : 'it takes no clicks'} · esc closes`;
+  how.textContent = ` · ${span} cells · ${walksOnClick(g, inst) ? 'click a cell to walk there' : 'it takes no clicks'} · esc closes`;
   const x = document.createElement('button');
   x.textContent = '×';
   x.title = 'close (m or esc)';

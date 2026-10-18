@@ -26,3 +26,6 @@
 .kit-foot button { font-size: 17px; padding: 2px 10px; background: transparent; border: 1px solid var(--line-hi); color: var(--fg); cursor: pointer; }
 .kit-foot button:hover { border-color: var(--acc); color: var(--acc); }
 @media (max-width: 700px) { .kit-row { grid-template-columns: repeat(2, 1fr); } .kit-card { top: 40px; } }
+
+/* a taken pick keeps its spot, greyed (v2r2 ux: the tiles reflowed under the pointer) */
+.kit-card .kit-taken { opacity: 0.35; justify-content: center; }

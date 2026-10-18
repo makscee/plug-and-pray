@@ -98,7 +98,7 @@ function make(): Big {
   const keys = document.createElement('div');
   keys.className = 'big-keys';
   // v2r1 ux: the keys were small grey text; Esc frees the mouse first, then leaves (src/body/input.ts)
-  keys.innerHTML = '<b class="reins-on">◉ reins taken</b><br>wasd walk · click shoot · f lunge<b class="dashkey"> · shift dash</b><br>tab or esc: the cursor back<br>[ ] mouse speed';
+  keys.innerHTML = '<b class="reins-on">◉ reins taken</b><span class="big-layers"></span><br>wasd walk · click shoot · f lunge<b class="dashkey"> · shift dash</b><br>tab or esc: the cursor back<br>[ ] mouse speed';
   // v2r1 ux + pace: no map in big view; your map window's picture, in the corner
   const map = document.createElement('canvas');
   map.className = 'big-map';
@@ -126,7 +126,13 @@ frameHooks.push((g) => {
   big.root.hidden = false;
   const t0 = performance.now();
   big.root.dataset.mk = String(mark(g));
-  const eye = plan(g).base;
+  const pl = plan(g);
+  const eye = pl.base;
+  // v2r2 ux: what is layered on the view stays said beside the reins
+  const n = pl.layers.filter((l) => l.layer !== 'rest').length;
+  const lt = n ? ` · +${n} layer${n > 1 ? 's' : ''}${n > 2 ? ' (l turns)' : ''}` : '';
+  const ls = big.root.querySelector('.big-layers');
+  if (ls && ls.textContent !== lt) ls.textContent = lt;
   overlay(g, big, eye ? fovAcross(eye) : 90);
   hud(g, big);
   miniMap(big);
@@ -166,14 +172,23 @@ function overlay(g: Game, b: Big, fov: number): void {
   const aimedW = ws.filter((x) => x.range > 2);
   const cool = aimedW.length ? Math.max(...aimedW.map((x) => (x.cool ? x.wait / x.cool : 0))) : 0;
   const gap = 5 + (mk >= 2 ? cool * 12 : 0);
+  // v2r2 ux: a dark outline under it, so it shows on tan walls
+  const cross = () => {
+    c.beginPath();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      c.moveTo(cx + dx * gap, cy + dy * gap);
+      c.lineTo(cx + dx * (gap + 8), cy + dy * (gap + 8));
+    }
+    c.stroke();
+  };
+  c.strokeStyle = '#000';
+  c.lineWidth = 4;
+  cross();
+  c.fillStyle = '#000';
+  c.fillRect(cx - 2, cy - 2, 4, 4);
   c.strokeStyle = inReach ? '#ff5a3c' : '#f0c070';
   c.lineWidth = 2;
-  c.beginPath();
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-    c.moveTo(cx + dx * gap, cy + dy * gap);
-    c.lineTo(cx + dx * (gap + 8), cy + dy * (gap + 8));
-  }
-  c.stroke();
+  cross();
   c.fillStyle = c.strokeStyle;
   c.fillRect(cx - 1, cy - 1, 2, 2);
   // honest about range: what is under it, how far, and whether it reaches

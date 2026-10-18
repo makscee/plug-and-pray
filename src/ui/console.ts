@@ -124,6 +124,8 @@ export class Console {
         return row;
       }),
     );
+    // more rows grew it: still on the screen
+    if (this.win.el.getBoundingClientRect().bottom > innerHeight) windows.homeConsole();
   }
 }
 

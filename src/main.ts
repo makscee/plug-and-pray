@@ -39,11 +39,10 @@ function boot(g: Game): void {
   // the install links last, so a short console still shows them (playtest r1)
   say(
     g,
-    `core ok. you hold four modules and wear none. slots 0/${g.player.slots}. power 0/${powerMax(g)}.`,
-    ['the goal, the keys and every verb: ', { text: 'help', cmd: 'help' }, '. lost or stuck? ', { text: 'unstuck', cmd: 'unstuck' }],
-    ['you have no eye yet: the map is your sight, the bell hears what lives, and a click on the map walks you there.'],
-    ['once they are in, walk with the arrow keys (esc leaves the console), a click on the map, or ', { text: 'go e 3', cmd: 'go e 3' }, '. things move out there; the spark bites what comes close.'],
-    ['install them: ', { text: 'install all', cmd: kit.map((k) => `install ${k}`).join('; ') }, '  or one by one: ', ...kit.flatMap((k) => [inst(k), '  '])],
+    // v2r2 ux: four short lines, so a 720-tall console shows them all
+    'core ok. you wake blind. a click on the map walks you.',
+    ['arrows walk too · every verb: ', { text: 'help', cmd: 'help' }, ' · stuck? ', { text: 'unstuck', cmd: 'unstuck' }],
+    ['install them: ', { text: 'install all', cmd: kit.map((k) => `install ${k}`).join('; ') }, '  ', ...kit.flatMap((k) => [inst(k), ' '])],
   );
 }
 
