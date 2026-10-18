@@ -1,6 +1,7 @@
 // The screen: the console plus one window per installed module, kept in step with the game every frame.
 
-import { costs, does } from '../mods/describe';
+import { flavour, short } from './cardText';
+import { attach } from './card';
 import { def, families, label, param, working } from '../core/mods';
 import { LAYERS } from '../world/secrets';
 import { plan } from '../sight/layers';
@@ -81,26 +82,28 @@ export class Screen {
       // what it does, in plain words, on top of every module window; the flavour under it when there's no view
       const what = document.createElement('p');
       what.className = 'does';
+      // v3 cards: the full item card on hover and click
+      attach(what, id, () => this.g.player.installed.find((i) => i.uid === inst.uid));
       w.body.append(what);
       const make = VIEWS[d.family];
       if (make) this.views.set(inst.uid, make(w.body, inst, g));
       else {
         const p = document.createElement('p');
         p.className = 'flavour';
-        p.textContent = d.text;
+        p.textContent = flavour(inst);
         w.body.append(p);
       }
     }
     // attune and temper change the name and the numbers: the title and the does line follow
     const name = label(inst);
-    const text = does(inst);
-    const key = name + '\u0000' + text + '\u0000' + costs(inst);
+    // v3 cards: the mechanic and its key numbers, nothing else (px, fps, shades are on the card's foot)
+    const text = short(inst);
+    const key = name + '\u0000' + text;
     if (w.el.dataset.key !== key) {
       w.el.dataset.key = key;
       w.title.querySelector('span')!.textContent = name;
       const what = w.body.querySelector<HTMLElement>('.does')!;
       what.textContent = text;
-      what.title = costs(inst);
       // v2 flow: a map window hides its does line (flow.css); its title says it on hover
       if (param<string>(inst, 'what', '') === 'map') w.title.title = `${text} · drag to move · double-click to minimise`;
     }

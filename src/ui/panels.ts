@@ -11,7 +11,8 @@ import { def, label, ownSocket, param, powerMax, powerUsed, size, slotsUsed, wor
 import { inPlace, instRef, lastLegs, VERBS } from '../core/verbs';
 import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
-import { costs, does } from '../mods/describe';
+import { attach } from './card';
+import { mechanic } from './cardText';
 import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear, shutEye } from '../world/printer';
 import { altarNear, GIVES, offers as altarOffers } from '../world/altar';
 import { atStairs, STAIRS, type Stairs } from '../world/floors';
@@ -58,6 +59,8 @@ interface Row {
   icon?: Of;
   name: string;
   tip?: string;
+  /** a module: the row shows its item card */
+  card?: Item;
   buttons: Btn[];
   dim?: boolean;
   rar?: string;
@@ -81,7 +84,8 @@ export function pips(used: number, max: number): string {
   return `<span class="pips${full ? ' full' : ''}">${s}</span>`;
 }
 
-const modLines = (m: { mod: string; roll?: Roll }) => [does(m), costs(m), def(m).text];
+/** v3 cards: the detail pane says the mechanic only; the item card (hover, click) has the rest */
+const modLines = (m: { mod: string; roll?: Roll }) => [mechanic(m)];
 /** a module's rarity and a unique's own name (src/core/types.ts, from the rarity pass; common when absent) */
 const rarOf = (m: object): string => (m as { rarity?: string }).rarity ?? 'common';
 const titleOf = (m: object): string | undefined => (m as { title?: string }).title;
@@ -208,7 +212,7 @@ export class Panels {
         const recycle: Btn = Object.keys(scrap).length ? { label: 'recycle', cmd: `recycle ${label(it)}`, note: `recycle: ${fmt(scrap)}` } : { label: 'recycle', note: 'it will not break' };
         buttons = [install, { label: '?', cmd: `info ${label(it)}` }, recycle, drop];
         lines = modLines(it);
-        c = { sel, icon: it, title: `${label(it)} · ${does(it)}`, mod: it.mod, dbl: install.cmd, dim: !install.cmd, span: size(it), rar: rarOf(it), drag: true };
+        c = { sel, icon: it, title: label(it), mod: it.mod, dbl: install.cmd, dim: !install.cmd, span: size(it), rar: rarOf(it), drag: true };
       } else if (it.kind === 'card') {
         const scripture = !it.card.startsWith('log');
         buttons = [ok(g, 'read') ? { label: 'read', cmd: 'read card' } : { label: 'read', note: 'needs a card reader' }, drop];
@@ -245,7 +249,7 @@ export class Panels {
       rows.push({
         icon: it,
         name: it.kind === 'mod' ? label(it) : itemName(it),
-        tip: it.kind === 'mod' ? `${does(it)}\n${costs(it)}` : undefined,
+        card: it.kind === 'mod' ? it : undefined,
         rar: it.kind === 'mod' ? rarOf(it) : undefined,
         buttons: [...(it.kind === 'mod' ? [{ label: '?', cmd: `info ${label(it)}` }] : []), { label: 'take', cmd: `take ${itemName(it)}` }],
       });
@@ -259,7 +263,7 @@ export class Panels {
         if (!it || it.kind !== 'mod') return void rows.push({ name: `${k + 1}. sold`, buttons: [], dim: true });
         const price = priceAt(shop, k, it);
         rows.push({
-          icon: it, name: label(it), tip: `${does(it)}\n${costs(it)}`, rar: rarOf(it),
+          icon: it, name: label(it), card: it, rar: rarOf(it),
           // v2r3 fun: an eye stays behind glass till your first eye is found
           buttons: [{ label: '?', cmd: `info ${label(it)}` }, shutEye(g, it) ? { label: 'buy', note: 'shut till your first eye' } : affords(g, price) ? { label: 'buy', cmd: `buy ${k + 1}`, note: fmt(price) } : { label: 'buy', note: `${fmt(price)}: short` }],
         });
@@ -476,7 +480,9 @@ export class Panels {
       const b = document.createElement('button');
       b.className = 'cell' + (c.icon ? '' : ' socket') + (c.state ? ' st-' + c.state : '') + (c.dim ? ' dim' : '') + (this.sel.get(id) === c.sel ? ' sel' : '') +
         (c.rar ? ' rar-' + c.rar : '') + (c.span && c.span > 1 ? ' wide' : '') + (this.drag?.ghost && this.drag.id === id && this.drag.key === c.sel ? ' lifted' : '');
-      b.title = c.title;
+      // a module's tile shows its item card on hover and click (v3 cards); the rest keep a plain tip
+      if (c.mod) attach(b, `${id}:${c.sel}`, () => (id === 'modules' ? this.instOf(c.sel) : (this.items.get(c.sel) as Item & { kind: 'mod' } | undefined)));
+      else b.title = c.title;
       b.dataset.key = c.sel;
       if (c.mod) b.dataset.mod = c.mod;
       // a module that takes n slots is one tile n cells wide, with a pip per slot under its icon
@@ -582,9 +588,13 @@ export class Panels {
     const k = JSON.stringify(rows);
     if (this.keys.get(id) === k) return;
     this.keys.set(id, k);
-    w.body.replaceChildren(...rows.map((r) => {
+    w.body.replaceChildren(...rows.map((r, k) => {
       const row = document.createElement('div');
       row.className = 'row' + (r.dim ? ' dim' : '');
+      if (r.card) {
+        const it = r.card as Item & { kind: 'mod' };
+        attach(row, `${id}:${k}:${r.name}`, () => it);
+      }
       if (r.icon) row.append(img(r.icon, SCALE));
       if (r.name) {
         const s = document.createElement('span');

@@ -20,7 +20,7 @@ const STEPS = [
   // panels (Maks's second playtest): install and remove by click in the modules / inventory windows, take by click in nearby; slots in the HUD
   // the inventory is a grid of icons: click one, its detail pane carries the buttons (Maks's fourth playtest)
   [0.1, '(document.querySelector(".panel-inv .cell[data-mod=\'halo\'] img.icon").closest("button").click(), true)'],
-  [0.05, '!!document.querySelector(".panel-inv [data-cmd=\'install halo\']") && document.querySelector(".panel-inv .detail").innerText.includes("lights 3 cells")'],
+  [0.05, '!!document.querySelector(".panel-inv [data-cmd=\'install halo\']") && document.querySelector(".item-card.pinned:not([hidden])")?.innerText.includes("lights 3 cells")'],
   [0, '(document.querySelector(".panel-inv [data-cmd=\'install halo\']").click(), g.player.installed.some(i => i.mod === "halo"))'],
   [0.1, 'document.querySelector(".panel-modules .cell[data-mod=\'halo\']") !== null && document.querySelectorAll(".panel-modules .cell").length === 6 && document.querySelector(".hpbar").innerText.includes("slots 5/6")'],
   [0, '(document.querySelector(".panel-modules .cell[data-mod=\'halo\']").dispatchEvent(new MouseEvent("dblclick", { bubbles: true })), !g.player.installed.find(i => i.mod === "halo").on)'],
@@ -96,7 +96,7 @@ const STEPS = [
   [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && window.thaw.g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
   // descriptions, reliquary (shop), recycling (playtest 3)
   ['conjure pinhole eye'], ['info pinhole', 'JSON.stringify(g.log).includes("eye · 40 px")'],
-  ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("eye · 40 px")'], ['install thread bell'],
+  ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("a dim grey view")'], ['install thread bell'],
   [0, '(g.ents.push({ id: 9998, kind: "printer", x: g.player.x + 0.6, y: g.player.y, data: { far: 0, shop: true } }), ["bone","glass","copper"].forEach(r => g.player.inv.push({ kind: "res", res: r, n: 20 })), g.player.inv.push({ kind: "res", res: "ichor", n: 5 }), true)'],
   [0.2, 'document.querySelector(".panel-near [data-cmd=\'buy 1\']") !== null && JSON.stringify(g.log).includes("reliquary")'],
   ['buy 1', 'g.ents.find(e => e.id === 9998).data.offers[0] === null && g.player.inv.filter(i => i.kind === "mod").length === 4'],
