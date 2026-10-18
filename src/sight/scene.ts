@@ -12,7 +12,7 @@ import type { Entity, Game } from '../core/types';
 import { flame, lamps } from './lamp';
 import { WARM } from '../mods/sense';
 import { throughOne } from '../mods/uniques';
-import { textures } from './textures';
+import { groundTex, textures } from './textures';
 import { engaged, PUFF_TIME, puffs, struckAt } from './foes';
 import { frames, puff, SIZE, SPRITES, type SpriteDef } from './sprites';
 import { addMarks, buildGrid, gridLight, gridMesh } from './marks';
@@ -65,7 +65,9 @@ let renderer: THREE.WebGLRenderer | null = null;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 40);
 const wallGeo = new THREE.BoxGeometry(1, 1, 1);
-const tileGeo = new THREE.PlaneGeometry(1, 1);
+// v6-look (Maks 10-18: "bottom of screen gets squished when I walk"): the PS1 affine texture warp on a whole
+// tile right under the eye smeared the bottom rows, worst on wide eyes; a 4x4 tile keeps the wobble small
+const tileGeo = new THREE.PlaneGeometry(1, 1, 4, 4);
 const tx = textures();
 const wallMat = ps1(new THREE.MeshLambertMaterial({ map: tx.wall }));
 const floorMat = ps1(new THREE.MeshLambertMaterial({ map: tx.floor, side: THREE.DoubleSide }));
@@ -540,6 +542,11 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   // snap to half the camera's pixels: the wobble shows even on a big lens
   snap.value = s.w ? s.res : s.res / 2; // a wide view wobbles at its own pixels: wide is wobblier across already
   range.value = s.range;
+  const ground = groundTex(g.floor ?? 0);
+  if (floorMat.map !== ground) {
+    floorMat.map = ground;
+    floorMat.needsUpdate = true;
+  }
   glow.position.set(p.x, 0.6, p.y);
   const ls = lamps(g);
   lights.forEach((l, k) => {
