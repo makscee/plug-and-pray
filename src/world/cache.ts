@@ -177,6 +177,8 @@ const notHere = (g: Game): string => {
 
 verb('cache', {
   help: 'the floor\'s kit cache where you land: what it offers, two picks free',
+  when: atCache,
+  whenFail: notHere,
   run(g) {
     const c = cacheNear(g);
     if (!c) return say(g, notHere(g));

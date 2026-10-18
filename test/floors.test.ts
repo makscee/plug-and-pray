@@ -59,8 +59,9 @@ describe('v2 floors', () => {
     for (let seed = 1; seed <= 20; seed++)
       for (let f = 0; f < LAST; f++) {
         const [cx, cy] = stairsChunk(seed, f);
-        expect(Math.abs(cx - f * STRIDE) + Math.abs(cy)).toBe(2);
-        expect(cx === f * STRIDE || cy === 0).toBe(true);
+        // on an edge: two chunks out one way, at most one along it (v2 variety)
+        expect(Math.max(Math.abs(cx - f * STRIDE), Math.abs(cy))).toBe(2);
+        expect(Math.min(Math.abs(cx - f * STRIDE), Math.abs(cy))).toBeLessThanOrEqual(1);
         const [x0, y0, x1, y1] = bossRoom(seed, f);
         const [sx, sy] = stairsAt(seed, f);
         expect(sx > x0 && sx < x1 + 1 && sy > y0 && sy < y1 + 1).toBe(true);

@@ -18,6 +18,7 @@ import { perk } from '../mods/uniques';
 import { engaged } from './foes';
 import './lamp';
 import './scanner';
+import './variety';
 import { firstSight } from './codex';
 import { clean } from '../tune/start';
 import { wrapCamera } from './fps';

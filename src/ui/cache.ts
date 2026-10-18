@@ -1,7 +1,8 @@
 // The kit cache's choice card (src/world/cache.ts): while you stand by a floor's cache it shows its five
 // modules as tiles (icon, name in its rarity's colour, family, power and slots, what it does, where it would
 // go) with a pick button each, the picks left or the price of the next, and "scrap the rest". `later` hides
-// it until you walk off and come back (or type `cache`). On the cradle it waits until your legs are in.
+// it until you walk off and come back (or type `cache`). On the cradle it waits until your legs are in; below,
+// until the floor's banner is gone.
 
 import { frameHooks } from '.';
 import { def, label, rarityOf, size } from '../core/mods';
@@ -16,6 +17,9 @@ const send = (cmd: string) => (window as unknown as { thaw?: { send: (c: string)
 let el: HTMLElement | null = null;
 let key = '';
 const wasNear = new WeakMap<Game, boolean>();
+/** the floor the card last saw, and when (real ms) you came to it: the card waits out the floor's banner (src/ui/floors.ts) */
+const landed = new WeakMap<Game, { f: number; at: number }>();
+const BANNER = 5000;
 
 function el_(tag: string, cls: string, text = ''): HTMLElement {
   const e = document.createElement(tag);
@@ -30,7 +34,12 @@ frameHooks.push((g) => {
   if (!c && wasNear.get(g)) hideCard(g, false);
   wasNear.set(g, !!c);
   const legs = g.player.installed.some((i) => def(i).family === 'gait');
-  const show = !!c && !cardHidden(g) && (floorOf(g) > 0 || legs);
+  const f0 = floorOf(g);
+  let l = landed.get(g);
+  if (!l || l.f !== f0) landed.set(g, (l = { f: f0, at: l ? performance.now() : -BANNER }));
+  // never over a fight: it comes back when nothing is after you
+  const fight = g.ents.some((e) => e.enemy?.data.noticed && Math.hypot(e.x - g.player.x, e.y - g.player.y) < 7);
+  const show = !!c && !cardHidden(g) && !fight && (f0 > 0 ? performance.now() - l.at > BANNER : legs);
   if (!show) {
     el?.remove();
     el = null;

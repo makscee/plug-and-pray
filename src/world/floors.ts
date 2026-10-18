@@ -45,6 +45,15 @@ export const FLOORS: Floor[] = [
 ];
 export const LAST = FLOORS.length - 1;
 
+/** v2 variety: what each floor wants from you, said on arrival (its tricks: src/world/gimmicks.ts, src/fight/dodge.ts) */
+export const WANTS: Record<number, string> = {
+  0: 'it wants: kite and bite. lead the swarm across floor that cracks; break the thin walls.',
+  1: 'it wants: aim. a ◇ over a foe means it sidesteps your first shot: shoot twice. kill a singing cantor first.',
+  2: 'it wants: light. no mending without it, and your light draws them to you. armour for the walkers.',
+  3: 'it wants: a rime hood, and timing: the vents breathe fire on one beat. cross between.',
+  4: 'it wants: everything you have.',
+};
+
 /** how the stairs read in words: on arrival, on the map, in the nearby list */
 export const STAIRS: Record<Stairs, { name: string; look: string }> = {
   rope: { name: 'the rope pit', look: 'a black pit in the floor, a chain hanging down into it' },
@@ -106,11 +115,15 @@ export const origin = (f: number): [number, number] => [f * STRIDE * CHUNK + 8.5
 export function stairsChunk(seed: number, f: number): [number, number] {
   if (f === LAST) return [f * STRIDE, -HEART_APPROACH];
   const [sx, sy] = [[1, 0], [-1, 0], [0, 1], [0, -1]][hash(seed, 111, f) % 4];
-  return [f * STRIDE + sx * HALF, sy * HALF];
+  // v2 variety: and along that edge, the middle or one chunk to either side (twelve places a floor's way down can be)
+  const along = (hash(seed, 112, f) % 3) - 1;
+  return [f * STRIDE + (sx ? sx * HALF : along), sy ? sy * HALF : along];
 }
+/** which side of the room the stairs keep to: the edge the room lies on (away from the floor's middle) */
 const cornerOf = (seed: number, f: number): [number, number] => {
   const [cx, cy] = stairsChunk(seed, f);
-  return [Math.sign(cx - f * STRIDE), Math.sign(cy)];
+  const [lx, ly] = [cx - f * STRIDE, cy];
+  return Math.abs(lx) >= Math.abs(ly) ? [Math.sign(lx), 0] : [0, Math.sign(ly)];
 };
 
 /** the boss room in local cells of its chunk: [x0, y0, x1, y1] inclusive, 13×13 open (the bosses want room). The heart's arena is wider */
@@ -249,7 +262,7 @@ export function goDown(g: Game, f: number): void {
   const [sx, sy] = stairsAt(g.seed, f);
   const [dx, dy] = [sx - p.x, sy - p.y];
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
-  const lines: (string | Line)[] = [`FLOOR ${f + 1}: ${F.name.toUpperCase()}.`, F.gimmick];
+  const lines: (string | Line)[] = [`FLOOR ${f + 1}: ${F.name.toUpperCase()}.`, F.gimmick, WANTS[f]];
   if (F.stairs) lines.push(`the way down lies somewhere ${word}, past its keeper. a memory card or a scanner points to it.`);
   else lines.push(`its keeper waits ${word} of here.`);
   if (KIT[f]?.length) lines.push('a cache lies where you land: this floor\'s kit. take two.');
