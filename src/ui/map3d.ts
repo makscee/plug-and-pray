@@ -12,7 +12,7 @@ import { RES, type Entity, type Game, type Inst, type Res } from '../core/types'
 import { know, marks, type Mark } from '../sight/know';
 import { frames, SPRITES } from '../sight/sprites';
 import { isNamed } from '../world/secrets';
-import { diorama, MARK_INK, mapCell, mapHooks, markIcon, thingIcon } from '../world/mind';
+import { diorama, halo, MARK_INK, mapCell, mapHooks, markIcon, thingIcon } from '../world/mind';
 import { draw, key, sprite, type Of, type Px } from './icons';
 import type { View } from './views';
 import { infoAt } from './maptips';
@@ -184,6 +184,7 @@ diorama.make = (el: HTMLElement, inst: Inst, game: Game): View => {
               const of = ofThing(e);
               const pic = of && icon(of);
               const h = tw * (e.kind === 'printer' ? 1.3 : 0.9);
+              if (e.kind === 'item' && !e.data?.mimic) halo(ctx, g, e, ex, fy - h / 2, tw * 0.6);
               if (pic) ctx.drawImage(pic, ex - h / 2, fy - h, h, h);
             }
           }

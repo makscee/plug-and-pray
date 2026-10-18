@@ -54,6 +54,11 @@ chunkHook((g, c) => {
     }
 });
 
+/** what a set piece is for, in plain words: most are scenery whose finds lie round them */
+export const pieceUse = (pc: Piece, e: Entity): string =>
+  pc.hold.heal ? (e.data!.used ? 'its mending is spent; nothing more to use.' : 'stand at it hurt: it mends you whole, once.')
+  : 'old works, nothing to use. its finds lie on the floor round it: take them.';
+
 /** told once per piece: you walked in; the mending ones mend once */
 const told = new WeakMap<Game, Set<number>>();
 tickHooks.push((g) => {

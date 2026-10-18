@@ -441,6 +441,7 @@ verb('listen', {
         ? e.enemy.data.elite ? 'something large, keeping time' : pack(e) >= 3 ? `a swarm, ${pack(e)} or so` : 'something moving'
         : e.kind === 'printer' ? (e.data?.shop ? 'a reliquary humming' : 'a printer humming')
         : e.data?.stairs ? 'wind rising from below: the way down'
+        : e.kind === 'prop' && typeof e.data?.piece === 'string' ? 'old works, nothing to use: its finds lie round it'
         : e.kind === 'prop' ? 'an altar, breathing slow'
         : n > 1 ? `things lying still ×${n}` : 'something lying still';
       // the longest first leg along a way there, not a straight axis into a wall (playtest r1, r2)
