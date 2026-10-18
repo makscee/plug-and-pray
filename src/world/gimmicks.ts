@@ -209,7 +209,8 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
 // the cradle says what it wants once you are up (the other floors say it as you land: src/world/floors.ts goDown)
 const wanted = new WeakSet<Game>();
 tickHooks.push((g) => {
-  if (wanted.has(g) || floorOf(g) !== 0 || g.t < 3) return;
+  // v2r4 ux: after the wake lines have had their time (at 3 s it scrolled "a click on the map walks you" away)
+  if (wanted.has(g) || floorOf(g) !== 0 || g.t < 11) return;
   wanted.add(g);
   say(g, WANTS[0]);
 });

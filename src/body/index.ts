@@ -3,7 +3,7 @@
 // saved setups and the clock of hours' foresight. Keys and windows live in ./input.ts and ./views.ts.
 
 import { dist, say, tickHooks } from '../core/game';
-import { active, def, label, param, powerMax, powerUsed, rarityOf, size, slotsUsed, switchOff, switchOn, traits, type Modish } from '../core/mods';
+import { active, def, label, ownSocket, param, powerMax, powerUsed, rarityOf, size, slotsUsed, switchOff, switchOn, traits, type Modish } from '../core/mods';
 import { Cell, DIRS, cell, clear, dirAngle, setCell } from '../core/grid';
 import { VERBS, addItem, findInst, findItem, instRef, verb } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
@@ -400,7 +400,7 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
   const light = (i: Inst) => def(i).family !== 'power' && weight(g, i) < 9 && weight(g, i) <= top;
   let remove: Inst | undefined;
   const more: Inst[] = [];
-  const need = installed ? 0 : slotsUsed(g) + size(it) - p.slots;
+  const need = installed ? 0 : slotsUsed(g) + size(it) - p.slots - ownSocket(g, it);
   if (need > 0) {
     const off = p.installed.filter((i) => !i.on && def(i).family !== 'power').sort((a, b) => weight(g, a) - weight(g, b));
     const on = p.installed.filter((i) => i.on && light(i)).sort((a, b) => weight(g, a) - weight(g, b) || def(b).power - def(a).power);

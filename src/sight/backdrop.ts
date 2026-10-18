@@ -15,8 +15,8 @@ import { cells, say } from '../core/game';
 import { verb } from '../core/verbs';
 import type { Game, Inst } from '../core/types';
 import { frameHooks } from '../ui';
-import { consoleAt, mapBack, resettle, TOP } from '../ui/windows';
-import { hintTargets } from '../ui/maptips';
+import { mapBack, resettle } from '../ui/windows';
+import { hintTargets, inOpen, openPart } from '../ui/maptips';
 import { bestMap, bigMapOpen, closeBigMap, toggleBigMap } from '../ui/bigmap';
 import { mapView, MARK_INK } from '../world/mind';
 import type { View } from '../ui/views';
@@ -414,7 +414,16 @@ function overlay(g: Game, b: Bd, base: Inst | null): void {
       c.font = '22px VT323, monospace';
       c.textAlign = 'center';
       const warming = g.player.installed.some((i) => i.on && param<string>(i, 'what', '') === 'map');
-      c.fillText(warming ? 'the map warms…' : g.player.installed.length ? 'no eye and no map: you are blind. install one.' : 'you wake blind. install your kit: the map will be your sight.', W / 2, H * 0.4);
+      // v2r4 ux: in the open part, wrapped (the inventory window cut it at 1024 wide)
+      const [l, , r] = openPart();
+      const words = (warming ? 'the map warms…' : g.player.installed.length ? 'no eye and no map: you are blind. install one.' : 'you wake blind. install your kit: the map will be your sight.').split(' ');
+      const lines = [''];
+      for (const w of words) {
+        const next = lines[lines.length - 1] ? `${lines[lines.length - 1]} ${w}` : w;
+        if (c.measureText(next).width > r - l && lines[lines.length - 1]) lines.push(w);
+        else lines[lines.length - 1] = next;
+      }
+      lines.forEach((ln, k) => c.fillText(ln, (l + r) / 2, H * 0.4 + k * 24));
       return;
     }
     chevrons(g, b, c, W);
@@ -567,12 +576,15 @@ function dot(c: CanvasRenderingContext2D, x: number, y: number, r: number, ink: 
 function chevrons(g: Game, b: Bd, c: CanvasRenderingContext2D, W: number): void {
   const me = onMap(b, g.player.x, g.player.y);
   if (!me) return;
-  const con = document.querySelector<HTMLElement>('.win-console')?.getBoundingClientRect();
-  const [l, t, r, bt] = [14, TOP + 14, W - 284 - 14, (con && con.height ? con.top : consoleAt()[1]) - 14];
+  const open = openPart();
+  const [l, t, r, bt] = open;
   c.font = '18px VT323, monospace';
+  // v2r4 ux: one label per place: a target the map shows in the open part has its ◆ there and no chevron
+  // (maptips.ts draws it only in here too), and chevron labels never sit on each other
+  const placed: [number, number, number][] = [];
   for (const tg of hintTargets(g)) {
     const at = onMap(b, tg.x, tg.y);
-    if (!at || (at[0] >= l && at[0] <= r && at[1] >= t && at[1] <= bt)) continue;
+    if (!at || inOpen(open, at[0], at[1], 4)) continue;
     // where the line from you to it leaves the open part
     const [dx, dy] = [at[0] - me[0], at[1] - me[1]];
     const k = Math.min(1, dx > 0 ? (r - me[0]) / dx : dx < 0 ? (l - me[0]) / dx : 1, dy > 0 ? (bt - me[1]) / dy : dy < 0 ? (t - me[1]) / dy : 1);
@@ -597,7 +609,10 @@ function chevrons(g: Game, b: Bd, c: CanvasRenderingContext2D, W: number): void 
     const tw = c.measureText(txt).width;
     // the label inward of the chevron, kept inside the open part
     const lx = Math.max(l, Math.min(r - tw, x - Math.cos(a) * 26 - tw / 2));
-    const ly = Math.max(t + 12, Math.min(bt - 4, y - Math.sin(a) * 22 + 5));
+    let ly = Math.max(t + 12, Math.min(bt - 4, y - Math.sin(a) * 22 + 5));
+    const clash = () => placed.some(([px, py, pw]) => Math.abs(py - ly) < 20 && lx < px + pw + 8 && lx + tw + 8 > px);
+    for (let k = 0, s = ly > (t + bt) / 2 ? -1 : 1; k < 8 && clash(); k++) ly += s * 20;
+    placed.push([lx, ly, tw]);
     c.fillStyle = 'rgba(10, 8, 7, 0.88)';
     c.fillRect(lx - 4, ly - 14, tw + 8, 18);
     c.fillStyle = '#f0a050';
@@ -615,13 +630,19 @@ function tag(g: Game, b: Bd, base: Inst | null, all: number): void {
   // v2r2 ux: what is layered stays said, the reins text beside it
   const n = mode === 'view' ? all : 0;
   const more = n ? ` · +${n} layer${n > 1 ? 's' : ''}${n > 2 ? ' (2 shown, L turns)' : ''}` : '';
+  // v2r4 ux: the room left of the hp bar (at 1024 wide the bar covered the tag): short words when it is tight
+  const hud = document.querySelector<HTMLElement>('.hpbar')?.getBoundingClientRect();
+  const room = hud && hud.width ? Math.max(60, hud.left - 22) : 600;
+  const tight = room < 330;
+  const px = base ? Math.round(param<number>(base, 'res', rowsOf(base))) : 0; // the px its window says (v2r4 ux)
   if (r) {
     const on = bigOn(g);
-    t = (on ? '◉ reins · tab: cursor' : '○ cursor · tab or click the view: reins') + more;
+    t = (tight ? (on ? '◉ reins · tab' : '○ cursor · tab') : on ? '◉ reins · tab: cursor' : '○ cursor · tab or click the view: reins') + (tight && n ? ` +${n}` : more);
     cls = on ? 'reins' : 'cursor';
-  } else if (mode === 'map') t = b.map ? 'no eye: the map is your sight · click to walk' : 'no eye, no map';
+  } else if (mode === 'map') t = b.map ? (room < 170 ? 'the map' : tight ? 'map · click to walk' : 'no eye: the map is your sight · click to walk') : 'no eye, no map';
   else if (mode === 'static') t = 'an eye warms up…';
-  else t = `${def(base!).name} · ${rowsOf(base!)} px${more}`;
+  else t = `${def(base!).name} · ${px} px${tight ? (n ? ` +${n}` : '') : more}`;
+  if (b.tag.style.maxWidth !== `${room}px`) b.tag.style.maxWidth = `${room}px`;
   if (b.tag.textContent !== t) b.tag.textContent = t;
   if (b.tag.className !== `bd-tag ${cls}`) b.tag.className = `bd-tag ${cls}`;
 }
