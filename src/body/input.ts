@@ -7,19 +7,22 @@
 // On the end screen Enter or R wakes again.
 // Mouse: the cursor is yours for the windows, and a click on the map (while it is your sight) walks you there.
 // The reins (src/body/fps.ts, v2-view): Tab (or V, or a click on the view) takes them and the mouse; there WASD
-// and the arrows walk and strafe relative to the view, the mouse turns you (smooth yaw), a click shoots down the
+// and up/down walk relative to the view, the mouse turns you (smooth yaw), a click shoots down the
 // crosshair (right click or F: a melee lunge; Space shoots too), Shift dashes (mk2). Tab again, or Esc, gives
 // the cursor back for the windows.
+// A trackpad plays it all (Maks 10-18: "it shouldn't require a mouse but looking around is important"): a finger
+// moving turns you with no button held, Q/E and the left/right arrows turn smoothly too, a held Space (or a held
+// click) keeps firing as the weapon warms, and `look 0.5`..`look 3` sets the turn speed.
 
 import { gyroMove, gyroTurn, hasGyro, saveSetup, servoStep, setupsOf } from './index';
-import { exec, VERBS } from '../core/verbs';
+import { exec, verb, VERBS } from '../core/verbs';
 import { active, param } from '../core/mods';
 import { walk } from '../mods/gait';
 import { frameHooks } from '../ui';
 import { tidy } from '../ui/windows';
 import { togglePause } from '../ui/pause';
 import type { Game, Line } from '../core/types';
-import { say } from '../core/game';
+import { say, tickHooks } from '../core/game';
 import './views';
 import { clean } from '../tune/start';
 import { bigOn, dash, fpsFire, fpsMove, fpsTurn, lunge, reins } from './fps';
@@ -221,21 +224,25 @@ function fpsKey(g: Game, e: KeyboardEvent, k: string): boolean {
     return true;
   }
   if (!bigOn(g)) return false;
-  if (WASD[k] || ARROWS[e.key]) {
+  // held: walk, turn (q e and the left/right arrows) and Space, which keeps firing as the weapon warms (tickHooks below)
+  if (WASD[k] || ARROWS[e.key] || k === 'q' || k === 'e' || k === ' ') {
     held.add(ARROWS[e.key] ? e.key : k);
+    if (k === ' ' && !e.repeat) fpsFire(g);
     return true;
   }
-  if (e.repeat) return k === ' ' || k === 'shift' || k === 'f';
+  if (e.repeat) return k === 'shift' || k === 'f';
   if (k === 'shift') dash(g);
   else if (k === '[' || k === ']') setSens(g, k === ']' ? 1.15 : 1 / 1.15);
   else if (k === 'f') lunge(g);
-  else if (k === ' ') fpsFire(g);
   else if (k === 'escape') takeReins(g, false);
   else return false;
   return true;
 }
 
-addEventListener('blur', () => held.clear());
+addEventListener('blur', () => {
+  held.clear();
+  pressed = false;
+});
 
 // focus moving into the console drops held keys, so you do not walk on while typing
 addEventListener('focusin', (e) => {
@@ -246,13 +253,27 @@ frameHooks.push((g) => {
   const fwd = (held.has('w') ? 1 : 0) - (held.has('s') ? 1 : 0);
   const side = (held.has('d') ? 1 : 0) - (held.has('a') ? 1 : 0);
   if (bigOn(g)) {
-    // the big view: the arrows walk with WASD, relative to where you look
+    // the big view: up/down walk with WASD, relative to where you look; left/right turn (tickHooks below)
     const f = fwd + (held.has('ArrowUp') ? 1 : 0) - (held.has('ArrowDown') ? 1 : 0);
-    const sd = side + (held.has('ArrowRight') ? 1 : 0) - (held.has('ArrowLeft') ? 1 : 0);
-    fpsMove(g, Math.sign(f), Math.sign(sd));
+    fpsMove(g, Math.sign(f), Math.sign(side));
     return;
   }
   if (fwd || side || g.player.move) gyroMove(g, fwd, side);
+});
+
+/** a left press held in the big view: it keeps firing as the weapon warms, like a held Space */
+let pressed = false;
+/** keyboard turning in the big view, radians a second at 100% look speed (about a third of a turn a second) */
+export const TURN = 2.2;
+// game time, so it pauses with the game and a test's step() turns too
+tickHooks.push((g, dt) => {
+  if (!bigOn(g)) {
+    pressed = false;
+    return;
+  }
+  const t = (held.has('e') || held.has('ArrowRight') ? 1 : 0) - (held.has('q') || held.has('ArrowLeft') ? 1 : 0);
+  if (t) fpsTurn(g, t * TURN * Math.min(2, Math.max(0.5, sensShare())) * dt);
+  if ((held.has(' ') || pressed) && volley(g).length) fpsFire(g);
 });
 
 /** v2r5 newcomer (the floor-2 ringer was a wall: shoot had no key without the reins): `shoot` from a key or a
@@ -293,7 +314,13 @@ addEventListener('mousedown', (e) => {
     return;
   }
   if (e.button === 2) lunge(g);
-  else if (e.button === 0) fpsFire(g);
+  else if (e.button === 0) {
+    pressed = true;
+    fpsFire(g);
+  }
+});
+addEventListener('mouseup', (e) => {
+  if (e.button === 0) pressed = false;
 });
 addEventListener('contextmenu', (e) => {
   if (document.getElementById('bigview')?.contains(e.target as Node)) e.preventDefault();
@@ -344,8 +371,17 @@ export function setSens(g: Game, by: number): void {
   } catch {
     // not kept: it still holds for this visit
   }
-  say(g, `mouse speed ${Math.round(sensShare() * 100)}%. [ slower, ] faster.`);
+  say(g, `look speed ${Math.round(sensShare() * 100)}%. [ slower, ] faster, or look 0.5 to look 3.`);
 }
+// a trackpad's swipe is shorter than a mouse's sweep: `look 1.5` turns half as far again per finger
+verb('look', {
+  help: 'look 1.5: how fast the mouse, the trackpad and q/e turn you in the reins (0.33 to 3; keys [ and ])',
+  run(g, args) {
+    const v = Number((args[0] ?? '').replace('%', ''));
+    if (!(v > 0)) return void say(g, `look speed ${Math.round(sensShare() * 100)}%. look 0.5 slower, look 2 faster; [ and ] in the reins.`);
+    setSens(g, (Math.min(3, Math.max(1 / 3, v > 10 ? v / 100 : v)) * SENS) / sens);
+  },
+});
 // v2-view: without the reins the mouse never turns you (the gyro heart turns with Q and E)
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement?.id !== 'bigview') return;
