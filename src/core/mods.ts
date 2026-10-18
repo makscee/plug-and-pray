@@ -95,6 +95,9 @@ export function levelKey(m: { mod: string }): string | null {
 export const maxLevel = (m: { mod: string }): number => (levelKey(m) ? MAX_LEVEL : 1);
 /** "nail psalm II": the name with its level (I is left off) */
 export const levelTag = (m: { level?: number }): string => (moduleLevel(m) > 1 ? ' ' + ROMAN[moduleLevel(m)] : '');
+/** v5 (Maks 10-18 20:00: "upgrading eye module should change resolution and add colors"): an eye's level sharpens
+ *  its whole picture too, by level I..III (colours 0 = full colour stays full); its tone steps in src/sight/layers.ts */
+export const EYE_LEVEL: Record<string, number[]> = { res: [1, 1, 1.4, 1.8], colors: [1, 1, 1.6, 2.4], fps: [1, 1, 1.25, 1.5] };
 
 /** a parameter with the find's roll (and its rarity) applied */
 export function param<T extends Param>(inst: Modish, key: string, fallback?: T): T {
@@ -110,6 +113,7 @@ export function param<T extends Param>(inst: Modish, key: string, fallback?: T):
       v = BETTER[key] === 'down' ? v / m : v * m;
     }
   }
+  if (lv > 1 && typeof v === 'number' && v > 0 && EYE_LEVEL[key] && def(inst).family === 'camera') v = Math.round(v * EYE_LEVEL[key][lv]);
   return v as T;
 }
 
