@@ -753,7 +753,7 @@ export function play(seed: number, o: Opts): Run {
         const w = worth(g, it, zone, false);
         const powerShort = MODS[it.mod].family === 'power' && param(it, 'power', 0) > 0 && powerUsed(g) >= powerMax(g) - 1;
         const good = (w > worst * 1.15 && w > 20) || (P.installed.length < P.slots && w > 20) || powerShort;
-        out.push({ cmd: `buy ${k + 1}`, ok: good && afford(printer.priceAt(m, k, it)) });
+        out.push({ cmd: `buy ${k + 1}`, ok: good && afford(printer.priceAt(m, k, it)) && !printer.shutEye(g, it) });
       });
     } else if (m.kind === 'printer') {
       const pr = printer;

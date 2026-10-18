@@ -125,11 +125,16 @@ function ring(g: Game, e: Entity, n: number, speed: number, off = 0, gap = 0, sh
 }
 
 /** player stuns (the bell): you stand where you are until then */
-const stunned = new WeakMap<Game, { until: number; x: number; y: number }>();
+const stunned = new WeakMap<Game, { until: number; x: number; y: number; queued?: { path: [number, number][]; pace: number } }>();
 export const stunOf = (g: Game): number => stunned.get(g)?.until ?? -99;
+/** v2r3 fun: after a stun ends you cannot be stunned again for this long (the bell chained three in 5 s) */
+export const STUN_GUARD = 2.5;
 function stun(g: Game, secs: number): void {
+  const was = stunned.get(g);
+  if (was && g.t < was.until + STUN_GUARD) return;
   stunned.set(g, { until: g.t + secs, x: g.player.x, y: g.player.y });
-  say(g, `⚠ stunned: you cannot move for ${secs} s.`);
+  g.player.path = [];
+  say(g, `⚠ stunned: you cannot move for ${secs} s. a move you give now waits for it.`);
 }
 
 /** hit what stands in the zones; `open` leaves the boss open (more damage taken) when you were clear */
@@ -798,8 +803,13 @@ tickHooks.push((g, dt) => {
   const s = stunned.get(g);
   if (s && g.t < s.until) {
     [p.x, p.y] = [s.x, s.y];
+    // v2r3 fun: a walk given while stunned is kept and starts when the stun ends (`go s 9` was swallowed)
+    if (p.path.length) s.queued = { path: p.path, pace: p.pace };
     p.path = [];
     p.move = null;
+  } else if (s?.queued) {
+    if (!p.path.length) [p.path, p.pace] = [s.queued.path, s.queued.pace];
+    delete s.queued;
   }
   const list = pools.get(g);
   if (list?.length) {

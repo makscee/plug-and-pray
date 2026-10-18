@@ -4,14 +4,14 @@
 // first memory card and an ember cell; a printer with a second weapon beside it; a reliquary (shop).
 
 import { CHUNK, chunk, chunkHook, Cell } from '../core/grid';
-import { spawn } from '../core/game';
+import { spawn, tickHooks } from '../core/game';
 import { BETTER, MODS, rarityKey } from '../core/mods';
 import { hash, rng, type Rng } from '../core/rng';
 import { RES, type Chunk, type Game, type Item } from '../core/types';
 import { floors, rooms } from './gen';
 import { nextLog } from './vectors';
 import { ZONES, zoneFar } from './zones';
-import { farOf, floorOfChunk, isArrival, stairsChunk, STRIDE } from './floors';
+import { farOf, floorAt, floorOfChunk, isArrival, stairsChunk, STRIDE } from './floors';
 
 /** v2r2 ux: the first eye lies two chunks out on the eye's side (the next one over when that is the keeper's room),
  *  sealed behind a cracked wall (src/world/secrets.ts eyeNiche), so the map-only start lasts a couple of minutes */
@@ -142,7 +142,7 @@ export function fill(g: Game, c: Chunk): void {
   }
   if (is(c, o.reader)) {
     const [x, y] = cellIn(r, c, g.seed);
-    spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'card-reader' } });
+    spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'card-reader' }, data: { opener: true } });
     spawn(g, { kind: 'item', x, y, item: { kind: 'card', card: nextLog(g) } });
     // module pass: the first generator lies with the reader, so the first colour eye or second weapon has its power
     spawn(g, { kind: 'item', x: x + 0.3, y, item: { kind: 'mod', mod: 'ember-cell' } });
@@ -153,6 +153,8 @@ export function fill(g: Game, c: Chunk): void {
     spawn(g, { kind: 'printer', x, y, data: { far, made: 0 } });
     // r1 pace: a second weapon by the cradle printer on every seed (its own rng: the chunk stays as it was)
     if (is(c, o.printer)) spawn(g, { kind: 'item', x: x + 0.3, y, item: { kind: 'mod', mod: rng(hash(g.seed, 63)).pick(SECOND) } });
+    // v2r3 fun: the nave's printers wanted copper the floor never gave: two lie by each, a print's worth
+    if (f === 1) spawn(g, { kind: 'item', x: x - 0.3, y, item: { kind: 'res', res: 'copper', n: 2 } });
   }
   // a reliquary (shop printer) one chunk out, then now and then further out; its own rng keeps the rest of the chunk as it was
   const rs = rng(hash(g.seed, 57, c.cx, c.cy));
@@ -184,3 +186,22 @@ export function fill(g: Game, c: Chunk): void {
 }
 
 chunkHook(fill);
+
+// v2r3 fun: one card reader a floor at most (floor 1 lay five, all dead loot). A later one, from any roll (chunk
+// loot, drops, set pieces), folds into bone as it appears: on the cradle (its opener's reader is the one), while
+// you hold a reader, or while another lies on the same floor
+const swept = new WeakMap<Game, number>();
+tickHooks.push((g) => {
+  const from = swept.get(g) ?? 0;
+  if (g.nextId <= from) return;
+  swept.set(g, g.nextId);
+  const p = g.player;
+  const reader = (it: Item | undefined) => it?.kind === 'mod' && it.mod === 'card-reader';
+  for (const e of g.ents) {
+    if (e.id < from || e.kind !== 'item' || !reader(e.item) || e.data?.opener || e.data?.mimic) continue;
+    const f = floorAt(e.x);
+    const held = p.inv.some(reader) || p.installed.some((i) => i.mod === 'card-reader');
+    const other = g.ents.some((o) => o !== e && o.kind === 'item' && reader(o.item) && floorAt(o.x) === f);
+    if (f === 0 || held || other) e.item = { kind: 'res', res: 'bone', n: 2 };
+  }
+});

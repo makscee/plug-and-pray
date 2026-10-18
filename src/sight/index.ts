@@ -23,6 +23,7 @@ import { firstSight } from './codex';
 import { clean } from '../tune/start';
 import './fps';
 import { plan, shownLayers, type Layer } from './layers';
+import { walks } from '../mods/gait';
 import './backdrop';
 
 /** the facing as a compass word, and the turn to its left and right */
@@ -33,7 +34,7 @@ export const facing = (dir: number) => ((Math.round(dir / (Math.PI / 2)) % 4) + 
 // told him nothing about where he was facing)
 family('camera', {
   buttons: (g) => {
-    if (!active(g, 'gait').some((i) => param(i, 'go', false))) return [];
+    if (!walks(g)) return [];
     const f = facing(g.player.dir);
     return [
       { label: '◀ turn', cmd: `face ${WORDS[(f + 3) % 4]}` },

@@ -14,7 +14,7 @@ import { addItem, instRef, verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Item, Line } from '../core/types';
 import { lightest, makeRoom } from '../body';
 import { floorOf, KIT } from './floors';
-import { RARITY_ODDS } from './spawn';
+import { RARITY_ODDS, ranged } from './spawn';
 
 /** modules on offer, picks that cost nothing, what each later pick costs (bone), bone per module scrapped */
 export const OFFER = 5;
@@ -43,11 +43,20 @@ export function offerOf(seed: number, f: number): Item[] {
   if (!kit.length) return [];
   const r = rng(hash(seed, 12, f));
   // v2-view: on floor 3 the reins and the scope after them both stay on offer (the fps was one module there before)
-  const head = f === 2 ? 2 : 1;
+  // (v2r3 fun: and the second on floors 1 and 2 too, the frost coat and the dawn eye, now that their kits turn
+  // with the seed: without the coat the cradle's keeper killed 3 sim runs of 40)
+  const head = f <= 2 ? 2 : 1;
   const rest = kit.slice(head);
   for (let k = rest.length - 1; k > 0; k--) {
     const j = r.int(0, k);
     [rest[k], rest[j]] = [rest[j], rest[k]];
+  }
+  // v2r3 fun: the ossuary wants aim and shooting: its offer always holds a weapon that reaches (seed 9 had none)
+  const shown = OFFER - head;
+  const far = (m: string) => ranged(MODS[m]);
+  if (f === 2 && !rest.slice(0, shown).some(far)) {
+    const k = rest.findIndex(far);
+    if (k >= 0) [rest[shown - 1], rest[k]] = [rest[k], rest[shown - 1]];
   }
   const [fine, rare] = RARITY_ODDS[Math.min(f, RARITY_ODDS.length - 1)];
   return [...kit.slice(0, head), ...rest].slice(0, OFFER).map((mod) => {
