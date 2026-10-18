@@ -45,7 +45,8 @@ export function tickShots(g: Game, dt: number): void {
           gone = true;
         }
       } else {
-        const t = g.ents.find((e) => e.enemy && Math.hypot(e.x - s.x, e.y - s.y) < HIT);
+        // a boss is bigger: its own hit radius on top (src/fight/bosses.ts)
+        const t = g.ents.find((e) => e.enemy && Math.hypot(e.x - s.x, e.y - s.y) < HIT + Number(e.enemy.data.r ?? 0));
         if (t) {
           strike(g, t, d.dmg);
           gone = true;
