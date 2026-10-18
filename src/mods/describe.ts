@@ -17,6 +17,13 @@ const SEES: Record<string, string> = {
   heat: 'warm things', metal: 'metal', flesh: 'hidden flesh', doors: 'passages', cards: 'memory cards', enemies: 'enemies', veins: 'veins',
 };
 
+/** what a radar finds (src/mods/radar.ts) */
+const FINDS: Record<string, string> = {
+  thing: '"something": any find, a cache, a printer, a guard', cache: 'hollow walls and warm plates', vein: 'veins', life: 'every heart', deep: 'the way down and what guards it',
+};
+/** what a map draws, by detail (src/world/mind.ts) */
+const DETAIL = ['three inks, no clicks', 'colours, clicks walk', 'pictures, hover notes', 'halls in glass'];
+
 /** one line: what it does, and a unique's perk after a ✦ */
 export function does(m: Modish): string {
   const perk = perkText(m);
@@ -37,11 +44,16 @@ function familyDoes(m: Modish): string {
       return 'eye · ' + parts.join(' · ');
     }
     case 'scanner':
+      if (p<string>('finds')) {
+        const f = p<string>('finds');
+        const range = p<number>('range') > 200 ? 'the whole floor' : `${n(p<number>('range'))} cells`;
+        return `radar · marks ${FINDS[f] ?? f}${f === 'thing' ? '' : p('names') ? ' and names them' : ', not what they are'} on your map · ${range}${p<number>('spread') ? ` · only to within ${n(p<number>('spread'))} cells` : ''} · every ${n(p<number>('every'))} s`;
+      }
       return `scanner · shows ${(p<string[]>('sees') ?? []).map((s) => SEES[s] ?? s).join(', ')}${(p<string[]>('sees') ?? []).includes('metal') ? ' (mimics wake early)' : ''}${(p<string[]>('sees') ?? []).includes('doors') ? ' (onto your map)' : ''} through walls · ${n(p<number>('range'))} cells · ${p<string>('shape') === 'cone' ? 'ahead' : 'all round'} · every ${n(p<number>('refresh'))} s`;
     case 'lamp':
       return `lamp · lights ${n(p<number>('radius'))} cells · things see you farther`;
     case 'gait':
-      if (p('pilot')) return `pilot · walks you to a spot: click the map or goto, ${n(p<number>('pace'))} cells/s, plans ${n(p<number>('plan'))} cells${p('avoid') ? ', around enemies' : ''}`;
+      if (p('pilot')) return `pilot · walks you to a spot: goto, a waypoint's go, or a click on a surveyor's map, ${n(p<number>('pace'))} cells/s, plans ${n(p<number>('plan'))} cells${p('avoid') ? ', around enemies' : ''}`;
       if (p('go')) return 'legs · walk cells: go <dir> <n>, or the n e s w buttons';
       if (p('keys')) return `legs · arrow keys, ${n(p<number>('pace'))} cells/s`;
       if (p('free')) return `legs · free walking, wasd + mouse, ${n(p<number>('speed'))} cells/s`;
@@ -62,7 +74,7 @@ function familyDoes(m: Modish): string {
     }
     case 'mind': {
       const w = p<string>('what');
-      if (w === 'map') return `map · unrolls what lies in sight ${n(p<number>('reveal'))} cells around you, ${n(p<number>('span'))} cells across`;
+      if (w === 'map') return `map · what your eyes saw, ${n(p<number>('span'))} cells across · ${DETAIL[p<number>('detail') ?? 0] ?? DETAIL[0]}`;
       if (w === 'log') return `log · keeps ${n(p<number>('keep'))} places that matter, noted within ${n(p<number>('range'))} cells, each with go`;
       if (w === 'reader') return 'reader · reads memory cards: read card';
       if (w === 'ledger') return `ledger · kills pay out ${n(p<number>('tithe') || 1)}× as often`;

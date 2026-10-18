@@ -224,6 +224,16 @@ canvas.map { cursor: crosshair; }
 .bossbar .bb-move.open { color: #ffd860; }
 body.boss-on .elite-warn { display: none; }
 
+/* v2 maps and radars (src/world/mind.ts, src/ui/maptips.ts, src/mods/radar.ts) */
+.map-legend .hatch { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; background: repeating-linear-gradient(-45deg, #6a6088 0 1px, #16121c 1px 3px); }
+.map-tip { position: fixed; z-index: 9000; max-width: 260px; padding: 4px 8px; background: #0c0a09f0; border: 1px solid var(--acc); color: var(--fg); font: 16px/1.1 VT323, monospace; pointer-events: none; }
+.map-tip b { color: var(--acc); font-weight: normal; font-size: 18px; }
+.map-tip p { margin: 2px 0 0; }
+.radar-sweep { width: 160px; height: 4px; background: #1c2a1c; margin: 2px 0 4px; }
+.radar-sweep i { display: block; height: 100%; background: #6aa06a; }
+.radar-list { max-width: 220px; }
+.radar-list p { margin: 0; }
+canvas.diorama { display: block; cursor: crosshair; }
 /* ── the visual system (Maks 10-18): hierarchy by level, colour by meaning, buttons by weight ── */
 /* level 1: window titles, on their own bar */
 .win { border-color: var(--line-hi); }

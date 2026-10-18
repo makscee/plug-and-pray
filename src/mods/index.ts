@@ -11,4 +11,5 @@ import '../body';
 import '../tune/hints';
 import './pilot';
 import './sense';
+import './radar';
 import './relics';
