@@ -95,7 +95,7 @@ describe('v2 floors', () => {
     // the floor above is left behind; its kit waits in a cache where you land (src/world/cache.ts)
     expect(g.ents.every((e) => Math.round(e.x / CHUNK / STRIDE) === 1)).toBe(true);
     const offer = cacheNear(g)?.offer.map((i) => (i.kind === 'mod' ? i.mod : '')) ?? [];
-    expect(offer.length).toBe(5);
+    expect(offer.length).toBe(3); // v3 modules: pick 2 of 3
     for (const m of offer) expect(KIT[1]).toContain(m);
   });
 

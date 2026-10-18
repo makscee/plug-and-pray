@@ -8,7 +8,8 @@ import '../../src/mods';
 import { dist, ENEMIES, newGame, tick } from '../../src/core/game';
 import { CHUNK, Cell, clear } from '../../src/core/grid';
 import { active, def, label, MODS, param, powerMax, powerUsed, size, slotsUsed } from '../../src/core/mods';
-import { exec, lastLegs } from '../../src/core/verbs';
+import { BAG, bagMods, exec, FOUND, lastLegs } from '../../src/core/verbs';
+import * as up from '../../src/world/upgrade';
 import type { Entity, Game, Res, Roll } from '../../src/core/types';
 import * as printer from '../../src/world/printer';
 import { offeringOf } from '../../src/end/timeline';
@@ -74,6 +75,8 @@ export interface Run {
   income: number;
   /** v2 balance: uniques that came within sight (on the ground, on a shelf at hand), held, and dealt by the game */
   uniques: { seen: string[]; held: string[]; dealt: number };
+  /** v3 modules: module finds (dupes, which upgrade, included) */
+  found?: number;
   /** v2 balance: what it had on when it first took on each floor's keeper (the boss sim replays these) */
   atBoss: Record<number, BossKit>;
   /** v2 balance: times it broke off from each floor's keeper nearly dead */
@@ -590,6 +593,12 @@ export function play(seed: number, o: Opts): Run {
       run.recycled++;
       return 'recycle ' + labelOf(spare);
     }
+    // v3 modules: a full bag keeps the best: recycle the weakest of the rest
+    if (bagMods(g).length > BAG) {
+      const zone = Math.max(zt, zoneHere());
+      const worst = bagMods(g).filter((i) => MODS[i.mod].family !== 'unique' && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader')).sort((a, b) => worth(g, a, zone, false) - worth(g, b, zone, false))[0];
+      if (worst) return run.recycled++, 'recycle ' + labelOf(worst);
+    }
     // buy at a machine in reach
     const buy = buyHere();
     if (buy) return buy;
@@ -744,6 +753,7 @@ export function play(seed: number, o: Opts): Run {
   function machineOffers(m: Entity): { cmd: string; ok: boolean }[] {
     const out: { cmd: string; ok: boolean }[] = [];
     if (m.data?.altar) for (const [cmd, cost] of altar.offers(g, m)) out.push({ cmd, ok: afford(cost) && (cmd !== 'offer mend' || P.hp < P.maxHp * 0.5) && (cmd !== 'offer copper' || (resOf(g, 'bone') < 4 && resOf(g, 'copper') >= 4)) && (cmd !== 'offer bone' || (resOf(g, 'glass') < 1 && resOf(g, 'bone') >= 12)) });
+    if (m.data?.altar) upgrades(out);
     if (m.kind === 'printer' && m.data?.shop) {
       const zone = Math.max(targetZone(), zoneHere());
       const pick = bestLoadout(g, zone, true);
@@ -759,6 +769,7 @@ export function play(seed: number, o: Opts): Run {
       const pr = printer;
       {
         if (P.slots < pr.MAX_SLOTS) out.push({ cmd: 'print slot', ok: afford(pr.slotCost(g)) });
+        upgrades(out);
         // a module only with plenty to spare
         const mc = pr.modCost((m.data?.far as number) ?? 0);
         // r2 econ: with R2_AIM=1, an aimed print first once the core is full, at the family whose best piece on is
@@ -772,6 +783,12 @@ export function play(seed: number, o: Opts): Run {
       }
     }
     return out;
+  }
+  /** v3 modules: upgrade what is on: weapons first, then eyes, then the rest */
+  function upgrades(out: { cmd: string; ok: boolean }[]): void {
+    const rank = (f: string) => ['weapon', 'camera', 'body', 'gait', 'lamp', 'power'].indexOf(f) + 1 || 9;
+    for (const i of P.installed.filter((i) => i.on && up.upgradeCost(i)).sort((a, b) => rank(MODS[a.mod].family) - rank(MODS[b.mod].family)))
+      out.push({ cmd: 'upgrade ' + labelOf(i), ok: afford(up.upgradeCost(i)!) });
   }
   const afford = (c: Partial<Record<Res, number>>) => Object.entries(c).every(([r, n]) => resOf(g, r as Res) >= (n as number));
 
@@ -971,6 +988,7 @@ export function play(seed: number, o: Opts): Run {
   run.kills = g.stats.kills;
   run.resEnd = resAll(g);
   run.uniques.dealt = dealtOf(g);
+  run.found = FOUND.get(g) ?? 0;
   (run as any).offered = offeringOf(g) ?? null; // r2 econ: what the Engine took (it empties your resources)
   (run as any).resBy = Object.fromEntries((['bone', 'glass', 'copper', 'ichor'] as Res[]).map((r) => [r, resOf(g, r)]));
   (run as any).core = P.core;

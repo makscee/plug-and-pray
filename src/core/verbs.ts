@@ -4,7 +4,7 @@
 import { does } from '../mods/describe';
 import { dist, itemName, reach, say, spawn, tickHooks } from './game';
 import { DIRS, open } from './grid';
-import { active, def, label, MODS, ownSocket, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits } from './mods';
+import { active, def, label, levelKey, maxLevel, moduleLevel, MODS, ownSocket, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits, type Modish } from './mods';
 import type { Entity, Game, Inst, Item, Line, Res, Seg } from './types';
 
 export interface VerbDef {
@@ -70,7 +70,8 @@ export function goThere(g: Game, x: number, y: number, short = false): [string, 
 }
 
 /** r4: "bone listener" finds "bone-listener" */
-const flat = (s: string) => s.replace(/-/g, ' ');
+// (v3 modules: and "nail psalm ii", typed, finds "nail psalm II": commands come lowercased)
+export const flat = (s: string) => s.replace(/-/g, ' ').toLowerCase();
 /** an inventory item whose name contains the words, e.g. "pinhole", "pinhole eye" */
 export function findItem(g: Game, args: string[]): number {
   const q = flat(args.join(' '));
@@ -83,7 +84,7 @@ export function findInst(g: Game, args: string[], prefer?: (i: Inst) => boolean)
   const q = (nth ? args.slice(0, -1) : args).join(' ');
   if (!q) return undefined;
   if (nth) {
-    const same = g.player.installed.filter((i) => label(i) === q);
+    const same = g.player.installed.filter((i) => flat(label(i)) === flat(q));
     if (same[nth - 1]) return same[nth - 1];
   }
   const all = g.player.installed.filter((i) => flat(label(i)).includes(flat(q)));
@@ -104,12 +105,57 @@ function itemButton(it: Item): Line {
   return [n];
 }
 
-export function addItem(g: Game, it: Item): void {
+/** v3 modules (Maks 10-18: "a lot of same stuff", "collecting best modules and managing your collection"):
+ *  the bag holds BAG modules; past that a find asks what to recycle. A find you already own is an upgrade */
+export const BAG = 4;
+/** bone for a find you own at its top level */
+export const TOP_BONE = 3;
+/** module finds a run (the sim counts them) */
+export const FOUND = new WeakMap<Game, number>();
+/** your copy of a module: the installed one first, then the bag's */
+export function owned(g: Game, mod: string): Modish | undefined {
+  return g.player.installed.find((i) => i.mod === mod) ?? g.player.inv.find((i): i is Item & { kind: 'mod' } => i.kind === 'mod' && i.mod === mod);
+}
+/** modules in the bag */
+export const bagMods = (g: Game): (Item & { kind: 'mod' })[] => g.player.inv.filter((i): i is Item & { kind: 'mod' } => i.kind === 'mod');
+/** raise a module one level (or to `to`); its line says what moved */
+export function levelUp(g: Game, m: Modish, to = moduleLevel(m) + 1): void {
+  const key = levelKey(m);
+  const before = key ? param<number>(m, key, 0) : 0;
+  m.level = Math.min(maxLevel(m), Math.max(moduleLevel(m) + 1, to));
+  const after = key ? param<number>(m, key, 0) : 0;
+  const num = (v: number) => (Math.abs(v) >= 10 ? Math.round(v) : Math.round(v * 10) / 10);
+  g.events.push({ type: 'upgrade', data: m.mod });
+  say(g, [`▲ upgrade: ${label(m)}` + (key ? `  ·  ${key} ${num(before)} → ${num(after)}` : '')]);
+}
+
+/** into the bag. A module find (not one coming back out of a slot: `back`) you already own upgrades yours
+ *  instead (at its top level it folds into bone); returns what happened */
+export function addItem(g: Game, it: Item, back = false): 'added' | 'upgraded' | 'scrapped' {
   if (it.kind === 'res') {
     const have = g.player.inv.find((x) => x.kind === 'res' && x.res === it.res);
-    if (have && have.kind === 'res') return void (have.n += it.n);
+    if (have && have.kind === 'res') return void (have.n += it.n), 'added';
+  }
+  if (it.kind === 'mod' && !back) {
+    FOUND.set(g, (FOUND.get(g) ?? 0) + 1);
+    const have = owned(g, it.mod);
+    if (have) {
+      if (it.rarity === 'rare' && !have.rarity) have.rarity = 'rare';
+      if (moduleLevel(have) < maxLevel(have)) return levelUp(g, have, moduleLevel(have) + Math.max(1, moduleLevel(it) - 1)), 'upgraded';
+      addItem(g, { kind: 'res', res: 'bone', n: TOP_BONE });
+      say(g, `${label(have)} is at its best already: the copy folds into ${TOP_BONE} bone.`);
+      return 'scrapped';
+    }
   }
   g.player.inv.push(it);
+  if (it.kind === 'mod' && !back) bagFull(g);
+  return 'added';
+}
+/** past BAG modules in the bag: say so, with a recycle button for each */
+export function bagFull(g: Game): void {
+  const bag = bagMods(g);
+  if (bag.length <= BAG) return;
+  say(g, `⚠ bag full (${bag.length}/${BAG}): recycle one to keep the best.`, bag.map((m, k): Seg => ({ text: `${k ? ' · ' : ''}recycle ${label(m)}`, cmd: `recycle ${label(m)}` })));
 }
 
 /** v2r3 ux: a swap puts what came out where what went in sat in the bag, so the grid doesn't shift under the
@@ -166,15 +212,16 @@ verb('take', {
   run(g, args) {
     // `take all` is `take` (the nearby panel's button says so)
     const q = args.join(' ') === 'all' ? '' : args.join(' ');
-    const near = reach(g).filter((e) => !q || itemName(e.item!).includes(q));
+    const near = reach(g).filter((e) => !q || flat(itemName(e.item!)).includes(flat(q)));
     if (!near.length) return say(g, q ? `no ${q} within reach.` : 'nothing within reach.');
     for (const e of near) {
       if (e.data?.mimic) continue; // a mimic is an enemy dressed as loot (fight slice wakes it)
       g.ents = g.ents.filter((x) => x !== e);
-      addItem(g, e.item!);
+      const got = addItem(g, e.item!);
       g.events.push({ type: 'take', at: [e.x, e.y] });
       const it = e.item!;
-      if (it.kind === 'mod') say(g, ['you take: ', ...itemButton(it)], `  ${does(it)}`);
+      if (got !== 'added') continue;
+      if (it.kind === 'mod') say(g, ['✦ find: ', ...itemButton(it)], `  ${does(it)}`);
       else say(g, ['you take: ', ...itemButton(it)]);
     }
   },
@@ -257,7 +304,7 @@ verb('remove', {
       return say(g, [`⚠ the ${label(inst).replace(/^the /, '')} is your legs: without it go and map clicks stop, and you crawl a cell at a time. `, { text: `remove ${label(inst)} anyway`, cmd: `remove ${instRef(g, inst)} anyway` }]);
     switchOff(g, inst);
     g.player.installed = g.player.installed.filter((i) => i !== inst);
-    addItem(g, { kind: 'mod', mod: inst.mod, ...traits(inst) });
+    addItem(g, { kind: 'mod', mod: inst.mod, ...traits(inst) }, true);
     g.events.push({ type: 'remove', data: inst.uid });
     say(g, `removed ${label(inst)}.`);
   },

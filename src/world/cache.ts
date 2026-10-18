@@ -8,16 +8,18 @@
 //   cache         what it holds, and the card again
 import { dist, say, spawn } from '../core/game';
 import { CHUNK } from '../core/grid';
-import { def, label, MODS, param, rarityKey } from '../core/mods';
+import { def, label, maxLevel, moduleLevel, MODS, param, rarityKey, ROMAN } from '../core/mods';
 import { hash, rng } from '../core/rng';
-import { addItem, instRef, verb, VERBS } from '../core/verbs';
+import { addItem, instRef, owned, verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Item, Line } from '../core/types';
 import { freeing, lastSwarm, makeRoom } from '../body';
 import { floorOf, KIT } from './floors';
 import { RARITY_ODDS, ranged } from './spawn';
 
 /** modules on offer, picks that cost nothing, what each later pick costs (bone), bone per module scrapped */
-export const OFFER = 5;
+export const OFFER = 3; // v3 modules: pick 2 of 3 (was 5); the ossuary and furnace, whose headlines are two and a lance, show OFFER_DEEP
+export const OFFER_DEEP = 4;
+export const offerSize = (f: number): number => (f >= 2 ? OFFER_DEEP : OFFER);
 export const FREE = 2;
 export const COST = [3, 5, 8];
 export const SCRAP = 2;
@@ -38,7 +40,7 @@ export interface Cache {
 
 /** the floor's offer: its headline (the kit's first module; on floor 3 its first two) always, then the rest of the kit in a seed order, five at most.
  *  Each rolls its rarity as loot does on that floor */
-export function offerOf(seed: number, f: number): Item[] {
+export function offerOf(seed: number, f: number, all = false): Item[] {
   const kit = (KIT[f] ?? []).filter((m) => MODS[m]);
   if (!kit.length) return [];
   const r = rng(hash(seed, 12, f));
@@ -52,7 +54,7 @@ export function offerOf(seed: number, f: number): Item[] {
     [rest[k], rest[j]] = [rest[j], rest[k]];
   }
   // v2r3 fun: the ossuary wants aim and shooting: its offer always holds a weapon that reaches (seed 9 had none)
-  const shown = OFFER - head;
+  const shown = offerSize(f) - head;
   const far = (m: string) => ranged(MODS[m]);
   if (f === 2 && !rest.slice(0, shown).some(far)) {
     const k = rest.findIndex(far);
@@ -67,21 +69,27 @@ export function offerOf(seed: number, f: number): Item[] {
     if (k >= 0) [rest[at >= 0 ? at : shown - 1], rest[k]] = [rest[k], rest[at >= 0 ? at : shown - 1]];
   }
   const [fine, rare] = RARITY_ODDS[Math.min(f, RARITY_ODDS.length - 1)];
-  return [...kit.slice(0, head), ...rest].slice(0, OFFER).map((mod) => {
+  return [...kit.slice(0, head), ...rest].slice(0, all ? undefined : offerSize(f)).map((mod) => {
     const it: Item = { kind: 'mod', mod };
     const k = r();
-    if (rarityKey(it) && k < fine + rare) it.rarity = k < rare ? 'rare' : 'fine';
+    if (rarityKey(it) && k < fine + rare) k < rare ? (it.rarity = 'rare') : (it.level = 2);
     return it;
   });
 }
 
+/** you own it and it can rise no more */
+const maxed = (g: Game, it: Item): boolean => {
+  const have = it.kind === 'mod' && owned(g, it.mod);
+  return !!have && moduleLevel(have) >= maxLevel(have);
+};
 const caches = new WeakMap<Game, Map<number, Cache>>();
 /** the cache of a floor (made on first ask, from the seed) */
 export function cacheOf(g: Game, f = floorOf(g)): Cache {
   let m = caches.get(g);
   if (!m) caches.set(g, (m = new Map()));
   let c = m.get(f);
-  if (!c) m.set(f, (c = { floor: f, offer: offerOf(g.seed, f), taken: 0, done: false }));
+  // v3 modules: never a module you already own at its top level (the next of the kit takes its place)
+  if (!c) m.set(f, (c = { floor: f, offer: offerOf(g.seed, f, true).filter((it) => !maxed(g, it)).slice(0, offerSize(f)), taken: 0, done: false }));
   return c;
 }
 
@@ -114,7 +122,7 @@ function payBone(g: Game, n: number): boolean {
 export function findOffer(c: Cache, words: string): number {
   const q = words.trim().replace(/^the /, '');
   if (/^\d$/.test(q)) return Number(q) - 1 < c.offer.length ? Number(q) - 1 : -1;
-  const named = (it: Item) => (it.kind === 'mod' ? [label(it), def(it).name] : []);
+  const named = (it: Item) => (it.kind === 'mod' ? [label(it).toLowerCase(), def(it).name] : []);
   const exact = c.offer.findIndex((it) => named(it).includes(q));
   return exact >= 0 ? exact : c.offer.findIndex((it) => named(it).some((n) => n.includes(q)));
 }
@@ -122,6 +130,9 @@ export function findOffer(c: Cache, words: string): number {
 /** where a pick would go: in, swapped in (and what gives way), or the bag */
 export function fitOf(g: Game, it: Item): string {
   if (it.kind !== 'mod') return '';
+  // v3 modules: one you own is an upgrade, not a second copy
+  const have = owned(g, it.mod);
+  if (have) return `▲ upgrades your ${label(have)} to ${ROMAN[Math.min(maxLevel(have), moduleLevel(have) + Math.max(1, moduleLevel(it) - 1))]}`;
   const room = makeRoom(g, it, false);
   // v2r4 run: a pick that would cost you your last weapon for swarms says so, loud (src/ui/cache.ts draws ⚠ big)
   const bell = g.player.installed.find((o) => lastSwarm(g, o, it));
@@ -145,8 +156,13 @@ export function pick(g: Game, k: number): string | null {
   c.offer.splice(k, 1);
   c.taken++;
   g.events.push({ type: 'cache-pick', data: it.mod });
-  addItem(g, it);
   g.stats.mods.push(it.mod);
+  // v3 modules: one you own upgrades yours (addItem says so)
+  if (addItem(g, it) !== 'added') {
+    if (!c.offer.length) c.done = true;
+    else tell(g, c);
+    return null;
+  }
   const name = label(it);
   // a free install: straight in, or in with the lightest giving way (as `swap in` does)
   const room = makeRoom(g, it, false);

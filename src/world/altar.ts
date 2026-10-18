@@ -208,7 +208,7 @@ verb('attune', {
     if (!altarNear(g)) return say(g, noAltar(g));
     // of two alike, the one not attuned yet
     const q = args.join(' ');
-    const inst = (q && attunable(g).find((i) => label(i).includes(q))) || findInst(g, args);
+    const inst = (q && attunable(g).find((i) => label(i).toLowerCase().includes(q))) || findInst(g, args);
     if (!inst) return say(g, 'attune what? an installed module.', ...menu(g));
     const key = attuneKey(inst);
     if (!key) return say(g, 'the altar will not touch that.');
@@ -230,7 +230,7 @@ verb('temper', {
     if (!altarNear(g)) return say(g, noAltar(g));
     const q = args.join(' ');
     // of two alike, the one you can pay for (the less tempered)
-    const alike = q ? temperable(g).filter((i) => label(i).includes(q)).sort((a, b) => tempered(a) - tempered(b)) : [];
+    const alike = q ? temperable(g).filter((i) => label(i).toLowerCase().includes(q)).sort((a, b) => tempered(a) - tempered(b)) : [];
     const inst = alike.find((i) => affords(g, temperCost(i))) ?? alike[0] ?? findInst(g, args);
     if (!inst) return say(g, 'temper what? an installed, attuned module.', ...menu(g));
     if (tempered(inst) >= MAX_TEMPER) return say(g, `${label(inst)} is as true as it gets.`);

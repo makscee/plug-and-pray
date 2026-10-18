@@ -40,7 +40,7 @@ describe('rolls, attune and the economy (r1 econ)', () => {
     let n = 0;
     for (let k = 0; k < 2000; k++) {
       const it = lootMod(r, 6);
-      if (it.kind !== 'mod' || !it.roll) continue;
+      if (it.kind !== 'mod' || !it.roll || it.level) continue;
       n++;
       const v = MODS[it.mod].params[it.roll.key] as number;
       expect(better(it.roll.key, v, param<number>(it, it.roll.key)), `${it.roll.tag} ${it.mod}`).toBe(it.roll.tag === 'attuned');

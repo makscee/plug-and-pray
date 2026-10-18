@@ -5,7 +5,7 @@ import { newGame } from '../src/core/game';
 import { exec } from '../src/core/verbs';
 import type { Game } from '../src/core/types';
 import { startKit } from '../src/tune/start';
-import { boneOf, cacheNear, cacheOf, COST, FREE, offerOf, OFFER, SCRAP } from '../src/world/cache';
+import { boneOf, cacheNear, cacheOf, COST, FREE, offerOf, offerSize, SCRAP } from '../src/world/cache';
 import { goDown, KIT } from '../src/world/floors';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
@@ -16,7 +16,7 @@ describe('v2 kit cache: pick two of five', () => {
     for (let seed = 1; seed < 30; seed++)
       for (const f of [0, 1, 2, 3]) {
         const o = offerOf(seed, f).map((i) => (i.kind === 'mod' ? i.mod : ''));
-        expect(o.length).toBe(Math.min(OFFER, KIT[f].length));
+        expect(o.length).toBe(Math.min(offerSize(f), KIT[f].length));
         expect(o[0]).toBe(KIT[f][0]);
         expect(new Set(o).size).toBe(o.length);
         for (const m of o) expect(KIT[f]).toContain(m);
@@ -24,7 +24,7 @@ describe('v2 kit cache: pick two of five', () => {
     // the ossuary's seven turn with the seed
     const seen = new Set<string>();
     for (let seed = 1; seed < 30; seed++) seen.add(offerOf(seed, 2).map((i) => (i.kind === 'mod' ? i.mod : '')).join());
-    expect(seen.size).toBeGreaterThan(3);
+    expect(seen.size).toBeGreaterThan(2);
   });
 
   it('two picks are free and go in; the third costs bone; the rest scraps into bone', () => {
@@ -58,8 +58,10 @@ describe('v2 kit cache: pick two of five', () => {
     const g = newGame(9);
     startKit(g);
     goDown(g, 1);
-    exec(g, 'pick plumb line');
-    expect(mods(g)).toContain('plumb-line');
+    const named = cacheNear(g)!.offer[1];
+    const id = named.kind === 'mod' ? named.mod : '';
+    exec(g, `pick ${id.replace(/-/g, ' ')}`);
+    expect(mods(g)).toContain(id);
     g.player.x += 12;
     exec(g, 'pick 1');
     expect(text(g)).toMatch(/where you landed/);

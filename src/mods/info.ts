@@ -20,7 +20,7 @@ verb('info', {
         return s ? offers(g, s).filter((i) => i?.kind === 'mod') : [];
       })(),
     ] as { mod: string; roll?: import('../core/types').Roll }[];
-    const m = all.find((i) => label(i).includes(q) || (q && itemName({ kind: 'mod', ...i }).includes(q)));
+    const m = all.find((i) => label(i).toLowerCase().includes(q) || (q && itemName({ kind: 'mod', ...i }).toLowerCase().includes(q)));
     if (!q || !m) return say(g, 'info on what? a module you carry, wear or stand by.');
     const [does, costs, text] = describe(m);
     say(g, [label(m) + ': ' + does], '  ' + costs, '  ' + text);
