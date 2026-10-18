@@ -115,6 +115,12 @@ const STEPS = [
   // a lost GL context (a GPU reset) comes back: the eyes are lit again a moment later
   [0, `(thawGL().getContext("webgl2").getExtension("WEBGL_lose_context").loseContext(), true)`],
   ['face s'], [1.2], ['face e'], [1.2, `window.__eye().every(([m]) => m > 20)`],
+  // the fight shows (Maks 10-18: "no way to see the fight"): a mite in front and a walker behind;
+  // the HUD names what is on you, an eye points behind at the walker, and blows are told in few lines
+  [0, `(g.ents = g.ents.filter(e => !e.enemy), g.player.hp = g.player.maxHp, g.player.dir = 0, [["mite", 0, -1.2], ["walker", 0, 1.6]].forEach(([t, dx, dy]) => g.ents.push({ id: g.nextId++, kind: "enemy", x: g.player.x + dx, y: g.player.y + dy, enemy: { type: t, hp: 3, readyAt: 0, data: { noticed: true } } })), window.__log = g.log.length, true)`],
+  [0.6, `/⚔ (choir )?mite/.test(document.querySelector(".hpbar .fight")?.textContent ?? "")`],
+  [0, `[...document.querySelectorAll(".foe-arrow")].some(a => a.style.display !== "none" && /walker behind/.test(a.textContent))`],
+  [3, `(() => { const lines = g.log.slice(window.__log).map(l => l.map(s => typeof s === "string" ? s : s.text).join("")); return lines.some(l => /hits you/.test(l)) && lines.filter(l => /hits you|you hit/.test(l)).length <= 4; })()`],
 ];
 
 const port = Number(process.env.PLAY_PORT) || 4000 + Math.floor(Math.random() * 1000);
