@@ -157,7 +157,7 @@ thick between seen floor and rumoured floor gets a chevron: dig or break through
 | map | tier · power | draws | clicks |
 |---|---|---|---|
 | map spool | 0 · 1 | three inks (floor, wall, things); every radar mark a "?" | no: `where` and the console buttons walk you |
-| survey spool | 1 · 2 | veins, loot, printers and marks in their own colours, wall faces edged, 37 cells | click to walk (stepper legs, a pilot) |
+| survey spool | 2 · 2 (random loot deep; floor kit 2) | veins, loot, printers and marks in their own colours, wall faces edged, 37 cells | click to walk (stepper legs, a pilot) |
 | illuminated atlas | 2 · 2 | each thing as its icon, each mark a picture (ore, chest, heart, stairs, crown); hover a cell for a note | yes |
 | glass diorama | 2 · 3 | the known halls as a small isometric model: walls stand, rumours are glass, foes are their sprites | yes |
 

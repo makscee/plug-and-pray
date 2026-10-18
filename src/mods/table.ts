@@ -66,7 +66,7 @@ mods([
   // detail 0 three inks, no clicks; 1 veins and finds in their own inks, a click walks you there; 2 a picture
   // for every thing and a note on hover; 3 the known halls in glass, with the things in them
   { id: 'map-spool', name: 'map spool', family: 'mind', power: 1, warm: 1, tier: 0, params: { what: 'map', span: 33, detail: 0 }, text: 'a reel of tape that remembers what your eyes saw, in three inks. it takes no clicks.' },
-  { id: 'survey-spool', name: 'survey spool', family: 'mind', power: 2, warm: 1.5, tier: 1, params: { what: 'map', span: 37, detail: 1, click: true }, text: 'a surveyor\'s reel: veins and finds in their own inks. click it and your legs go there.' },
+  { id: 'survey-spool', name: 'survey spool', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 37, detail: 1, click: true }, text: 'a surveyor\'s reel: veins and finds in their own inks. click it and your legs go there.' },
   { id: 'illuminated-atlas', name: 'illuminated atlas', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 33, detail: 2, click: true }, text: 'a monk\'s map: every thing a little picture, and a note when you point at it.' },
   { id: 'glass-diorama', name: 'glass diorama', family: 'mind', power: 3, warm: 2, tier: 2, params: { what: 'map', span: 23, detail: 3, click: true }, text: 'the halls you know, in glass, small enough to hold, with every thing in them.' },
   { id: 'drowned-compass', name: 'drowned compass', family: 'mind', power: 0, warm: 1, tier: 1, params: { what: 'compass' }, text: 'it pulls toward what the cards promised.' },
