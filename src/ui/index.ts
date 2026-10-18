@@ -8,6 +8,24 @@ import { Panels } from './panels';
 import { VIEWS, type View } from './views';
 import * as windows from './windows';
 import './sheet';
+import './maptips';
+import { say } from '../core/game';
+import { verb } from '../core/verbs';
+import { togglePause } from './pause';
+
+verb('tidy', {
+  help: 'lay the windows out again, none on another (key t)',
+  run(g) {
+    windows.tidy();
+    say(g, 'windows tidied. a title in the dock along the bottom opens that window; double-click a title to dock it.');
+  },
+});
+verb('pause', {
+  help: 'stop the world while you think (key p)',
+  run() {
+    togglePause();
+  },
+});
 
 /** per-frame hooks the slices add (the end sequence, hit flashes, sound) */
 export const frameHooks: ((g: Game, dt: number) => void)[] = [];

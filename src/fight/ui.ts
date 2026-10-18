@@ -39,7 +39,7 @@ frameHooks.push((g) => {
     // hp, then the two resources every choice spends: slots and power
     b.innerHTML = `hp <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
       `<span class="sep">·</span>slots ${su}/${p.slots} ${pips(su, p.slots)}<span class="sep">·</span>power ${pu}/${pm} ${pips(pu, pm)}` +
-      (fight ? `<span class="sep">·</span><span class="fight" style="color:#ff6a50">${fight}</span>` : '');
+      (fight ? `<span class="sep">·</span><span class="fight" style="color:#ff6a50">${boxes(fight)}</span>` : '');
   }
   b.dataset.low = String(p.hp <= p.maxHp * 0.3);
   if (seenGame !== g) {
@@ -53,6 +53,9 @@ frameHooks.push((g) => {
     f.classList.add('on');
   }
 });
+
+/** the foe's hp as CSS boxes: the ▮▯ glyphs read as missing-font boxes in VT323 (playtest r1) */
+const boxes = (line: string) => line.replace(/[▮▯]+/, (run) => `<span class="fbar">${[...run].map((c) => `<b${c === '▮' ? ' class="on"' : ''}></b>`).join('')}</span>`);
 
 /** the fight at a glance: what is on you, its hp, and when your next blow lands */
 export function fightLine(g: Game): string {

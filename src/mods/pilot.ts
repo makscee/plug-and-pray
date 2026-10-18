@@ -24,8 +24,8 @@ const pilot = (g: Game) => pilots(g).sort((a, b) => param<number>(b, 'plan', 0) 
 const known = (g: Game, x: number, y: number) => g.seen.has(`${x},${y}`) && open(g, x + 0.5, y + 0.5);
 const foes = (g: Game) => g.ents.filter((e) => e.kind === 'enemy' && e.enemy && !ENEMIES[e.enemy.type]?.hidden);
 
-/** A* over seen floor from (sx, sy) toward (tx, ty), cells; the path's cells, or the nearest it got */
-export function route(g: Game, sx: number, sy: number, tx: number, ty: number, plan: number, avoid = false): { path: [number, number][]; whole: boolean } {
+/** A* over seen floor (or any floor, `anyFloor`: the hints' first leg) from (sx, sy) toward (tx, ty), cells; the path's cells, or the nearest it got */
+export function route(g: Game, sx: number, sy: number, tx: number, ty: number, plan: number, avoid = false, anyFloor = false): { path: [number, number][]; whole: boolean } {
   const k = (x: number, y: number) => `${x},${y}`;
   const danger = avoid ? foes(g).filter((e) => dist(e, { x: sx, y: sy }) < plan) : [];
   const cost = (x: number, y: number) => 1 + (danger.some((e) => Math.hypot(e.x - x - 0.5, e.y - y - 0.5) < 2.5) ? 6 : 0);
@@ -48,7 +48,7 @@ export function route(g: Game, sx: number, sy: number, tx: number, ty: number, p
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx;
       const ny = y + dy;
-      if (!known(g, nx, ny)) continue;
+      if (!(anyFloor ? open(g, nx + 0.5, ny + 0.5) : known(g, nx, ny))) continue;
       const ng = gx + cost(nx, ny);
       if (ng >= (gs.get(k(nx, ny)) ?? Infinity)) continue;
       gs.set(k(nx, ny), ng);
