@@ -93,6 +93,8 @@ export interface Chunk {
   cells: Uint8Array;
   /** which zone it lies in (src/world/zones.ts): the sight layer reads it for the look */
   zone?: number;
+  /** solid rock outside every floor (src/world/floors.ts): no chunk hook places anything in it */
+  rock?: boolean;
 }
 
 /** a console line: text, and buttons that type a command */
@@ -101,6 +103,8 @@ export type Line = Seg[];
 
 export interface Game {
   seed: number;
+  /** the floor you are on, 0..4 (src/world/floors.ts) */
+  floor: number;
   /** game time in seconds */
   t: number;
   player: Player;

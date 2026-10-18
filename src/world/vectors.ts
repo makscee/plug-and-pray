@@ -1,68 +1,25 @@
-// Memory cards and vectors. Each seed fixes where the three scripture shards and the Thaw Engine
-// lie (`plan`); a chunk that holds one gets it when it is made. Reading a card with the card reader
-// prints its log and a vector (distance and bearing): ordinary cards point to the next shard not yet
-// pointed at, then to a printer, the ninth eye or a cache, placed in the chunk the vector ends in.
-// The shards each give a third of the Engine's vector. Installing the Engine ends the run: 'thaw'.
+// Memory cards and vectors. Reading a card with the card reader prints its log and a vector (distance and
+// bearing): on each floor the first card points to the way down (the stairs behind the floor's boss room,
+// src/world/floors.ts), later ones to a printer, the ninth eye or a cache, placed in the chunk the vector ends in.
+// (v2: the scripture shards and the Thaw Engine are gone; the heart's keeper is the end.)
 
-import { CHUNK, chunkHook, open } from '../core/grid';
-import { cells, dist, say, spawn, spawnEnemy, tickHooks } from '../core/game';
-import { ELITE, GUARD_HINT } from '../fight';
-import { ZONES, zoneAt, zoneOf } from './zones';
+import { CHUNK, chunkHook } from '../core/grid';
+import { cells, dist, say, spawn, tickHooks } from '../core/game';
 import { active, def, param } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import { verb } from '../core/verbs';
 import type { Chunk, Game, Res, Vector } from '../core/types';
-import { CARDS, LOGS, OPENERS, SHARDS } from './cards';
+import { CARDS, LOGS, OPENERS } from './cards';
 import { spot } from './gen';
 import { lootMod } from './spawn';
-import { foe } from '../fight/spawn';
+import { bossDown, farOf, floorOf, inside, stairsAt } from './floors';
 import { offer } from '../end/timeline';
-
-export interface Plan {
-  /** chunk of shard 1, 2, 3 */
-  shards: [number, number][];
-  engine: [number, number];
-}
-
-const plans = new Map<number, Plan>();
-/** how far out (chunks) shards 1, 2, 3 lie; the Engine 1.7 past shard 3. r2 pace: 2 and 3 came in from 4.5
- *  and 6.5 (the hunt after shard 1 was the long human stretch); shard 1 stays, the warden is early enough */
-export const SHARD_AT = [2.5, 4.1, 5.8];
-/** the seed's fixed places: one shard in each zone past the cradle (`SHARD_AT`) on different bearings, the
- *  Engine one or two chunks past shard 3 */
-export function plan(seed: number): Plan {
-  let p = plans.get(seed);
-  if (p) return p;
-  const r = rng(hash(seed, 21));
-  const a0 = r() * Math.PI * 2;
-  const at = (d: number, a: number): [number, number] => [Math.round(Math.sin(a) * d), Math.round(-Math.cos(a) * d)];
-  // nudge the distance until the rounded chunk lands in the zone it is meant for
-  const inZone = (z: number, d: number, a: number): [number, number] => {
-    for (const dd of [d, d - 0.4, d + 0.4, d - 0.8, d + 0.8]) {
-      const c = at(dd, a);
-      if (zoneOf(c[0], c[1]) === z) return c;
-    }
-    return at(d, a);
-  };
-  const a2 = a0 + 2.1 + r() * 0.6;
-  const a3 = a0 + 4.2 + r() * 0.6;
-  const s3 = inZone(3, SHARD_AT[2], a3);
-  // r1 pace: the Engine lies one to two chunks past shard 3 on its bearing (it was across the map: a 4-10 min dead walk)
-  let engine = at(SHARD_AT[2] + 1.7, a3);
-  for (const d of [1.7, 2.1, 2.5, 3.1].map((k) => SHARD_AT[2] + k)) {
-    engine = at(d, a3);
-    if (engine[0] !== s3[0] || engine[1] !== s3[1]) break;
-  }
-  p = { shards: [inZone(1, SHARD_AT[0], a0), inZone(2, SHARD_AT[1], a2), s3], engine };
-  plans.set(seed, p);
-  return p;
-}
 
 /** what a card read leaves behind for the next reads, per game */
 interface Lore {
   /** ordinary cards spawned so far: the next one gets the next log */
   spawned: number;
-  /** shards (1..3) a vector already points at */
+  /** floors whose way down a vector already points at */
   pointed: number[];
   ninth: boolean;
 }
@@ -96,7 +53,7 @@ function place(g: Game, v: Vector): void {
   if (g.chunks.has(`${cx},${cy}`)) drop(g, v);
 }
 function drop(g: Game, v: Vector): void {
-  const far = Math.hypot(...chunkOf(v.x, v.y));
+  const far = farOf(...chunkOf(v.x, v.y));
   if (v.what === 'printer') spawn(g, { kind: 'printer', x: v.x, y: v.y, data: { far, made: 0 } });
   else if (v.what === 'ninth eye') spawn(g, { kind: 'item', x: v.x, y: v.y, item: { kind: 'mod', mod: 'ninth-eye' } });
   else if (v.what === 'cache') {
@@ -107,79 +64,34 @@ function drop(g: Game, v: Vector): void {
   }
 }
 
-/** the planned shards and the Engine come with their chunks; vectors read earlier drop their things */
+/** vectors read earlier drop their things when their chunk is made */
 chunkHook((g: Game, c: Chunk) => {
-  const p = plan(g.seed);
-  p.shards.forEach(([cx, cy], k) => {
-    if (c.cx !== cx || c.cy !== cy) return;
-    const [x, y] = spot(g.seed, cx, cy, 1, c);
-    spawn(g, { kind: 'item', x, y, item: { kind: 'card', card: SHARDS[k].id } });
-    spawn(g, { kind: 'item', x, y, item: { kind: 'res', res: 'ichor', n: 1 } });
-    guard(g, x, y, ELITE[Math.max(1, Math.min(3, zoneAt(x, y)))]);
-  });
-  if (c.cx === p.engine[0] && c.cy === p.engine[1]) {
-    const [x, y] = spot(g.seed, c.cx, c.cy, 2, c);
-    spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'thaw-engine' } });
-    // r1 pace: not a second saint but a gauntlet: a walker keeps the engine, a mite swarm waits on the way in
-    // (only these: the chunk holds no other foes, src/fight/spawn.ts; a lamp here could hold the only corridor shut)
-    const post = (type: string, salt: number, dx = 0) => {
-      const [px, py] = salt ? spot(g.seed, c.cx, c.cy, salt, c) : [x + 1, y];
-      const e = foe(g, type, (open(g, px, py) ? px : x) + dx, open(g, px, py) ? py : y);
-      e.enemy!.data.post = [e.x, e.y];
-    };
-    post('walker', 0);
-    for (const dx of [-0.45, -0.15, 0.15, 0.45]) post('mite', 6, dx);
-  }
   for (const v of g.vectors) {
     const [cx, cy] = chunkOf(v.x, v.y);
-    if (cx === c.cx && cy === c.cy && v.what !== 'scripture shard' && v.what !== 'thaw engine') drop(g, v);
+    if (cx === c.cx && cy === c.cy && v.what !== 'way down') drop(g, v);
   }
 });
 
-/** cells around a guarded shard kept free of other foes */
-export const CLEAR = 6;
-
-/** an elite stands over a shard (and the engine): a cell or two off it, at full strength for its zone */
-function guard(g: Game, x: number, y: number, type: string): void {
-  for (const [dx, dy] of [[2, 0], [-2, 0], [0, 2], [0, -2], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
-    if (!open(g, x + dx, y + dy)) continue;
-    const e = spawnEnemy(g, type, x + dx, y + dy);
-    e.enemy!.data.elite = true;
-    e.enemy!.data.post = [e.x, e.y];
-    // the elite keeps its ground: no rabble crowds the shard (a fight with it, not a pile-on)
-    g.ents = g.ents.filter((o) => !o.enemy || o === e || Math.hypot(o.x - x, o.y - y) > CLEAR);
-    return;
-  }
-}
-
-/** where a planned thing lies, as a cell centre */
-export function shardAt(g: Game, k: number): [number, number] {
-  const [cx, cy] = plan(g.seed).shards[k];
-  return spot(g.seed, cx, cy, 1);
-}
-export function engineAt(g: Game): [number, number] {
-  const [cx, cy] = plan(g.seed).engine;
-  return spot(g.seed, cx, cy, 2);
-}
-
-const holds = (g: Game, card: string) => g.cards.includes(card) || g.player.inv.some((i) => i.kind === 'card' && i.card === card);
-
 function vectorFor(g: Game, card: string): Vector {
   const l = L(g);
-  for (let k = 0; k < 3; k++) {
-    if (l.pointed.includes(k) || holds(g, SHARDS[k].id)) continue;
-    l.pointed.push(k);
-    const [x, y] = shardAt(g, k);
-    return { card, x, y, what: 'scripture shard', found: false };
+  // the floor's way down first, unless it is known already (the boss fell, or a card told it)
+  const f = floorOf(g);
+  const [sx, sy] = stairsAt(g.seed, f);
+  if (f < 4 && !l.pointed.includes(f) && !bossDown(g, f) && !g.vectors.some((v) => v.what === 'way down' && v.x === sx && v.y === sy)) {
+    l.pointed.push(f);
+    return { card, x: sx, y: sy, what: 'way down', found: false };
   }
-  // past the shards: something useful two or three chunks away from here
+  // past that: something useful two or three chunks away from here, on this floor
   const r = rng(hash(g.seed, 41, g.cards.length));
   const what = !l.ninth && g.cards.length >= 3 ? 'ninth eye' : r.chance(0.5) ? 'printer' : 'cache';
   if (what === 'ninth eye') l.ninth = true;
   const a = r() * Math.PI * 2;
   const d = r.int(2, 3);
   const [pcx, pcy] = chunkOf(g.player.x, g.player.y);
-  const [cx, cy] = [pcx + Math.round(Math.sin(a) * d), pcy + Math.round(-Math.cos(a) * d)];
+  let [cx, cy] = [pcx + Math.round(Math.sin(a) * d), pcy + Math.round(-Math.cos(a) * d)];
+  // never into the rock round the floor: pulled back toward you until it lands inside
+  for (let k = 0; k < 4 && !inside(cx, cy); k++) [cx, cy] = [cx - Math.sign(cx - pcx), cy - Math.sign(cy - pcy)];
+  if (!inside(cx, cy)) [cx, cy] = [pcx, pcy];
   const [x, y] = spot(g.seed, cx, cy, 3 + g.cards.length);
   return { card, x, y, what, found: false };
 }
@@ -213,40 +125,10 @@ verb('read', {
     if (!g.cards.includes(it.card)) g.cards.push(it.card);
     g.events.push({ type: 'read', data: it.card });
     say(g, ...(c?.lines ?? ['the card is blank.']).map((s) => '  ' + s));
-    if (c?.shard) {
-      const n = SHARDS.filter((s) => g.cards.includes(s.id)).length;
-      const [ex, ey] = engineAt(g);
-      const fromStart = Math.round(Math.hypot(ex - 8.5, ey - 8.5) / 10) * 10;
-      const deg = Math.round(((Math.atan2(ex - g.player.x, -(ey - g.player.y)) * 180) / Math.PI + 360) % 360);
-      // r2 hook: the first shard says which way too; each shard but the last points to the next one (what next)
-      const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(deg / 45) % 8];
-      if (n === 1) say(g, `  the engine: about ${fromStart} cells from where you woke, bearing near ${Math.round(deg / 45) * 45} (${word}) from here.`);
-      else if (n === 2) say(g, `  the engine: about ${fromStart} cells out, bearing near ${Math.round(deg / 45) * 45} from here.`);
-      if (n < 3) {
-        const k = [0, 1, 2].find((k) => !holds(g, SHARDS[k].id));
-        const [x, y] = k === undefined ? [0, 0] : shardAt(g, k);
-        if (k !== undefined) {
-          if (!L(g).pointed.includes(k)) L(g).pointed.push(k);
-          // a card may have pointed there already: one vector is enough
-          if (!g.vectors.some((v) => !v.found && v.what === 'scripture shard' && v.x === x && v.y === y)) g.vectors.push({ card: it.card, x, y, what: 'scripture shard', found: false });
-          say(g, [`  the next shard lies in ${ZONES[zoneAt(x, y)].name}. vector: ${bearing(g, x, y)}. `, { text: 'vectors', cmd: 'vectors' }]);
-          const guard = GUARD_HINT[ELITE[Math.max(1, Math.min(3, zoneAt(x, y)))]];
-          if (guard) say(g, `  ${guard}`);
-        }
-      } else {
-        const v: Vector = { card: it.card, x: ex, y: ey, what: 'thaw engine', found: false };
-        g.vectors.push(v);
-        say(g, [`  vector: ${bearing(g, ex, ey)}. `, 'the thaw engine.']);
-      }
-    } else {
-      const v = vectorFor(g, it.card);
-      g.vectors.push(v);
-      place(g, v);
-      say(g, `  vector: ${bearing(g, v.x, v.y)}. ${v.what}.`);
-      // the fight slice's word on the shard's guard (playtest r1: the first elite came unannounced)
-      const guard = v.what === 'scripture shard' && GUARD_HINT[ELITE[Math.max(1, Math.min(3, zoneAt(v.x, v.y)))]];
-      if (guard) say(g, `  ${guard}`);
-    }
+    const v = vectorFor(g, it.card);
+    g.vectors.push(v);
+    place(g, v);
+    say(g, `  vector: ${bearing(g, v.x, v.y)}. ${v.what}${v.what === 'way down' ? ', past the floor\'s keeper' : ''}.`);
     say(g, 'the card goes blank.');
   },
 });
@@ -269,14 +151,15 @@ tickHooks.push((g) => {
     if (v.found || dist(v, g.player) > 1.6) continue;
     v.found = true;
     g.events.push({ type: 'vector', at: [v.x, v.y] });
-    // a wall the eyes named (src/world/finds.ts) is broken or read, not taken
-    const act = v.what === 'hollow wall' ? 'break' : v.what === 'scratched wall' || v.what === 'warm prints' ? '' : 'take';
-    say(g, [`the vector ends here: the ${v.what}. `, ...(act ? [{ text: act, cmd: act }] : [])]);
+    // a wall the eyes named (src/world/finds.ts) is broken or read, not taken; the way down is gone down
+    const down = v.what === 'way down';
+    const act = v.what === 'hollow wall' ? 'break' : v.what === 'scratched wall' || v.what === 'warm prints' ? '' : down ? (bossDown(g) ? 'descend' : '') : 'take';
+    say(g, [`the vector ends here: the ${v.what}${down && !bossDown(g) ? ', sealed while its keeper stands' : ''}. `, ...(act ? [{ text: act, cmd: act }] : [])]);
   }
+  // the old ending, kept for test runs and stagings: a thaw engine installed (it no longer lies anywhere)
   if (!g.ended && g.player.installed.some((i) => def(i).id === 'thaw-engine')) {
     g.ended = 'thaw';
     g.events.push({ type: 'thaw' });
-    // r2 econ: it takes everything you carry; the end card grades the thaw by it
     const o = offer(g);
     say(g, `the engine turns over. something vast, warming. it drinks what you carry: ${o.total}. ${o.grade}.`);
   }

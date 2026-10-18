@@ -54,8 +54,8 @@ describe('the spine', () => {
 
   it('every chunk connects to its neighbours', () => {
     const g = newGame(7);
-    // breadth-first from the start over a 4x4 chunk area
-    const N = CHUNK * 4;
+    // breadth-first from the start over the floor's 3x3 chunks east and south of the landing (v2: the floor ends at chunk 2)
+    const N = CHUNK * 3;
     const seen = new Set<string>(['8,8']);
     const q: [number, number][] = [[8, 8]];
     while (q.length) {
@@ -69,8 +69,8 @@ describe('the spine', () => {
         q.push([nx, ny]);
       }
     }
-    for (let cy = 0; cy < 4; cy++)
-      for (let cx = 0; cx < 4; cx++) {
+    for (let cy = 0; cy < 3; cy++)
+      for (let cx = 0; cx < 3; cx++) {
         let any = false;
         for (const k of seen) {
           const [x, y] = k.split(',').map(Number);

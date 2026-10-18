@@ -16,6 +16,7 @@ import { engaged, PUFF_TIME, puffs, struckAt } from './foes';
 import { frames, puff, SIZE, SPRITES, type SpriteDef } from './sprites';
 import { addMarks, buildGrid, gridLight, gridMesh } from './marks';
 import { ZONES, zoneAt } from '../world/zones';
+import { stairsObject, type Paint } from './stairs';
 
 /** cells drawn around you in each direction */
 const R = 14;
@@ -107,11 +108,13 @@ function build(g: Game, px: number, py: number): void {
   builtFor = key;
   let nw = 0, nf = 0;
   const nv: Record<string, number> = { bone: 0, glass: 0, copper: 0, ichor: 0 };
+  // v2 floors: no floor tile under the stairs down, so they open onto a pit (stairs.ts)
+  const holes = new Set(g.ents.filter((e) => e.data?.stairs).map((e) => `${Math.floor(e.x)},${Math.floor(e.y)}`));
   for (let y = cy - R; y <= cy + R; y++)
     for (let x = cx - R; x <= cx + R; x++) {
       const c = cell(g, x, y);
       if (c === Cell.floor) {
-        m.makeRotationX(-Math.PI / 2).setPosition(x + 0.5, 0, y + 0.5);
+        m.makeRotationX(-Math.PI / 2).setPosition(x + 0.5, holes.has(`${x},${y}`) ? -1.6 : 0, y + 0.5);
         floors.setMatrixAt(nf, m);
         m.makeRotationX(Math.PI / 2).setPosition(x + 0.5, 1, y + 0.5);
         ceils.setMatrixAt(nf++, m);
@@ -382,6 +385,12 @@ function place(g: Game, mode: Mode, hidden = false, filter = ''): void {
     if (Math.abs(e.x - p.x) > R || Math.abs(e.y - p.y) > R) continue;
     if (e.enemy) {
       addSprite(g, e, mode, hidden);
+      continue;
+    }
+    if (e.data?.stairs) {
+      // v2 floors: the stairs down, built from parts (stairs.ts)
+      const pick = ([color, glow, heat]: Paint) => (mode === 'depth' ? depthMat : mode === 'heat' && heat < 0.3 ? null : matOf({ geo: itemGeo, color, glow, y: 0, heat }, mode));
+      ents.add(stairsObject(e, g.t, pick, mode));
       continue;
     }
     let l = lookOf(e);

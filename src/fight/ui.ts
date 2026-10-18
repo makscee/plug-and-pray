@@ -6,7 +6,6 @@ import { engaged } from '../sight/foes';
 import { frameHooks } from '../ui';
 import { pips } from '../ui/panels';
 import { hpText } from './report';
-import { fanfares } from './shard';
 import { turned } from './warn';
 import { clean } from '../tune/start';
 import { mapHooks } from '../world/mind';
@@ -110,27 +109,6 @@ export function weaponLine(g: Game, r: number): string {
   if (aims.length) parts.push(soon(aims) <= 0.05 ? 'shoot ready' : `shoot ${soon(aims).toFixed(1)}s`);
   return parts.join(' · ');
 }
-
-// the shard fanfare (src/fight/shard.ts): a big line and a gold pulse
-let seenShard = 0;
-let shardGame: unknown = null;
-frameHooks.push((g) => {
-  const f = fanfares.get(g);
-  if (shardGame !== g) {
-    shardGame = g;
-    seenShard = f?.n ?? 0;
-  }
-  if (!f || f.n <= seenShard) return;
-  seenShard = f.n;
-  document.querySelector('.shard-fanfare')?.remove();
-  const el = document.createElement('div');
-  el.className = 'shard-fanfare';
-  // playtest r3: mid-fight it covered the elite still hitting you; then it is a slim line at the top
-  if (g.ents.some((e) => e.kind === 'enemy' && Math.hypot(e.x - g.player.x, e.y - g.player.y) < 8)) el.classList.add('live');
-  el.innerHTML = `<div class="shard-pulse"></div><p>SCRIPTURE SHARD ${f.n} of 3</p>`;
-  document.body.append(el);
-  setTimeout(() => el.remove(), 4200);
-});
 
 // an elite turning to you (src/fight/warn.ts): a red line under the HUD for 4 s
 let seenTurn = -1;

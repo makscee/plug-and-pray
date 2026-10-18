@@ -6,6 +6,7 @@ import { dist, say, tickHooks } from '../core/game';
 import { open } from '../core/grid';
 import type { Game } from '../core/types';
 import { verb } from '../core/verbs';
+import { origin } from '../world/floors';
 
 export const KIT = ['pinhole-eye', 'stepper-relay', 'map-spool', 'spark-finger'];
 
@@ -27,7 +28,8 @@ export function clean(g: Game): void {
   g.player.inv = [];
 }
 
-const HOME: [number, number] = [8.5, 8.5];
+/** home is where you landed on this floor (src/world/floors.ts) */
+const home = (g: Game): [number, number] => origin(g.floor ?? 0);
 const homing = new WeakMap<Game, number>();
 
 /** the nearest open cell centre to (x, y), searching rings out to r */
@@ -43,7 +45,7 @@ function nearestOpen(g: Game, x: number, y: number, r = 4): [number, number] | n
 }
 
 verb('unstuck', {
-  help: 'stuck or lost? unstuck: out of a wall, else home to where you woke (3 s with a foe on you)',
+  help: 'stuck or lost? unstuck: out of a wall, else home to where you landed on this floor (3 s with a foe on you)',
   run(g) {
     const p = g.player;
     p.path = [];
@@ -68,7 +70,7 @@ tickHooks.push((g) => {
   if (at === undefined || g.t < at) return;
   homing.delete(g);
   const p = g.player;
-  [p.x, p.y] = HOME;
+  [p.x, p.y] = home(g);
   p.path = [];
   p.move = null;
   say(g, 'you wake where you woke. the chamber is quiet.');

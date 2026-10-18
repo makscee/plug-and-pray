@@ -243,15 +243,6 @@ describe('fight r1: seeing the fight', () => {
     expect(lesson(g).length).toBeGreaterThan(5);
   });
 
-  it('taking a scripture shard is told big', () => {
-    const g = armed();
-    spawn(g, { kind: 'item', x: 9.5, y: 8.5, item: { kind: 'card', card: 'shard-1' } });
-    exec(g, 'take');
-    run(g, 0.1);
-    expect(text(g)).toContain('you take: scripture shard');
-    expect(text(g)).toContain('SCRIPTURE SHARD 1 of 3');
-  });
-
   it('a swarm bites in a stream, not in volleys', () => {
     const g = armed();
     const ms = [0, 1, 2, 3, 4, 5].map((k) => spawnEnemy(g, 'mite', 9.5 + (k % 2) * 0.1, 8.5));
@@ -270,8 +261,8 @@ describe('fight r1: seeing the fight', () => {
 
   it('a nave mite keeps 1 hp; an ossuary one scales', () => {
     const g = armed();
-    expect(foe(g, 'mite', 60.5, 0.5).enemy!.hp).toBe(1); // ~3.75 chunks out: the nave
-    expect(foe(g, 'mite', 80.5, 0.5).enemy!.hp).toBeGreaterThan(1);
+    expect(foe(g, 'mite', 16 * 16 + 20.5, 0.5).enemy!.hp).toBe(1); // floor 2: the nave
+    expect(foe(g, 'mite', 32 * 16 + 20.5, 0.5).enemy!.hp).toBeGreaterThan(1); // floor 3: the ossuary
   });
 
   it('a hit stops your walk, with the way back', () => {

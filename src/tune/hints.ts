@@ -6,7 +6,8 @@
 
 import { active, def, label, param } from '../core/mods';
 import { cells, dist, say, tickHooks } from '../core/game';
-import { canRead, carriesReader, nearestOpen } from '../world/vectors';
+import { canRead, carriesReader } from '../world/vectors';
+import { bossDown, FLOORS, floorOf, LAST, STAIRS, stairsAt } from '../world/floors';
 import { lightest, makeRoom } from '../body';
 import { DIRS, open } from '../core/grid';
 import { VERBS, verb, way } from '../core/verbs';
@@ -143,7 +144,7 @@ tickHooks.push((g) => {
 
 // playtest r2: the hint was said once and could not be asked again
 verb('where', {
-  help: 'what to head for next: the dawn eye, the card reader, a card to read, the nearest vector',
+  help: 'what to head for next: the dawn eye, the card reader, a card to read, the way down, the nearest vector',
   run(g) {
     const lines = hintLines(g);
     if (lines.length) say(g, 'you hear:', ...lines);
@@ -168,11 +169,12 @@ function after(g: Game): Line[] {
           ? ['a memory card waits; your card reader is off: ', { text: 'on card reader', cmd: 'on card reader' }]
           : ['a memory card waits for a card reader.'],
     );
-  // r4 final: no card reader at all and shards unread: say where one comes from
+  // r4 final: no card reader at all and floors left whose way down a card would tell: say where one comes from
   const hasReader = [...p.inv, ...p.installed].some((i) => 'mod' in i && i.mod === 'card-reader');
-  if (!hasReader && g.cards.filter((c) => c.startsWith('shard-')).length < 3 && !g.ents.some((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === 'card-reader'))
+  if (!hasReader && (g.floor ?? 0) < 3 && !g.ents.some((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === 'card-reader'))
     out.push(['no card reader: ', { text: 'print mind', cmd: 'print mind' }, ' at a printer.']);
-  const v = nearestOpen(g);
+  out.push(wayDown(g));
+  const v = g.vectors.filter((v) => !v.found && v.what !== 'way down').sort((a, b) => dist(a, p) - dist(b, p))[0];
   if (v) out.push(toCell(g, v.x, v.y, `the ${v.what}`));
   // a loose module of a kind you don't wear yet (a pinhole swapped out for the dawn eye is no reason)
   const loose = p.inv.some((i) => i.kind === 'mod' && !p.installed.some((o) => def(o).family === def(i).family));
@@ -183,6 +185,19 @@ function after(g: Game): Line[] {
   return out;
 }
 
+
+/** v2 floors: the floor's goal, always: the open stairs, the known way down past its keeper, or a rough word */
+function wayDown(g: Game): Line {
+  const f = floorOf(g);
+  const [sx, sy] = stairsAt(g.seed, f);
+  if (f === LAST) return bossDown(g) ? ['the heart is still.'] : [`the heart's keeper waits in the arena, north. kill it and the god thaws.`];
+  const name = STAIRS[FLOORS[f].stairs!].name;
+  if (bossDown(g)) return toCell(g, sx, sy, `${name} is open`, 'descend');
+  if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`)) return toCell(g, sx, sy, `the way down, ${name}, past its keeper`, 'help descend');
+  const p = g.player;
+  const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(sx - p.x, -(sy - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8];
+  return [`the way down lies somewhere ${word}, past its keeper. a memory card points to it.`];
+}
 
 /** r5: a carried reader with no bone looped (read card: wants a bone; where: read card). The ways out,
  * as buttons: swap the reader in by the swap rule, else take out the lightest by hand; and the nearest bone */

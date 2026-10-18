@@ -2,11 +2,14 @@
 // Doors sit on chunk edges at offsets both sides agree on (a hash of the edge), so the endless
 // grid is always connected. Farther out: more chambers, odder shapes (ribbed, oval, cross), more veins.
 // Floor that no door reaches is walled up again, so nothing spawns in a sealed pocket.
+// v2 floors (src/world/floors.ts): only a floor's own chunks are carved, doors never open onto the rock
+// around it, the arrival chunk is one plain chamber and the stairs chunk is the boss room alone.
 
 import { CHUNK, Cell, setGenerator } from '../core/grid';
 import { hash, rng, type Rng } from '../core/rng';
 import type { Chunk } from '../core/types';
 import { zoneOf } from './zones';
+import { farOf, floorOfChunk, inside, isArrival, LAST, roomLocal, stairsChunk } from './floors';
 
 const door = (seed: number, axis: number, cx: number, cy: number) => 2 + (hash(seed, axis, cx, cy) % (CHUNK - 4));
 
@@ -16,9 +19,16 @@ export type Room = [number, number, number, number, Shape];
 
 /** the chambers of a chunk, the first one the biggest; the start chunk is one plain chamber */
 export function rooms(seed: number, cx: number, cy: number): Room[] {
-  if (cx === 0 && cy === 0) return [[5, 5, 11, 11, 'box']];
+  if (!inside(cx, cy)) return [];
+  if (isArrival(cx, cy)) return [[5, 5, 11, 11, 'box']];
+  const f = floorOfChunk(cx);
+  const [sx, sy] = stairsChunk(seed, f);
+  if (cx === sx && cy === sy) {
+    const [x0, y0, x1, y1] = roomLocal(f);
+    return [[x0, y0, x1, y1, f === LAST ? 'oval' : 'box']];
+  }
   const r = rng(hash(seed, 7, cx, cy));
-  const far = Math.hypot(cx, cy);
+  const far = farOf(cx, cy);
   const want = 1 + (far >= 2 ? 1 : 0) + (far >= 4 ? r.int(0, 1) : 0) + (far >= 6 ? 1 : 0);
   const odd = Math.min(0.85, far * 0.13);
   const out: Room[] = [];
@@ -79,20 +89,23 @@ export function generate(seed: number, cx: number, cy: number): Chunk {
   const cells = new Uint8Array(CHUNK * CHUNK);
   const set = (x: number, y: number, v: number) => (cells[y * CHUNK + x] = v);
   const get = (x: number, y: number) => cells[y * CHUNK + x];
+  if (!inside(cx, cy)) return { cx, cy, cells, zone: zoneOf(cx, cy), rock: true };
   const r = rng(hash(seed, 8, cx, cy));
-  const far = Math.hypot(cx, cy);
+  const far = farOf(cx, cy);
   const rs = rooms(seed, cx, cy);
+  const f = floorOfChunk(cx);
+  const boss = stairsChunk(seed, f)[0] === cx && stairsChunk(seed, f)[1] === cy;
   for (const rm of rs) carveRoom(set, rm);
   const bends = far < 1 ? 0 : far < 3 ? 1 : 2;
   // chambers in a chain
   for (let k = 1; k < rs.length; k++) carveConduit(set, r, middle(rs[k]), middle(rs[k - 1]), bends);
   // doors: step two cells in from the edge, then wander to the nearest chamber
-  const doors: [[number, number], [number, number]][] = [
-    [[0, door(seed, 1, cx, cy)], [1, 0]], // west
-    [[CHUNK - 1, door(seed, 1, cx + 1, cy)], [-1, 0]], // east
-    [[door(seed, 2, cx, cy), 0], [0, 1]], // north
-    [[door(seed, 2, cx, cy + 1), CHUNK - 1], [0, -1]], // south
-  ];
+  const doors = ([
+    [[0, door(seed, 1, cx, cy)], [1, 0], inside(cx - 1, cy)], // west
+    [[CHUNK - 1, door(seed, 1, cx + 1, cy)], [-1, 0], inside(cx + 1, cy)], // east
+    [[door(seed, 2, cx, cy), 0], [0, 1], inside(cx, cy - 1)], // north
+    [[door(seed, 2, cx, cy + 1), CHUNK - 1], [0, -1], inside(cx, cy + 1)], // south
+  ] as [[number, number], [number, number], boolean][]).filter(([, , ok]) => ok);
   for (const [[dx, dy], [ix, iy]] of doors) {
     set(dx, dy, Cell.floor);
     set(dx + ix, dy + iy, Cell.floor);
@@ -101,7 +114,7 @@ export function generate(seed: number, cx: number, cy: number): Chunk {
     carveConduit(set, r, from, near, bends);
   }
   // odd stubs far out: dead-end conduits that go nowhere
-  if (far >= 3)
+  if (far >= 3 && !boss)
     for (let k = 0; k < Math.min(3, Math.floor(far / 3)); k++) carveConduit(set, r, middle(r.pick(rs)), [r.int(1, CHUNK - 2), r.int(1, CHUNK - 2)], 1);
   // wall up what no door reaches
   const reach = new Uint8Array(CHUNK * CHUNK);

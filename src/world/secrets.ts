@@ -16,6 +16,7 @@ import { generate, rooms } from './gen';
 import { lootMod, opening, shopAt } from './spawn';
 import { bearing } from './vectors';
 import { ZONES, zoneAt, zoneOf } from './zones';
+import { isArrival, stairsChunk, thinAhead } from './floors';
 
 export type Kind = 'hands' | 'script' | 'hollow';
 
@@ -53,8 +54,10 @@ export const reveals = (g: Game): number => secrets(g).filter((s) => s.found).le
 // ---- placing: one secret in about half the chunks past the start, the kind weighted by zone
 
 /** [hands, script, hollow] weights per zone: the furnace washes out heat, so fewer hands there */
-const WEIGHTS = [[0.2, 0.4, 0.4], [0.34, 0.33, 0.33], [0.4, 0.3, 0.3], [0.15, 0.4, 0.45]];
+const WEIGHTS = [[0.2, 0.4, 0.4], [0.3, 0.15, 0.55], [0.4, 0.3, 0.3], [0.15, 0.4, 0.45]];
 export const CHANCE = 0.5;
+/** v2 floors: the choir nave echoes, so more of its chunks hide something (mostly hollow walls) */
+const CHANCE_BY_FLOOR: Record<number, number> = { 1: 0.8 };
 
 const F = (c: Chunk, x: number, y: number) => x >= 0 && y >= 0 && x < CHUNK && y < CHUNK && c.cells[y * CHUNK + x] === Cell.floor;
 const W = (c: Chunk, x: number, y: number) => x >= 0 && y >= 0 && x < CHUNK && y < CHUNK && c.cells[y * CHUNK + x] === Cell.wall;
@@ -144,10 +147,12 @@ function hands(r: Rng, c: Chunk, seed: number): Omit<Secret, 'kind' | 'found' | 
 
 /** what a chunk hides, if anything: the same for a seed every time */
 export function hide(seed: number, c: Chunk): Secret | null {
-  if (c.cx === 0 && c.cy === 0) return null;
+  const f = zoneOf(c.cx, c.cy);
+  const [bx, bly] = stairsChunk(seed, f);
+  if (isArrival(c.cx, c.cy) || (c.cx === bx && c.cy === bly) || !WEIGHTS[f]) return null;
   const r = rng(hash(seed, 91, c.cx, c.cy));
   const by = byShop(seed, c);
-  if (!r.chance(CHANCE) && !by) return null;
+  if (!r.chance(CHANCE_BY_FLOOR[f] ?? CHANCE) && !by) return null;
   const [wh, ws] = WEIGHTS[Math.max(0, zoneOf(c.cx, c.cy))];
   const roll = r();
   const kind: Kind = by ? 'script' : roll < wh ? 'hands' : roll < wh + ws ? 'script' : 'hollow';
@@ -240,7 +245,7 @@ const VERSES = [
 ];
 
 /** the place a scratched wall names: the nearest cache not found yet, within three chunks (the scratches know
- *  where the dead hid things; the shards stay the cards' to tell). r2 decide: caches only, so a hollow wall still
+ *  where the dead hid things; the way down stays the cards' to tell). r2 decide: caches only, so a hollow wall still
  *  wants sonar: each eye owns one layer (carrion and lattice scripture, the bat psalter shells, heat the prints) */
 function names(g: Game, s: Secret): [number, number, string] | null {
   // the cradle's scratched wall names the hollow wall beside it (r2 hook: the first reveal chain), and told is
@@ -295,17 +300,27 @@ function standFor(g: Game, s: Secret): Line {
 }
 
 verb('break', {
-  help: 'break a hollow wall beside you with a weapon (loud)',
-  when: (g) => active(g, 'weapon').length > 0 && !!hollowBeside(g)?.found,
+  help: 'break a hollow wall beside you with a weapon (loud); in the cradle, any thin wall you face',
+  when: (g) => active(g, 'weapon').length > 0 && (!!hollowBeside(g)?.found || !!thinAhead(g)),
   whenFail(g) {
     if (!active(g, 'weapon').length) return 'break: nothing on you can break a wall. any weapon can.';
     const p = g.player;
     const s = secrets(g).filter((o) => o.kind === 'hollow' && o.found && !o.done && dist({ x: o.x + 0.5, y: o.y + 0.5 }, p) < 12).sort((a, b) => dist({ x: a.x, y: a.y }, p) - dist({ x: b.x, y: b.y }, p))[0];
-    if (!s) return 'break: no hollow wall known here. a sonar eye hears them.';
+    if (!s) return g.floor === 0 ? 'break: face a wall one cell thick with floor behind it, or find a hollow wall (a sonar eye hears them).' : 'break: no hollow wall known here. a sonar eye hears them.';
     return ['no hollow wall beside you: ', ...standFor(g, s)];
   },
   run(g) {
     const s = hollowBeside(g);
+    const thin = !s?.found && thinAhead(g);
+    if (thin && active(g, 'weapon').length) {
+      // v2 floors: the cradle's thin walls give way to any weapon, a short cut (and now and then a chip of bone)
+      for (const e of g.ents) if (e.enemy && dist(e, g.player) <= 5) e.enemy.data.noticed = true;
+      setCell(g, thin[0], thin[1], Cell.floor);
+      g.events.push({ type: 'dig', at: [thin[0] + 0.5, thin[1] + 0.5] }, { type: 'noise', at: [g.player.x, g.player.y], data: 5 });
+      const chip = rng(hash(g.seed, 97, thin[0], thin[1])).chance(0.35);
+      if (chip) spawn(g, { kind: 'item', x: thin[0] + 0.5, y: thin[1] + 0.5, item: { kind: 'res', res: 'bone', n: 1 } });
+      return say(g, `the thin wall gives. a way through${chip ? ', and a chip of bone in the rubble' : ''}.`);
+    }
     if (!s) return say(g, 'the wall rings dull. solid.');
     if (!active(g, 'weapon').length) return say(g, 'nothing on you can break a wall.');
     // loud: what is near hears the stone go

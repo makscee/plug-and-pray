@@ -11,6 +11,8 @@ import { RES, type Chunk, type Game, type Item } from '../core/types';
 import { floors, rooms } from './gen';
 import { nextLog } from './vectors';
 import { ZONES, zoneFar } from './zones';
+import { farOf, floorOfChunk, isArrival, KIT, stairsChunk, STRIDE } from './floors';
+import { KIT as START_KIT } from '../tune/start';
 
 /** the furnace's own kit: tier 2, but it rolls only there, so the last zone still brings modules you have not seen */
 export const FURNACE_KIT = ['heat-lance', 'reliquary-saw', 'heart-shard', 'saints-lens'];
@@ -21,8 +23,8 @@ export function lootMod(r: Rng, far: number, family?: string): Item {
   const z = zoneFar(far);
   const maxTier = ZONES[z].tier;
   // r2 econ: an aimed print (`print weapon`) rolls within one family
-  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique' && (z === 3 || !FURNACE_KIT.includes(m.id)) && (!family || m.family === family));
-  const own = pool.filter((m) => (z === 3 ? FURNACE_KIT.includes(m.id) : m.tier === maxTier));
+  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique' && (z >= 3 || !FURNACE_KIT.includes(m.id)) && (!family || m.family === family));
+  const own = pool.filter((m) => (z >= 3 ? FURNACE_KIT.includes(m.id) : m.tier === maxTier));
   const m = r.pick(maxTier >= 1 && own.length && r.chance(0.6) ? own : pool);
   const item: Item = { kind: 'mod', mod: m.id };
   const nums = Object.entries(m.params).filter(([k, v]) => typeof v === 'number' && BETTER[k]);
@@ -84,15 +86,30 @@ export function cellIn(r: Rng, c: Chunk, seed: number): [number, number] {
 /** where the reliquary by the start stands, a cell centre (the secrets beside it need it before it spawns) */
 export const shopAt = (seed: number, c: Chunk): [number, number] => cellIn(rng(hash(seed, 57, c.cx, c.cy)), c, seed);
 
+/** the arrival cache of a floor: its kit (src/world/floors.ts KIT) and a little to spend, in the chamber you land in */
+function cache(g: Game, c: Chunk, f: number): void {
+  const kit = (KIT[f] ?? []).filter((m) => MODS[m] && !(f === 0 && START_KIT.includes(m)));
+  const r = rng(hash(g.seed, 12, f));
+  kit.forEach((mod, k) => spawn(g, { kind: 'item', x: c.cx * CHUNK + 6.5 + (k % 5), y: c.cy * CHUNK + 10.5 - Math.floor(k / 5), item: { kind: 'mod', mod } }));
+  if (f > 0 && f < ZONES.length - 1) spawn(g, { kind: 'item', x: c.cx * CHUNK + 10.5, y: c.cy * CHUNK + 6.5, item: { kind: 'res', res: r.pick(['bone', 'glass', 'copper'] as const), n: 3 + f } });
+}
+
 export function fill(g: Game, c: Chunk): void {
   const at = (x: number, y: number) => [c.cx * CHUNK + x + 0.5, c.cy * CHUNK + y + 0.5] as const;
-  if (c.cx === 0 && c.cy === 0) {
-    const [ex, ey] = at(8, 8);
-    spawn(g, { kind: 'item', x: ex, y: ey, item: { kind: 'mod', mod: 'halo' } });
+  const f = floorOfChunk(c.cx);
+  if (isArrival(c.cx, c.cy)) {
+    if (f === 0) {
+      const [ex, ey] = at(8, 8);
+      spawn(g, { kind: 'item', x: ex, y: ey, item: { kind: 'mod', mod: 'halo' } });
+    }
+    cache(g, c, f);
     return;
   }
+  // the boss room holds only its boss (src/world/floors.ts); the heart only its arena
+  const [sx, sy] = stairsChunk(g.seed, f);
+  if ((c.cx === sx && c.cy === sy) || f === ZONES.length - 1) return;
   const r = rng(hash(g.seed, 11, c.cx, c.cy));
-  const far = Math.hypot(c.cx, c.cy);
+  const far = farOf(c.cx, c.cy);
   const o = opening(g.seed);
   if (is(c, o.eye)) {
     // the first upgrade: a clear colour eye one chunk out (the run starts with the pinhole)
@@ -115,7 +132,9 @@ export function fill(g: Game, c: Chunk): void {
   }
   // a reliquary (shop printer) one chunk out, then now and then further out; its own rng keeps the rest of the chunk as it was
   const rs = rng(hash(g.seed, 57, c.cx, c.cy));
-  if (is(c, o.shop) || (far >= 2 && rs.chance(0.1))) {
+  // v2: every floor past the cradle has a reliquary one chunk from where you land (the cradle's is `opening`)
+  const landShop = f > 0 && is(c, [f * STRIDE + o.shop[0], o.shop[1]]);
+  if (is(c, o.shop) || landShop || (far >= 2 && rs.chance(0.1))) {
     const [x, y] = is(c, o.shop) ? shopAt(g.seed, c) : cellIn(rs, c, g.seed);
     spawn(g, { kind: 'printer', x, y, data: { far, shop: true } });
   }

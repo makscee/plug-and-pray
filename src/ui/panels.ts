@@ -12,6 +12,7 @@ import * as windows from './windows';
 import { costs, does } from '../mods/describe';
 import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear } from '../world/printer';
 import { altarNear, offers as altarOffers } from '../world/altar';
+import { atStairs, STAIRS, type Stairs } from '../world/floors';
 import { nearPieces } from '../world/events';
 import { img, type Of } from './icons';
 import { makeRoom, setupsOf } from '../body';
@@ -213,6 +214,12 @@ export class Panels {
       rows.push({ icon: { thing: 'altar' }, name: 'altar', buttons: [] });
       for (const [cmd, price] of altarOffers(g, altar))
         rows.push({ name: '', buttons: [affords(g, price) ? { label: cmd, cmd, note: fmt(price) } : { label: cmd, note: `${fmt(price)}: short` }] });
+    }
+    // v2 floors: the stairs down, open or sealed
+    const st = atStairs(g);
+    if (st) {
+      const style = STAIRS[st.data!.stairs as Stairs];
+      rows.push({ name: style.name, tip: style.look, buttons: [st.data!.open ? { label: 'descend', cmd: 'descend' } : { label: 'descend', note: 'sealed: its keeper still stands' }] });
     }
     // a set piece's finds, until taken (src/world/events.ts)
     for (const o of nearPieces(g)) rows.push({ icon: o.item, name: `${o.name} ${Math.round(o.r)} ${o.side}`, tip: `${o.name}, ${Math.round(o.r)} cells ${o.side}: a set piece's finds`, buttons: [{ label: o.cmd.startsWith('goto') ? 'go' : o.cmd, cmd: o.cmd }] });

@@ -15,6 +15,7 @@ import type { Entity, Game, Item } from '../core/types';
 import { foe } from '../fight/spawn';
 import { BETTER, fresh, FURNACE_KIT, lootMod, rollMult } from './spawn';
 import { zoneAt } from './zones';
+import { farAt } from './floors';
 import { mapHooks } from './mind';
 
 /** seconds between set pieces: this, plus up to SPREAD more */
@@ -136,7 +137,7 @@ const mark = (e: Entity, set: string) => ((e.enemy!.data.set = set), e);
 /** make one set piece of this kind at (x, y); far = chunks from the start (the loot's depth) */
 export function stage(g: Game, kind: string, x: number, y: number, r: Rng): void {
   const z = zoneAt(x, y);
-  const far = Math.hypot(x - 8.5, y - 8.5) / 16;
+  const far = farAt(x, y);
   if (kind === 'patrol') {
     const who = PATROL[z] ?? PATROL[1];
     who.forEach((type, k) => {
@@ -185,6 +186,7 @@ tickHooks.push((g) => {
   if (g.player.path.length > 2) return void (s.next = g.t + 1);
   const r = rng(hash(g.seed, 71, s.n));
   const kinds = KINDS[z];
+  if (!kinds) return void (s.next = g.t + 30); // the heart: nothing but its keeper
   // walk the zone's kinds in a seed-shuffled order, so two in a row differ
   let kind = kinds[(hash(g.seed, 72) + s.n) % kinds.length];
   if (FOES.includes(kind) && g.player.hp < g.player.maxHp * FIT) kind = r.pick(['machine', 'reliquary']);

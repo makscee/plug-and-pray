@@ -233,13 +233,14 @@ export const SCRAP_GLASS = 0.5;
 const ground = new WeakMap<Game, number>();
 export const scrapOf = (it: Item): Cost => (it.kind === 'mod' && def(it).family !== 'unique' ? PRICES.scrap[Math.min(2, def(it).tier)] : {});
 
-/** r4 final: why this card reader may not leave you (the last one, shards still unread; one reader per world), or null */
+/** r4 final: why this card reader may not leave you (the last one, with floors still to find the way down on), or null */
 export function lastReader(g: Game, it: Item | undefined): string | null {
   if (!it || it.kind !== 'mod' || it.mod !== 'card-reader') return null;
   const p = g.player;
   const readers = p.inv.filter((i) => i.kind === 'mod' && i.mod === 'card-reader').length + p.installed.filter((i) => i.mod === 'card-reader').length;
-  const read = g.cards.filter((c) => c.startsWith('shard-')).length;
-  return readers === 1 && read < 3 ? `that is your only card reader, and ${3 - read} shard${read === 2 ? '' : 's'} still wait${read === 2 ? 's' : ''} to be read. no other reader lies out there.` : null;
+  // v2 floors: each floor's first card points the way down; past the furnace no card is left to read
+  const left = Math.max(0, 3 - (g.floor ?? 0));
+  return readers === 1 && left > 0 ? `that is your only card reader, and the cards below still point the way down. no other reader lies out there.` : null;
 }
 
 // the last card reader does not leave the bag by `drop` either

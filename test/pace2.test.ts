@@ -7,8 +7,6 @@ import type { Game } from '../src/core/types';
 import { spot } from '../src/world/gen';
 import { pieces, stage } from '../src/world/events';
 import { fresh, lootMod } from '../src/world/spawn';
-import { plan, SHARD_AT } from '../src/world/vectors';
-import { zoneOf } from '../src/world/zones';
 import { rng } from '../src/core/rng';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
@@ -89,14 +87,6 @@ describe('r2 pace', () => {
     expect([p.x, p.y]).toEqual([8.5, 8.5]);
   });
 
-  it('shards 2 and 3 lie nearer: about 4.1 and 5.8 chunks out, still one per zone', () => {
-    expect(SHARD_AT).toEqual([2.5, 4.1, 5.8]);
-    for (let seed = 1; seed <= 30; seed++) {
-      const p = plan(seed);
-      expect(p.shards.map(([cx, cy]) => zoneOf(cx, cy))).toEqual([1, 2, 3]);
-      expect(Math.hypot(...p.engine)).toBeLessThan(9);
-    }
-  });
 
   it('a setup installs what it wants from the inventory, taking out what it does not want', () => {
     const g = newGame(1);
