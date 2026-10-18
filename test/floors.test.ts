@@ -4,7 +4,8 @@ import { newGame, strike, tick } from '../src/core/game';
 import { CHUNK, Cell, cell, chunk, open } from '../src/core/grid';
 import { exec, VERBS } from '../src/core/verbs';
 import type { Game } from '../src/core/types';
-import { bossAt, bossDown, bossHooks, bossRoom, FLOORS, inside, KIT, LAST, onBossDown, origin, stairsAt, stairsChunk, STRIDE } from '../src/world/floors';
+import { bossAt, bossDown, bossRoom, FLOORS, goDown, inside, KIT, LAST, onBossDown, origin, stairsAt, stairsChunk, STRIDE } from '../src/world/floors';
+import { variantOf } from '../src/fight/bosses';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
 const run = (g: Game, s: number) => {
@@ -76,7 +77,7 @@ describe('v2 floors', () => {
     // sealed: descend refuses
     [g.player.x, g.player.y] = [sx, sy];
     run(g, 0.1);
-    const boss = g.ents.find((e) => e.enemy?.data.boss === 0)!;
+    const boss = g.ents.find((e) => e.enemy?.data.boss)!;
     expect(boss).toBeTruthy();
     expect(text(g)).toMatch(/wakes in the room before the way down/);
     exec(g, 'descend');
@@ -103,27 +104,23 @@ describe('v2 floors', () => {
     expect(text(g)).toMatch(/drinks what you carry: 5/);
   });
 
-  it('the bosses slice can take over the spawn (bossHooks.spawn); a boss of two falls when both do', () => {
-    const g = newGame(6);
-    const was = bossHooks.spawn;
-    bossHooks.spawn = (g, f, x, y) => {
-      const a = was(g, f, x, y) as never;
-      const b = was(g, f, x + 1, y) as never;
-      return [a, b];
-    };
-    try {
-      chunk(g, ...stairsChunk(6, 0));
-      [g.player.x, g.player.y] = bossAt(6, 0);
+  it('a boss of two (the forge twins) opens the way only when both fall', () => {
+    for (let seed = 1; seed < 200; seed++) {
+      const g = newGame(seed);
+      if (!variantOf(g, 3).mate) continue;
+      goDown(g, 3);
+      chunk(g, ...stairsChunk(seed, 3));
+      [g.player.x, g.player.y] = bossAt(seed, 3);
       run(g, 0.05);
-      const bs = g.ents.filter((e) => e.enemy?.data.boss === 0);
+      const bs = g.ents.filter((e) => e.enemy?.data.boss);
       expect(bs.length).toBe(2);
       strike(g, bs[0], 999);
-      expect(bossDown(g, 0)).toBe(false);
+      expect(bossDown(g, 3)).toBe(false);
       strike(g, bs[1], 999);
-      expect(bossDown(g, 0)).toBe(true);
-    } finally {
-      bossHooks.spawn = was;
+      expect(bossDown(g, 3)).toBe(true);
+      return;
     }
+    throw new Error('no seed rolled the twins');
   });
 
   it('the cradle\'s thin walls break with a weapon', () => {

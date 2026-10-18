@@ -9,7 +9,7 @@
 // bosses can all import it without a cycle.
 
 import { CHUNK, Cell, cell, chunkHook, ensure } from '../core/grid';
-import { dist, ENEMIES, killHooks, say, spawn, spawnEnemy, tickHooks } from '../core/game';
+import { dist, ENEMIES, say, spawn, tickHooks } from '../core/game';
 import { hash } from '../core/rng';
 import { verb } from '../core/verbs';
 import type { Entity, Game, Line } from '../core/types';
@@ -109,9 +109,9 @@ const cornerOf = (seed: number, f: number): [number, number] => {
   return [Math.sign(cx - f * STRIDE), Math.sign(cy)];
 };
 
-/** the boss room in local cells of its chunk: [x0, y0, x1, y1] inclusive. The heart's arena is wider */
-export const ROOM: [number, number, number, number] = [3, 3, 12, 12];
-export const ARENA: [number, number, number, number] = [2, 2, 13, 13];
+/** the boss room in local cells of its chunk: [x0, y0, x1, y1] inclusive, 13×13 open (the bosses want room). The heart's arena is wider */
+export const ROOM: [number, number, number, number] = [1, 1, 13, 13];
+export const ARENA: [number, number, number, number] = [1, 1, 14, 14];
 export const roomLocal = (f: number) => (f === LAST ? ARENA : ROOM);
 
 /** the boss room in world cells, inclusive */
@@ -157,31 +157,17 @@ export const bossWoke = (g: Game, f = floorOf(g)): boolean => S(g).woke.has(f);
 /** the stairs of a floor as an entity, once its chunk exists */
 export const stairsOf = (g: Game, f = floorOf(g)): Entity | undefined => g.ents.find((e) => e.data?.stairs && e.data.floor === f);
 
-// ---- bosses: src/fight/bosses.ts sets `bossHooks.spawn`; until it does, the old elites stand in
+// ---- bosses: src/fight/bosses.ts makes them; src/world/bosswire.ts joins the two slices (spawn here, down there)
 
-/** the stand-ins: an elite and its hp multiplier on top of the floor's foe scale */
-const STAND_IN: [string, number][] = [['warden', 0.6], ['warden', 1.1], ['abbot', 0.8], ['saint', 1], ['saint', 0.9]];
-function standIn(g: Game, f: number, x: number, y: number): Entity {
-  const [type, k] = STAND_IN[f];
-  const e = spawnEnemy(g, type, x, y);
-  e.enemy!.hp = Math.round(ENEMIES[type].hp * FLOORS[f].foe.hp * k);
-  e.enemy!.data.mult = FLOORS[f].foe.damage;
-  return e;
-}
-export const bossHooks: { spawn: (g: Game, floor: number, x: number, y: number) => Entity | Entity[] | void } = { spawn: standIn };
+export const bossHooks: { spawn: (g: Game, floor: number, x: number, y: number) => Entity | Entity[] | void } = { spawn: () => undefined };
 
-/** wake the floor's boss in its room: the bosses slice's own, or a stand-in */
-export function spawnBoss(g: Game, f: number, x: number, y: number): void {
+/** wake the floor's boss in its room (src/fight/bosses.ts spawnBoss, through bossHooks) */
+export function spawnBoss(g: Game, f: number, x: number, y: number): Entity | undefined {
   const out = bossHooks.spawn(g, f, x, y);
-  for (const e of Array.isArray(out) ? out : out ? [out] : []) {
-    if (!e.enemy) continue;
-    const d = e.enemy.data;
-    d.boss = f;
-    d.elite = true;
-    d.noticed = true;
-    d.post ??= [e.x, e.y];
-    d.maxHp ??= e.enemy.hp;
-  }
+  const list = Array.isArray(out) ? out : out ? [out] : [];
+  // the twin of a pair stands beside its lead: all of them know you are here
+  for (const e of g.ents) if (e.enemy?.data.boss && floorAt(e.x) === f) e.enemy.data.noticed = true;
+  return list[0];
 }
 
 /** the boss is down: the stairs open (the heart's: the god thaws). Safe to call twice */
@@ -189,8 +175,6 @@ export function onBossDown(g: Game, f = floorOf(g)): void {
   const s = S(g);
   if (s.down.has(f)) return;
   s.down.add(f);
-  // whatever else of its kind still stands in the room goes quiet: one boss, one death
-  g.ents = g.ents.filter((e) => !(e.enemy && e.enemy.data.boss === f));
   g.events.push({ type: 'boss-down', data: f });
   if (f === LAST) {
     if (g.ended) return;
@@ -207,11 +191,6 @@ export function onBossDown(g: Game, f = floorOf(g)): void {
   const name = STAIRS[FLOORS[f].stairs!].name;
   say(g, `THE WAY DOWN IS OPEN.`, [`${name} unseals behind where it stood. `, { text: 'descend', cmd: 'descend' }, ' when you stand at it.']);
 }
-
-killHooks.push((g, e) => {
-  const f = e.enemy?.data.boss;
-  if (typeof f === 'number' && !g.ents.some((o) => o.enemy?.data.boss === f)) onBossDown(g, f);
-});
 
 // ---- the stairs come with their chunk; the boss wakes when you step into its room
 
@@ -234,9 +213,8 @@ tickHooks.push((g) => {
   if (s.woke.has(f) || s.down.has(f) || !inRoom(g.seed, f, p.x, p.y)) return;
   s.woke.add(f);
   const [bx, by] = bossAt(g.seed, f);
-  spawnBoss(g, f, bx, by);
+  const boss = spawnBoss(g, f, bx, by);
   g.events.push({ type: 'boss', at: [bx, by], data: f });
-  const boss = g.ents.find((e) => e.enemy?.data.boss === f);
   const who = boss ? ENEMIES[boss.enemy!.type]?.name ?? 'something' : 'something';
   say(g, f === LAST ? `⚠ ${who} rises from the heart. this is the last of it.` : `⚠ ${who} wakes in the room before the way down. it will not let you pass.`);
 });
