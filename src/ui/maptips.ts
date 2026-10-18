@@ -6,7 +6,6 @@
 // (unseen, seen, seen through a wall, marked), and the illuminated atlas shows a note instead of a title.
 
 import { ENEMIES, itemName, say, tickHooks } from '../core/game';
-import { active, param } from '../core/mods';
 import { exec, VERBS, way } from '../core/verbs';
 import { cradleShop, firstLeg, HINTED } from '../tune/hints';
 import { cell, Cell, veinOf } from '../core/grid';
@@ -15,6 +14,7 @@ import { know, markAt, thinWall } from '../sight/know';
 import { does } from '../mods/describe';
 import type { Game } from '../core/types';
 import { mapHooks } from '../world/mind';
+import { walks } from '../mods/gait';
 
 const ACC = '#f0a050';
 /** the hint targets still lying out there: the dawn eye and the card reader until you hold one */
@@ -199,7 +199,7 @@ mapHooks.click.push((g, x, y) => {
   const send = (window as unknown as { thaw: { send(c: string): void } }).thaw.send;
   const leg = firstLeg(g, x + 0.5, y + 0.5);
   if (!leg) return say(g, 'no open way there that you know of.');
-  const goes = active(g, 'gait').some((i) => param(i, 'go', false));
+  const goes = walks(g);
   send(goes ? `go ${leg[0]} ${leg[1]}` : `crawl ${leg[0]}`);
   if (goes) trips.set(g, { x, y, hp: p.hp, at: `${Math.floor(p.x)},${Math.floor(p.y)}`, legs: 1, log: g.log.length });
   if (toldPilot.has(g)) return;
@@ -220,7 +220,7 @@ tickHooks.push((g) => {
   const here = `${Math.floor(p.x)},${Math.floor(p.y)}`;
   const typed = g.log.slice(t.log).some((l) => typeof l[0] === 'object' && l[0].text.startsWith('> '));
   const leg = firstLeg(g, t.x + 0.5, t.y + 0.5) && way.long(g, t.x + 0.5, t.y + 0.5);
-  if (hit || typed || here === t.at || here === `${t.x},${t.y}` || ++t.legs > 40 || !leg || !active(g, 'gait').some((i) => param(i, 'go', false))) return void trips.delete(g);
+  if (hit || typed || here === t.at || here === `${t.x},${t.y}` || ++t.legs > 40 || !leg || !walks(g)) return void trips.delete(g);
   t.at = here;
   exec(g, `go ${leg[0]} ${leg[1]}`);
   t.log = g.log.length;

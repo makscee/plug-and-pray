@@ -16,6 +16,7 @@ import type { Entity, Game, Inst } from '../core/types';
 import { view, VIEWS } from '../ui/views';
 import { mapHooks } from '../world/mind';
 import { floors } from '../world/gen';
+import { walks } from './gait';
 
 // --- the pilot -----------------------------------------------------------------------------------
 
@@ -71,6 +72,17 @@ interface Trip { to: [number, number]; near: Set<number>; hurtAt: number; inst: 
 const trips = new WeakMap<Game, Trip>();
 export const trip = (g: Game) => trips.get(g);
 
+/** the next three steps of the path bring you closer to a foe within 3.5 cells (or to `e`) */
+function toward(g: Game, e?: Entity, path = g.player.path): boolean {
+  const p = g.player;
+  const next = path.slice(0, 3);
+  const near = e ? [e] : foes(g).filter((o) => dist(o, p) < 3.5);
+  return near.some((o) => next.some(([x, y]) => Math.hypot(o.x - x, o.y - y) < dist(o, p) - 0.3));
+}
+
+/** the trip ends quietly (the keeper's door stops it: src/tune/door.ts) */
+export const endTrip = (g: Game): void => void trips.delete(g);
+
 function letGo(g: Game, why: string): void {
   trips.delete(g);
   const p = g.player;
@@ -91,6 +103,8 @@ export function goto(g: Game, tx: number, ty: number): boolean {
   if (!path.length) return say(g, 'the pilot knows no way there. walk it once, or look at it.'), false;
   if (!whole && Math.abs(path[path.length - 1][0] - tx - 0.5) + Math.abs(path[path.length - 1][1] - ty - 0.5) > Math.abs(sx - tx) + Math.abs(sy - ty) - 2)
     return say(g, 'the pilot knows no way closer. walk some of it first.'), false;
+  // v2r2 fun: it will not walk you at a foe at arm's length; away from one it goes
+  if (toward(g, undefined, path)) return say(g, 'the pilot will not walk you into them. away from them it goes.'), false;
   p.path = path;
   p.pace = param<number>(inst, 'pace', 2.5);
   trips.set(g, { to: [tx, ty], near: new Set(foes(g).filter((e) => dist(e, p) < 3.5).map((e) => e.id)), hurtAt: p.hurtAt, inst });
@@ -103,9 +117,16 @@ tickHooks.push((g) => {
   if (!t) return;
   const p = g.player;
   if (!working(g, t.inst)) return letGo(g, 'the pilot goes quiet. you stop.');
-  if (p.hurtAt > t.hurtAt) return letGo(g, 'struck. the pilot lets go.');
+  // v2r2 fun: it lets go only to keep you from walking into them; walking you away from a fight, it keeps on
+  if (p.hurtAt > t.hurtAt) {
+    t.hurtAt = p.hurtAt;
+    if (toward(g)) return letGo(g, 'struck. the pilot lets go.');
+  }
   const close = foes(g).find((e) => dist(e, p) < 3.5 && !t.near.has(e.id));
-  if (close) return letGo(g, 'something close. the pilot lets go.');
+  if (close) {
+    t.near.add(close.id);
+    if (toward(g, close)) return letGo(g, 'something close. the pilot lets go.');
+  }
   if (p.path.length && !open(g, p.path[0][0], p.path[0][1])) return letGo(g, 'the way is shut. the pilot lets go.');
   if (!p.path.length) {
     trips.delete(g);
@@ -136,7 +157,7 @@ verb('goto', {
 // `stop` belongs to the stepper; a pilot needs it too, and it ends the trip
 verb('stop', {
   help: 'stop walking',
-  when: (g) => active(g, 'gait').some((i) => param(i, 'go', false) || param(i, 'pilot', false)),
+  when: (g) => walks(g) || active(g, 'gait').some((i) => param(i, 'pilot', false)),
   run(g) {
     if (trips.get(g)) trips.delete(g);
     g.player.path = g.player.path.slice(0, 1);
@@ -236,7 +257,7 @@ function goCmd(g: Game, m: { x: number; y: number }): string {
   const [dx, dy] = [m.x - p.x, m.y - p.y];
   const ax = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n';
   const n = Math.max(1, Math.min(9, Math.round(Math.max(Math.abs(dx), Math.abs(dy)))));
-  return active(g, 'gait').some((i) => param(i, 'go', false)) ? `go ${ax} ${n}` : `crawl ${ax}`;
+  return walks(g) ? `go ${ax} ${n}` : `crawl ${ax}`;
 }
 
 verb('mark', {

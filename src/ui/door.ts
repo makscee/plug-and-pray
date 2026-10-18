@@ -40,7 +40,7 @@ frameHooks.push((g) => {
     `<p class="door-verdict ${c.ready ? 'ok' : 'no'}">${c.ready ? 'you look ready.' : `not ready: ${esc(c.why.join('; '))}.`}</p>`;
   const row = document.createElement('p');
   row.className = 'door-btns';
-  for (const [text, cmd] of [['save setup', 'save setup battle'], [c.ready ? 'go in' : 'go in anyway', `go ${d.dir} 3`]]) {
+  for (const [text, cmd] of [['save setup', 'save setup battle'], [c.ready ? 'go in' : 'go in anyway', 'go in']]) {
     const b = document.createElement('button');
     b.textContent = text;
     b.dataset.cmd = cmd;

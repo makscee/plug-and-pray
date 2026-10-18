@@ -17,6 +17,16 @@ family('gait', {
 });
 
 const can = (key: string) => (g: Game) => active(g, 'gait').some((i) => param(i, key, false));
+/** v2r2 fun: legs that walk a path, `go` and map clicks: the stepper, and the gyro heart too (it only took WASD) */
+export const walks = (g: Game): boolean => active(g, 'gait').some((i) => param(i, 'go', false) || param(i, 'free', false));
+/** the pace of a walked path: the stepper's, else the gyro heart's own speed */
+export const walkPace = (g: Game): number => {
+  if (can('go')(g)) return 2.5;
+  const gyro = active(g, 'gait').find((i) => param(i, 'free', false));
+  return gyro ? param<number>(gyro, 'speed', 2.5) : 0.5;
+};
+/** the keeper's door (src/tune/door.ts): standing at it, and `go in` */
+export const doorIn: { at: (g: Game) => boolean; run: (g: Game) => void } = { at: () => false, run: (g) => void say(g, 'go in where? there is no door here.') };
 
 /** queue up to k cells in direction d, stopping before a wall */
 export function walk(g: Game, d: string, k: number): number {
@@ -37,11 +47,12 @@ export function walk(g: Game, d: string, k: number): number {
 }
 
 verb('go', {
-  help: 'walk: go n 3 (n e s w, up to 9 cells)',
-  when: can('go'),
+  help: 'walk: go n 3 (n e s w, up to 9 cells); at a keeper\'s door, go in',
+  when: (g) => walks(g) || doorIn.at(g),
   run(g, [d, k]) {
+    if (d === 'in') return doorIn.run(g);
     if (!d || !DIRS[d[0]]) return say(g, 'go where? n e s w');
-    g.player.pace = 2.5;
+    g.player.pace = walkPace(g);
     const n = walk(g, d[0], Math.min(9, Math.max(1, Number(k) || 1)));
     if (!n) say(g, 'a wall.');
     else ending.set(g, d[0]);
@@ -85,7 +96,7 @@ const DIAG: Record<string, [number, number]> = { ne: [1, -1], se: [1, 1], sw: [-
 
 verb('face', {
   help: 'turn: face n (n ne e se s sw w nw)',
-  when: can('go'),
+  when: walks,
   run(g, [d]) {
     const v = d && (DIAG[d] ?? DIRS[d[0]]);
     if (!v) return say(g, 'face where? n ne e se s sw w nw');
@@ -95,7 +106,7 @@ verb('face', {
 
 verb('stop', {
   help: 'stop walking',
-  when: can('go'),
+  when: walks,
   run(g) {
     g.player.path = g.player.path.slice(0, 1);
   },

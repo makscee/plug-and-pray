@@ -10,6 +10,7 @@ import './ui/bigmap';
 import './ui/goal';
 import './tune/door';
 import './ui/door';
+import './ui/choice';
 import { start } from './audio';
 import { startKit } from './tune/start';
 import { powerMax } from './core/mods';

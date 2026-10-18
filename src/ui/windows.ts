@@ -90,6 +90,8 @@ export function open(id: string, title: string, at?: [number, number]): Win {
       put(el);
     };
     el.dataset.fresh = '1';
+    // v2r2 fun: a window the game files as a chip from the start (src/ui/index.ts: floor 1's helpers)
+    queueMicrotask(() => el.isConnected && !el.classList.contains('min') && startsDocked.test(el) && minimise(el, true));
     queueMicrotask(place);
     // v2r1 ux: measured before VT323 loaded, the map docked on 2 of 13 fresh starts at 1280x720
     document.fonts?.ready.then(() => (place(), mapBack()));
@@ -100,6 +102,9 @@ export function open(id: string, title: string, at?: [number, number]): Win {
   wins.set(id, w);
   return w;
 }
+
+/** v2r2 fun: seven windows were open on floor 1. A new module window this says yes to opens docked */
+export const startsDocked: { test: (el: HTMLElement) => boolean } = { test: () => false };
 
 /** windows start under the hp bar and the goal line (src/ui/goal.ts) */
 export const TOP = 54;
