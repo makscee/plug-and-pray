@@ -244,9 +244,35 @@ export function play(seed: number, o: Opts): Run {
     if ((P as any)._homing && g.t < (P as any)._homing) return 0.3;
     // a walker winding up next to you: step away
     for (const e of close) {
-      if (e.enemy!.data.windup && dist(e, P) < 1.4) {
+      if (e.enemy!.data.windup && e.enemy!.type !== 'mite' && dist(e, P) < 1.4) {
         const away = stepAway(e);
         if (away) return away;
+      }
+    }
+    // the elites' telegraphs (src/fight/index.ts): two cells from the abbot's sweep, aside from the warden's dash
+    for (const e of foes) {
+      const d = e.enemy!.data;
+      if (!d.windup || g.t >= (d.windup as number)) continue;
+      if (/both arms/.test(String(d.move)) && dist(e, P) < 2.6 && !P.path.length) {
+        const away = stepAway(e);
+        if (away) return away.replace(/ 1$/, ' 2');
+      }
+      // the saint's cross: off its rows and columns
+      if (/cross/.test(String(d.move))) {
+        const onStar = (x: number, y: number) => Math.abs(x + 0.5 - e.x) < 0.6 || Math.abs(y + 0.5 - e.y) < 0.6;
+        if (onStar(px, py)) {
+          const off = ([['n', 0, -1], ['s', 0, 1], ['e', 1, 0], ['w', -1, 0]] as const).find(([, ox, oy]) => cellAt(g, px + ox, py + oy) === Cell.floor && !onStar(px + ox, py + oy));
+          if (off) return `go ${off[0]} 1`;
+        }
+      }
+      if (d.dash) {
+        const [vx, vy] = d.dash as [number, number];
+        // already off its line: stay
+        if (Math.abs((P.x - e.x) * vy - (P.y - e.y) * vx) > 0.9 || P.path.length) continue;
+        const side = ([['n', 0, -1], ['s', 0, 1], ['e', 1, 0], ['w', -1, 0]] as const)
+          .filter(([, ox, oy]) => cellAt(g, px + ox, py + oy) === Cell.floor)
+          .sort((a, b) => Math.abs((px + b[1] + 0.5 - e.x) * vy - (py + b[2] + 0.5 - e.y) * vx) - Math.abs((px + a[1] + 0.5 - e.x) * vy - (py + a[2] + 0.5 - e.y) * vx))[0];
+        if (side) return `go ${side[0]} 1`;
       }
     }
     // a seraph has you in its line: step out
@@ -366,7 +392,7 @@ export function play(seed: number, o: Opts): Run {
         avoid = null;
         if (c !== 'listen') { why = 'hunt lamp ' + lamp.id; return c; }
         // no way round its lines: rush it straight while it cools
-        if (lamp.enemy!.readyAt - g.t > 1.2) {
+        if (lamp.enemy!.readyAt - g.t > 1.2 && !lamp.enemy!.data.windup) {
           const c2 = walkTo({ x: lamp.x, y: lamp.y, zone: zoneHere() });
           if (c2 !== 'listen') { why = 'rush lamp'; return c2; }
         }

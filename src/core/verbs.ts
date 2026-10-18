@@ -170,7 +170,12 @@ verb('listen', {
   help: 'what you hear around you',
   run(g) {
     const p = g.player;
-    const near = g.ents.filter((e) => dist(e, p) < 10).sort((a, b) => dist(a, p) - dist(b, p));
+    // a pack is told once, by its nearest (playtest r1: a lone mite and a swarm sounded the same)
+    const pack = (e: { x: number; y: number }) => g.ents.filter((o) => o.enemy && dist(o, e) < 2.5).length;
+    const near = g.ents
+      .filter((e) => dist(e, p) < 10)
+      .sort((a, b) => dist(a, p) - dist(b, p))
+      .filter((e, k, all) => !e.enemy || pack(e) < 3 || !all.slice(0, k).some((o) => o.enemy && dist(o, e) < 2.5));
     if (!near.length) return say(g, 'only the slow drip of something warm.');
     // compass words and cells, and a button for the next move (tuning #1328: "to the right" of a
     // facing you cannot see told a blind player nothing; crawl and go take compass words)
@@ -181,7 +186,7 @@ verb('listen', {
       const how = r < 1.6 ? 'within reach' : `${Math.round(r)} cells`;
       const ang = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
       const side = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(ang / 45) % 8];
-      const what = e.enemy ? 'something moving' : e.kind === 'printer' ? 'a machine humming' : 'something lying still';
+      const what = e.enemy ? (e.enemy.data.elite ? 'something large, keeping time' : pack(e) >= 3 ? `a swarm, ${pack(e)} or so` : 'something moving') : e.kind === 'printer' ? 'a machine humming' : 'something lying still';
       const ax = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n';
       const n = Math.max(1, Math.round(Math.max(Math.abs(dx), Math.abs(dy))));
       const cmd = r < 1.6 && e.kind === 'item' ? 'take' : goes ? `go ${ax} ${n}` : `crawl ${ax}`;

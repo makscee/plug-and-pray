@@ -75,7 +75,7 @@ export function spawnEnemy(g: Game, type: string, x: number, y: number): Entity 
 export function itemName(it: Item): string {
   if (it.kind === 'mod') return label(it);
   if (it.kind === 'res') return `${it.n} ${it.res}`;
-  return 'memory card';
+  return it.card.startsWith('shard') ? 'scripture shard' : 'memory card';
 }
 
 export const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);

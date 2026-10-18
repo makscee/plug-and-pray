@@ -144,3 +144,16 @@ canvas.map { cursor: crosshair; }
 .icon-sheet { position: fixed; inset: 0; z-index: 10000; background: var(--bg); overflow-y: auto; padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, 112px); gap: 10px 8px; align-content: start; }
 .icon-sheet figure { margin: 0; display: grid; justify-items: center; gap: 2px; }
 .icon-sheet figcaption { font-size: 16px; text-align: center; color: var(--dim); line-height: 1; }
+/* fight: the shard fanfare, a gold pulse and a big line (src/fight/ui.ts) */
+.shard-fanfare { position: fixed; inset: 0; pointer-events: none; z-index: 9001; display: grid; place-items: center; }
+.shard-fanfare .shard-pulse { position: absolute; inset: 0; background: radial-gradient(transparent 30%, #f0c040); animation: shardpulse 1.6s ease-out 2 both; }
+.shard-fanfare p { position: relative; margin: 0; padding: 10px 24px; font-size: 44px; letter-spacing: 4px; color: #ffd860; background: #000c; border: 2px solid #f0c040; text-shadow: 0 0 12px #f0c040; animation: shardline 4s ease-out both; }
+@keyframes shardpulse { from { opacity: 0.7; } to { opacity: 0; } }
+@keyframes shardline { 0% { opacity: 0; transform: scale(1.4); } 10% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+/* the death card: who took you, the last blows, the last frame, a lesson */
+.dead .last-frame { display: block; width: 192px; height: 192px; margin: 0 auto 14px; image-rendering: pixelated; border: 1px solid var(--dim); filter: grayscale(0.4) brightness(0.8); }
+.dead .killer { font-size: 26px; color: var(--hurt); }
+.dead .blows { color: var(--dim); }
+.dead .lesson { color: var(--fg); max-width: 520px; }
+.dead .keys { color: var(--dim); font-size: 14px; margin-top: 8px; }
+.dead > div { background: #0b0908; border: 1px solid var(--dim); padding: 20px 28px; max-width: min(640px, calc(100vw - 32px)); box-sizing: border-box; }

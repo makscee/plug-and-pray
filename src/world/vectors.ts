@@ -6,7 +6,7 @@
 
 import { CHUNK, chunkHook, open } from '../core/grid';
 import { dist, say, spawn, spawnEnemy, tickHooks } from '../core/game';
-import { ELITE } from '../fight';
+import { ELITE, GUARD_HINT } from '../fight';
 import { zoneAt, zoneOf } from './zones';
 import { active, def, param } from '../core/mods';
 import { hash, rng } from '../core/rng';
@@ -195,6 +195,9 @@ verb('read', {
       g.vectors.push(v);
       place(g, v);
       say(g, `  vector: ${bearing(g, v.x, v.y)}. ${v.what}.`);
+      // the fight slice's word on the shard's guard (playtest r1: the first elite came unannounced)
+      const guard = v.what === 'scripture shard' && GUARD_HINT[ELITE[Math.max(1, Math.min(3, zoneAt(v.x, v.y)))]];
+      if (guard) say(g, `  ${guard}`);
     }
     say(g, 'the card goes blank.');
   },

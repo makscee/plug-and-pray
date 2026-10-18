@@ -10,6 +10,8 @@ import './body/input';
 import './audio/hook';
 import './end';
 import type { Game } from './core/types';
+import { deathInfo } from './fight/death';
+import { summary } from './end/timeline';
 
 const params = new URLSearchParams(location.search);
 
@@ -52,20 +54,49 @@ function expose(): void {
 }
 expose();
 
-/** you stopped: what the run reached, and a new run */
+/** you stopped: who took you, the last blows, the last thing your eye saw, a lesson; and a new run
+ *  (Enter, R or Space wakes again) */
 function deathCard(): void {
   const d = document.createElement('div');
   d.className = 'dead';
   const box = document.createElement('div');
-  const s = g.stats;
-  box.innerHTML = `<p>you stop.</p><p>${s.far} cells out · ${s.mods.length} modules found · ${s.kills} put down · ${Math.round(g.t)} s</p>`;
+  const info = deathInfo(g);
+  // the last frame your first working eye showed (a 2D canvas: cheap to copy)
+  const eye = [...document.querySelectorAll<HTMLCanvasElement>('canvas.eye')].find((c) => c.width > 0);
+  let frame = '';
+  try {
+    if (eye) frame = `<img class="last-frame" alt="the last thing it saw" src="${eye.toDataURL()}">`;
+  } catch {
+    frame = '';
+  }
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  box.innerHTML =
+    frame +
+    `<p class="killer">you stop. ${esc(info.killer)}.</p>` +
+    (info.blows.length ? `<p class="blows">last blows: ${info.blows.map(esc).join(' · ')}</p>` : '') +
+    `<p class="lesson">what would have helped: ${esc(info.lesson)}</p>` +
+    `<p>${esc(summary(g))}</p>`;
   const b = document.createElement('button');
   b.textContent = 'wake again';
-  b.addEventListener('click', () => {
+  const again = () => {
+    removeEventListener('keydown', key, true);
     d.remove();
     restart();
-  });
-  box.append(b);
+  };
+  // keys wake you only after a moment, so a word typed as you fell does not
+  const shown = performance.now();
+  const key = (e: KeyboardEvent) => {
+    if (performance.now() - shown < 600 || (e.key !== 'Enter' && e.key !== ' ' && e.key.toLowerCase() !== 'r')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    again();
+  };
+  b.addEventListener('click', again);
+  addEventListener('keydown', key, true);
+  const keys = document.createElement('p');
+  keys.className = 'keys';
+  keys.textContent = 'enter, r or space';
+  box.append(b, keys);
   d.append(box);
   document.body.append(d);
 }

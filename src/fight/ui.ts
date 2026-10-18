@@ -1,11 +1,12 @@
 // The fight on screen: an hp bar always on top, and a red flash when you are hurt.
 import { ENEMIES } from '../core/game';
 import { active, param, powerMax, powerUsed } from '../core/mods';
-import type { Game } from '../core/types';
+import type { Game, Inst } from '../core/types';
 import { engaged } from '../sight/foes';
 import { frameHooks } from '../ui';
 import { pips } from '../ui/panels';
 import { hpText } from './report';
+import { fanfares } from './shard';
 import { clean } from '../tune/start';
 
 let bar: HTMLElement | null = null;
@@ -65,11 +66,49 @@ export function fightLine(g: Game): string {
   const bar = '▮'.repeat(filled) + '▯'.repeat(Math.max(0, n - filled));
   const more = engaged(g, 6).length - 1;
   const name = (ENEMIES[foe.enemy.type]?.name ?? 'something').replace(/^(a|an|the) /, '');
-  const autos = active(g, 'weapon').filter((i) => param(i, 'aim', 'auto') === 'auto');
-  const wait = autos.length ? Math.max(0, Math.min(...autos.map((i) => ((i.data.readyAt as number) ?? 0) - g.t))) : null;
-  const blow = wait === null ? 'no weapon on' : wait <= 0.05 ? 'your blow ready' : `your blow ${wait.toFixed(1)}s`;
-  return `⚔ ${name} ${bar}${more > 0 ? ` +${more}` : ''} · ${blow}`;
+  const r = Math.hypot(foe.x - g.player.x, foe.y - g.player.y);
+  const blow = weaponLine(g, r);
+  // a big blow coming: the elite's (or a walker's) windup, named
+  const big = engaged(g, 8).find((e) => e.enemy!.data.move && g.t < ((e.enemy!.data.windup as number) ?? 0));
+  const warn = big ? `⚠ ${big.enemy!.data.move} · ` : '';
+  return `${warn}⚔ ${name} ${bar}${more > 0 ? ` +${more}` : ''} · ${blow}`;
 }
+
+/** your side of the fight line: auto weapons' next blow, aimed ones' shot, or out of reach (`r` cells off) */
+export function weaponLine(g: Game, r: number): string {
+  const ws = active(g, 'weapon');
+  if (!ws.length) return 'no weapon on';
+  const wait = (i: Inst) => Math.max(0, ((i.data.readyAt as number) ?? 0) - g.t);
+  const range = (i: Inst) => param<number>(i, 'range', param<string>(i, 'aim', 'auto') === 'aimed' ? 6 : 1.3);
+  const inReach = ws.filter((i) => range(i) >= r);
+  if (!inReach.length) return 'out of reach';
+  const soon = (xs: Inst[]) => Math.min(...xs.map(wait));
+  const autos = inReach.filter((i) => param<string>(i, 'aim', 'auto') === 'auto');
+  const aims = inReach.filter((i) => param<string>(i, 'aim', 'auto') === 'aimed');
+  const parts: string[] = [];
+  if (autos.length) parts.push(soon(autos) <= 0.05 ? 'your blow ready' : `your blow ${soon(autos).toFixed(1)}s`);
+  if (aims.length) parts.push(soon(aims) <= 0.05 ? 'shoot ready' : `shoot ${soon(aims).toFixed(1)}s`);
+  return parts.join(' · ');
+}
+
+// the shard fanfare (src/fight/shard.ts): a big line and a gold pulse
+let seenShard = 0;
+let shardGame: unknown = null;
+frameHooks.push((g) => {
+  const f = fanfares.get(g);
+  if (shardGame !== g) {
+    shardGame = g;
+    seenShard = f?.n ?? 0;
+  }
+  if (!f || f.n <= seenShard) return;
+  seenShard = f.n;
+  document.querySelector('.shard-fanfare')?.remove();
+  const el = document.createElement('div');
+  el.className = 'shard-fanfare';
+  el.innerHTML = `<div class="shard-pulse"></div><p>SCRIPTURE SHARD ${f.n} of 3</p>`;
+  document.body.append(el);
+  setTimeout(() => el.remove(), 4200);
+});
 
 // ?scene=fight stages a fight in the start chamber for judging: lens, stepper, nail psalm, frost coat
 // and mirror ward on, a seraph lamp down the row, three mites and an ossuary walker coming.

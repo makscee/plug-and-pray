@@ -280,6 +280,8 @@ function puffAt(k: number, heat: boolean): THREE.Texture {
 export function frameOf(g: Game, e: Entity): number {
   const d = e.enemy!.data;
   if (typeof d.hitAt === 'number' && g.t - d.hitAt < 0.15) return 3;
+  // winding up (a mite rearing, a walker's arm, an elite's move): the attack frame, held (src/fight/index.ts)
+  if (typeof d.windup === 'number' && g.t < d.windup) return 2;
   const s = g.t - struckAt(e);
   if (s >= 0 && s < 0.35) return 2;
   return Math.floor(g.t * 3 + e.id * 0.37) % 2;

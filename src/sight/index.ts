@@ -255,7 +255,7 @@ view('camera', (el, inst, g) => {
   return {
     update(g) {
       const warm = inst.on && g.t >= inst.readyAt;
-      const f = !inst.on ? 'off' : !warm ? 'warming up…' : 'facing ' + ['north', 'east', 'south', 'west'][facing(g.player.dir)];
+      const f = !inst.on ? 'off' : !warm ? 'warming up…' : 'facing ' + ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][((Math.round(g.player.dir / (Math.PI / 4)) % 8) + 8) % 8];
       if (label.textContent !== f) label.textContent = f;
       const hurt = g.t - g.player.hurtAt < 0.3;
       canvas.style.outline = hurt ? '3px solid #e03828' : '';
