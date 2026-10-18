@@ -15,13 +15,13 @@ canvas.eye.scope { width: 240px; height: 135px; }
 #bigview .big-boss[hidden] { display: none; }
 #bigview .big-boss .bar { display: block; width: 100%; height: 12px; margin-top: 2px; border-color: #ff6a50; }
 #bigview .big-boss .bar b { background: #e03828; }
-#bigview .big-warn { position: absolute; left: 50%; top: 32%; transform: translateX(-50%); padding: 2px 12px; font-size: 26px; color: #ff6a50; background: #000a; border: 1px solid #ff6a50; white-space: nowrap; pointer-events: none; animation: bigwarn 0.5s steps(2) infinite; }
+#bigview .big-warn { position: absolute; left: 50%; top: 32%; transform: translateX(-50%); padding: 2px 12px; font-size: 26px; color: var(--danger, #ff6a50); background: #000a; border: 1px solid var(--danger, #ff6a50); white-space: nowrap; pointer-events: none; animation: bigwarn 0.5s steps(2) infinite; }
 #bigview .big-warn[hidden] { display: none; }
 @keyframes bigwarn { 50% { border-color: transparent; } }
 #bigview .big-hud { position: absolute; right: 12px; bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 6px 10px; background: #000a; border: 1px solid var(--line); pointer-events: none; font-size: 20px; }
 #bigview .big-hud .hp.low { color: var(--hurt); }
 #bigview .big-hud .w small { color: var(--dim); font-size: 16px; }
-#bigview .big-hud .w em { font-style: normal; color: var(--acc); }
+#bigview .big-hud .w em { font-style: normal; color: var(--good, var(--acc)); }
 #bigview .big-hud .w.none { color: var(--hurt); }
 #bigview .bar { display: inline-block; width: 110px; height: 9px; border: 1px solid var(--dim); vertical-align: middle; }
 #bigview .bar b { display: block; height: 100%; background: var(--fg); }

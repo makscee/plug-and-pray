@@ -331,17 +331,18 @@ export function play(seed: number, o: Opts): Run {
     if (!P.path.length) {
       const bolt = g.ents.find((sh) => {
         const d = sh.data as { shot?: boolean; foe?: boolean; kind?: string; vx: number; vy: number } | undefined;
-        if (!d?.shot || !d.foe || !d.kind || dist(sh, P) > 3.5) return false;
+        if (!d?.shot || !d.foe || !d.kind || dist(sh, P) > 2.2) return false;
         const v = Math.hypot(d.vx, d.vy) || 1;
         const [rx, ry] = [P.x - sh.x, P.y - sh.y];
-        return rx * d.vx + ry * d.vy > 0 && Math.abs(rx * d.vy - ry * d.vx) / v < 0.8;
+        return rx * d.vx + ry * d.vy > 0 && Math.abs(rx * d.vy - ry * d.vx) / v < 0.5;
       });
       if (bolt) {
         const d = bolt.data as { vx: number; vy: number };
         const v = Math.hypot(d.vx, d.vy) || 1;
         const off = (x: number, y: number) => Math.abs((x + 0.5 - bolt.x) * d.vy - (y + 0.5 - bolt.y) * d.vx) / v;
         const side = ([['n', 0, -1], ['s', 0, 1], ['e', 1, 0], ['w', -1, 0]] as const)
-          .filter(([, ox, oy]) => cellAt(g, px + ox, py + oy) === Cell.floor)
+          // never into a foe's reach
+          .filter(([, ox, oy]) => cellAt(g, px + ox, py + oy) === Cell.floor && !foes.some((e) => dist(e, { x: px + ox + 0.5, y: py + oy + 0.5 }) < 1.8))
           .sort((a, b) => off(px + b[1], py + b[2]) - off(px + a[1], py + a[2]))[0];
         if (side && off(px + side[1], py + side[2]) > 0.6) { why = 'dodge a bolt'; return `go ${side[0]} 1`; }
       }

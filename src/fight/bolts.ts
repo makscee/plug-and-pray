@@ -100,20 +100,20 @@ export function arm(): void {
   wrap('seraph', (g, e, dt, base) => {
     if (floorNow(g) < RANGED_FROM) return base(g, e, dt);
     const d = ENEMIES.seraph;
-    aimed(g, e, { reach: d.sense, every: d.cooldown, windup: 0.6, move: 'seraph draws a bolt', shoot: () => bolt(g, e, aimAt(g, e)) });
+    aimed(g, e, { reach: d.sense, every: d.cooldown + 1, windup: 0.6, move: 'seraph draws a bolt', shoot: () => bolt(g, e, aimAt(g, e)) });
   });
   // pyre seraphs fan three: the middle one at you, so step wide
   wrap('pyre', (g, e, dt, base) => {
     if (floorNow(g) < RANGED_FROM) return base(g, e, dt);
     const d = ENEMIES.pyre;
-    aimed(g, e, { reach: d.sense, every: d.cooldown + 0.8, windup: 0.6, move: 'pyre fans its flame', shoot: () => spread(g, e, 3, 0.55, { dmg: d.damage * 0.6 }) });
+    aimed(g, e, { reach: d.sense, every: d.cooldown + 1.2, windup: 0.6, move: 'pyre fans its flame', shoot: () => spread(g, e, 3, 0.55, { dmg: d.damage * 0.45 }) });
   });
   // furnace walkers spit slag from afar, then walk in for the arm
   wrap('walker', (g, e, dt, base) => {
     if (floorNow(g) < 3) return base(g, e, dt);
     if (e.enemy!.data.windup && typeof e.enemy!.data.aimAt !== 'number') return base(g, e, dt); // its arm is up
     const d = ENEMIES.walker;
-    if (aimed(g, e, { reach: 6, min: 2.5, every: 4.5, windup: 0.7, move: 'walker gathers slag', shoot: () => bolt(g, e, aimAt(g, e), { kind: 'slag', dmg: d.damage * 0.6 }) })) return;
+    if (aimed(g, e, { reach: 5.5, min: 2.5, every: 6, windup: 0.7, move: 'walker gathers slag', shoot: () => bolt(g, e, aimAt(g, e), { kind: 'slag', dmg: d.damage * 0.45 }) })) return;
     base(g, e, dt);
   });
 }

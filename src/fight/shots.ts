@@ -42,7 +42,11 @@ export function tickShots(g: Game, dt: number): void {
       s.x += (d.vx * dt) / n;
       s.y += (d.vy * dt) / n;
       d.left -= (speed * dt) / n;
-      if (!open(g, s.x, s.y) || d.left <= 0) gone = true;
+      if (!open(g, s.x, s.y) || d.left <= 0) {
+        gone = true;
+        // your shot struck nothing: a soft whiff, never the hit sound (Maks 10-18)
+        if (!d.foe) g.events.push({ type: 'miss', at: [s.x, s.y] });
+      }
       else if (d.foe) {
         if (Math.hypot(s.x - g.player.x, s.y - g.player.y) < (d.r ?? HIT)) {
           const from = g.ents.find((e) => e.id === d.src) ?? { id: d.src, kind: 'enemy' as const, x: s.x, y: s.y, enemy: { type: d.type ?? 'seraph', hp: 0, readyAt: 0, data: {} } };

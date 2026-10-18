@@ -11,6 +11,7 @@ import type { Entity, Game, Inst } from '../core/types';
 import { aimed, shotCooldown, volley } from '../fight/aim';
 import { haste } from '../mods/weapon';
 import { mouseAims } from '../fight/eye';
+import { armed, warnUnarmed } from '../fight/unarmed';
 import { SPRITES } from '../sight/sprites';
 
 /** the FPS eye that is on and warm: the one with the highest mark */
@@ -145,6 +146,8 @@ export function lunge(g: Game): boolean {
   const s = fps(g);
   const p = g.player;
   if (g.t - s.lungeAt < 0.35) return false;
+  // nothing to strike with: say so plainly (v2-ui), once a moment, and still throw yourself forward
+  if (!armed(g) && g.t - s.lungeAt > 2) warnUnarmed(g);
   s.lungeAt = g.t;
   const fx = Math.sin(p.dir), fy = -Math.cos(p.dir);
   push(g, fx, fy, LUNGE.cells / LUNGE.secs, LUNGE.secs);
@@ -233,7 +236,7 @@ verb('lunge', {
   help: 'fps eye: throw yourself forward; melee weapons strike what you face (key f)',
   when: (g) => !!fpsEye(g),
   run(g) {
-    if (!lunge(g) && !active(g, 'weapon').some((i) => param<string>(i, 'aim', 'auto') === 'auto')) say(g, 'you lunge at nothing: no melee weapon on.');
+    if (!lunge(g) && armed(g) && !active(g, 'weapon').some((i) => param<string>(i, 'aim', 'auto') === 'auto')) say(g, 'you lunge, but nothing you wear strikes up close: click shoots.');
   },
 });
 

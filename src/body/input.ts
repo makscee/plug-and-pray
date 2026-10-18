@@ -225,6 +225,8 @@ addEventListener('click', (e) => {
   if (document.pointerLockElement) {
     // locked: a click fires an aimed weapon, when the fight slice has added one
     if (VERBS.shoot && (!VERBS.shoot.when || VERBS.shoot.when(thaw().g))) thaw().send('shoot');
+    // no weapon on at all: the click says so (Maks 10-18: it felt like hitting)
+    else if (VERBS.attack && !active(thaw().g, 'weapon').length) thaw().send('attack');
     return;
   }
   const g = thaw()?.g;

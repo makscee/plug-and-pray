@@ -188,6 +188,8 @@ let cost = 0;
 frameHooks.push((g) => {
   const on = bigOn(g);
   document.body.classList.toggle('big', on);
+  // dead or done: the mouse is yours again for the card
+  if (g.ended && document.pointerLockElement?.id === 'bigview') document.exitPointerLock?.();
   if (!on) {
     if (big) big.root.hidden = true;
     if (document.pointerLockElement && big?.root.contains(document.pointerLockElement)) document.exitPointerLock?.();
