@@ -64,6 +64,11 @@ export function label(item: { mod: string; roll?: Roll }): string {
   return (item.roll ? item.roll.tag + ' ' : '') + def(item).name;
 }
 
+/** slots it fills on the board: most take one, a few heavy ones two (`params.size`, v2 asks) */
+export const size = (m: { mod: string }): number => Math.max(1, Math.round(Number(def(m).params.size ?? 1)));
+/** slots the installed modules fill */
+export const slotsUsed = (g: Game): number => g.player.installed.reduce((s, i) => s + size(i), 0);
+
 export const working = (g: Game, inst: Inst): boolean => inst.on && g.t >= inst.readyAt;
 
 /** installed modules of a family that are on and warm */

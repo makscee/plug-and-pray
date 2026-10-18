@@ -1,6 +1,6 @@
 // The fight on screen: an hp bar always on top, and a red flash when you are hurt.
 import { ENEMIES } from '../core/game';
-import { active, param, powerMax, powerUsed } from '../core/mods';
+import { active, param, powerMax, powerUsed, slotsUsed } from '../core/mods';
 import type { Game, Inst } from '../core/types';
 import { engaged } from '../sight/foes';
 import { frameHooks } from '../ui';
@@ -37,7 +37,7 @@ frameHooks.push((g) => {
   const [b, f] = els();
   const p = g.player;
   const text = `${hpText(p.hp)}/${p.maxHp}`;
-  const [su, pu, pm] = [p.installed.length, powerUsed(g), powerMax(g)];
+  const [su, pu, pm] = [slotsUsed(g), powerUsed(g), powerMax(g)];
   const fight = fightLine(g);
   // Maks 10-18: no weapon on with foes near is a red tag that stays until you arm
   const bare = !armed(g) && foesNear(g, 8);
