@@ -9,6 +9,7 @@ import './printer';
 import './drain';
 import './mind';
 import './stage';
+import './jump';
 import './events';
 import './secrets';
 import './finds';
