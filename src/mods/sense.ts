@@ -70,16 +70,6 @@ export function canHit(g: Game, e: Entity): boolean {
   return dist(e, g.player) <= REACH || perceives(g, e);
 }
 
-/** an eye's frame rate caps how often auto weapons strike what only eyes show: one strike per
- *  `FRAMES` frames of the fastest eye that shows it (no cap in touch, or when a scanner finds it).
- *  So the pinhole (3 fps) bites at most every 2 s past reach, the dawn eye every 0.75 s. */
-export const FRAMES = 6;
-export function strikeGap(g: Game, e: Entity): number {
-  if (!e.enemy || dist(e, g.player) <= REACH || active(g, 'scanner').some((i) => scannerSees(g, i, e))) return 0;
-  const fps = Math.max(0, ...active(g, 'camera').filter((i) => eyeSees(g, i, e)).map((i) => param<number>(i, 'fps', 1)));
-  return fps ? FRAMES / fps : 0;
-}
-
 /** a mimic seen for what it is: the lodestone pulls at it, sonar hears it breathe. It wakes far off. */
 export function unmasks(g: Game, e: Entity): boolean {
   const r = dist(e, g.player);

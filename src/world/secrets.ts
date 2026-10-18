@@ -151,15 +151,13 @@ export function hide(seed: number, c: Chunk): Secret | null {
 }
 
 /** the first reveal is not left to luck: the printer's chunk west of the start always has a scratched
- *  wall, and a carrion eye lies in front of it, so a new player meets a hidden layer in the first minutes */
+ *  wall, so the first black & white or outline eye has something to read near home (a free carrion eye
+ *  beside it cost the sims 7 of 40 thaws: the brain wore it into the dark) */
 export const FIRST = [-1, 0];
 
 chunkHook((g, c) => {
   const s = hide(g.seed, c);
-  if (!s) return;
-  secrets(g).push(s);
-  if (c.cx !== FIRST[0] || c.cy !== FIRST[1] || s.kind !== 'script') return;
-  spawn(g, { kind: 'item', x: s.x + 0.5 + s.fx, y: s.y + 0.5 + s.fy, item: { kind: 'mod', mod: 'carrion-eye' } });
+  if (s) secrets(g).push(s);
 });
 
 // ---- finding: an eye with the right filter, on and warm, near enough and with a line to it

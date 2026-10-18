@@ -8,7 +8,6 @@ import type { Game } from '../src/core/types';
 import { hide, secrets, type Secret } from '../src/world/secrets';
 import { generate } from '../src/world/gen';
 import { codexOf, firstSight } from '../src/sight/codex';
-import { strikeGap } from '../src/mods/sense';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
 const run = (g: Game, s: number) => {
@@ -115,13 +114,12 @@ describe('secrets', () => {
     expect(text(g)).toMatch(/floor plate/);
   });
 
-  it('every seed hides a scratched wall and a carrion eye by the printer west of the start', () => {
+  it('every seed hides a scratched wall by the printer west of the start', () => {
     for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
       const g = newGame(seed);
       chunk(g, -1, 0);
       const s = secrets(g).find((x) => x.kind === 'script' && Math.floor(x.x / 16) === -1);
       expect(s).toBeTruthy();
-      expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === 'carrion-eye' && Math.floor(e.x / 16) === -1)).toBe(true);
     }
   });
 
@@ -136,19 +134,5 @@ describe('secrets', () => {
     expect(firstSight(g, inst, 9)).toBe(false);
     expect(codexOf(g)).toEqual(['mite']);
     expect(text(g)).toMatch(/first sight · choir mite/);
-  });
-
-  it("an eye's fps caps auto strikes past reach, not in touch", () => {
-    const g = newGame(1);
-    g.ents = [];
-    const p = g.player;
-    for (let y = 5; y <= 8; y++) expect(cell(g, 8, y)).toBe(Cell.floor);
-    const far = { id: 1, kind: 'enemy' as const, x: p.x, y: p.y - 3, enemy: { type: 'mite', hp: 1, readyAt: 0, data: {} } };
-    const near = { ...far, id: 2, y: p.y - 1 };
-    wear(g, 'pinhole-eye');
-    expect(strikeGap(g, far)).toBeCloseTo(2);
-    expect(strikeGap(g, near)).toBe(0);
-    wear(g, 'dawn-eye');
-    expect(strikeGap(g, far)).toBeCloseTo(0.75);
   });
 });
