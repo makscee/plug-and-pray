@@ -41,6 +41,8 @@ interface GridCell {
   rar?: string;
   /** it can be dragged */
   drag?: boolean;
+  /** v2r2 fun: the "+N more" (or "fewer") cell that opens or folds a long inventory */
+  more?: string;
 }
 interface Detail {
   icon: Of;
@@ -65,6 +67,9 @@ const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].whe
 export const PANEL_W = 260;
 /** grid icon scale: 16 px drawn at ×2 */
 const SCALE = 2;
+/** v2r2 fun: an inventory longer than this folds to its top INV_TOP cells and a "+N more" */
+const INV_MAX = 16;
+const INV_TOP = 15;
 
 /** pips for a resource: used of max, red when full */
 export function pips(used: number, max: number): string {
@@ -110,6 +115,8 @@ export class Panels {
   drag: { id: string; key: string; x0: number; y0: number; dx: number; dy: number; ghost?: HTMLElement; from?: DOMRect } | null = null;
   /** a drag just ended: the click it ends in is not a click */
   dragged = false;
+  /** v2r2 fun: a long inventory shows its top INV_TOP cells and "+N more" until opened */
+  invAll = false;
 
   constructor(g: Game, send: Send) {
     this.g = g;
@@ -215,7 +222,17 @@ export class Panels {
       cells.push(c);
       if (sel === s) detail = { icon: it, title: it.kind === 'res' ? `${it.res} ×${it.n}` : c.title.split(' · ')[0], lines, buttons, ...(it.kind === 'mod' ? { rar: rarOf(it), sub: titleOf(it) } : {}) };
     }
-    return [cells, detail];
+    // v2r2 fun: 23 icons by floor 3 buried what mattered. Past INV_MAX: resources and cards first, then the
+    // modules you could put in, then the rest; the top INV_TOP show, "+N more" opens the whole bag
+    if (cells.length <= INV_MAX) return [cells, detail];
+    const rank = (c: GridCell) => (!c.mod ? 0 : c.dim ? 2 : 1);
+    const sorted = cells.map((c, k) => [c, k] as const).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([c]) => c);
+    if (this.invAll) return [[...sorted, { sel: '-less', title: 'fold the bag again', more: '−' }], detail];
+    const top = sorted.slice(0, INV_TOP);
+    // the selected one stays in sight
+    const picked = sorted.find((c) => c.sel === s);
+    if (picked && !top.includes(picked)) top[INV_TOP - 1] = picked;
+    return [[...top, { sel: '+more', title: `${cells.length - INV_TOP} more: show the whole bag`, more: `+${cells.length - INV_TOP}` }], detail];
   }
 
   near(g: Game): Row[] {
@@ -439,6 +456,20 @@ export class Panels {
     const gridEl = document.createElement('div');
     gridEl.className = 'grid';
     for (const c of cells) {
+      if (c.more) {
+        const b = document.createElement('button');
+        b.className = 'cell more';
+        b.title = c.title;
+        b.dataset.key = c.sel;
+        b.textContent = c.more;
+        b.addEventListener('click', () => {
+          this.invAll = c.sel === '+more';
+          this.keys.delete(id);
+          this.frame();
+        });
+        gridEl.append(b);
+        continue;
+      }
       const b = document.createElement('button');
       b.className = 'cell' + (c.icon ? '' : ' socket') + (c.state ? ' st-' + c.state : '') + (c.dim ? ' dim' : '') + (this.sel.get(id) === c.sel ? ' sel' : '') +
         (c.rar ? ' rar-' + c.rar : '') + (c.span && c.span > 1 ? ' wide' : '') + (this.drag?.ghost && this.drag.id === id && this.drag.key === c.sel ? ' lifted' : '');

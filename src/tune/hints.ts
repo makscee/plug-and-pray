@@ -8,10 +8,11 @@ import { active, def, label, param, slotsUsed } from '../core/mods';
 import { cells, dist, say, tickHooks } from '../core/game';
 import { canRead, carriesReader } from '../world/vectors';
 import { bossDown, floorAt, FLOORS, floorOf, LAST, STAIRS, stairsAt } from '../world/floors';
-import { lightest, makeRoom } from '../body';
+import { lightest, makeRoom, MAX_SLOTS } from '../body';
 import { DIRS, open } from '../core/grid';
 import { VERBS, verb, way } from '../core/verbs';
 import { route } from '../mods/pilot';
+import { walks } from '../mods/gait';
 import type { Entity, Game, Line } from '../core/types';
 
 const told = new WeakSet<Game>();
@@ -108,7 +109,8 @@ function toCell(g: Game, x: number, y: number, sound: string, act = 'take'): Lin
   if (Math.abs(Math.floor(x) - Math.floor(p.x)) + Math.abs(Math.floor(y) - Math.floor(p.y)) <= 1) return [`${sound}: here. `, { text: act, cmd: act }];
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
   const [ax, n] = way.long(g, x, y);
-  const cmd = active(g, 'gait').some((i) => param(i, 'go', false)) ? `go ${ax} ${n}` : `crawl ${ax}`;
+  // v2r2 fun: with a pilot as legs, its goto where it knows the way; the gyro heart walks `go` too
+  const cmd = VERBS.goto?.when?.(g) && g.seen.has(`${Math.floor(x)},${Math.floor(y)}`) ? `goto ${Math.floor(x)} ${Math.floor(y)}` : walks(g) ? `go ${ax} ${n}` : `crawl ${ax}`;
   return [`${sound}, ${cells(Math.round(Math.hypot(dx, dy)))} ${word}. first: `, { text: cmd, cmd }];
 }
 
@@ -200,7 +202,8 @@ function after(g: Game): Line[] {
   if (v) out.push(toCell(g, v.x, v.y, `the ${v.what}`));
   // a loose module of a kind you don't wear yet (a pinhole swapped out for the dawn eye is no reason)
   const loose = p.inv.some((i) => i.kind === 'mod' && !p.installed.some((o) => def(o).family === def(i).family));
-  if (loose && slotsUsed(g) >= p.slots) {
+  // v2r2 fun: at the cap no printer sells slots, so it says nothing
+  if (loose && slotsUsed(g) >= p.slots && p.slots < MAX_SLOTS) {
     const pr = g.ents.filter((e) => e.kind === 'printer' && !e.data?.shop).sort((a, b) => dist(a, p) - dist(b, p))[0];
     out.push(pr ? toCell(g, pr.x, pr.y, 'slots are full; a printer sells slots', 'print') : ['slots are full; a printer sells slots.']);
   }

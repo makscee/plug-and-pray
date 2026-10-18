@@ -108,7 +108,12 @@ verb('print', {
       pay(g, c);
       const made = ((e.data!.made as number) ?? 0) + 1;
       e.data!.made = made;
-      const it: Item = lootMod(rng(hash(g.seed, 51, e.id, made)), far, fam, !g.floor);
+      // v2r2 fun: never a copy of what you hold (two spark fingers from `print weapon`), unless nothing else is left
+      const r = rng(hash(g.seed, 51, e.id, made));
+      const own = (m: string) => g.player.inv.some((o) => o.kind === 'mod' && o.mod === m) || g.player.installed.some((o) => o.mod === m);
+      let it: Item = lootMod(r, far, fam, !g.floor);
+      // (a few tries at its own reach, then a little deeper: the cradle's only melee weapon is the spark finger)
+      for (let k = 0; k < 16 && it.kind === 'mod' && own(it.mod); k++) it = lootMod(r, far + Math.max(0, k - 7), fam, !g.floor);
       addItem(g, it);
       g.events.push({ type: 'print', at: [e.x, e.y] });
       if (it.kind === 'mod') say(g, ['the printer spits out: ', { text: label(it), cmd: `install ${label(it)}` }]);
