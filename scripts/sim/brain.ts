@@ -133,6 +133,8 @@ function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantRead
       // the eye that perceives in the zone ahead (src/mods/sense.ts): dark ossuary, the hum, the furnace's glare
       const f = param<string>(it, 'filter', 'color');
       let v = 200 + p('res') / 10 + p('fps');
+      // v2-view: the reins aim through the base eye; a wide scope is the eye a person takes them with on floors 3 and 4
+      if (FPS && zone >= 2 && p('wide')) v += 100;
       if (zone === 2) v += f === 'sonar' || f === 'edge' || f === 'heat' ? 60 : f === '1bit' ? 30 : 0;
       if (deep && (f === 'sonar' || f === 'heat')) v += 25;
       if (zone === 3 && f === 'heat') v -= 90;

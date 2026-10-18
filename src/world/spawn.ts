@@ -27,8 +27,9 @@ export function lootMod(r: Rng, far: number, family?: string, cradle = false): I
   const z = zoneFar(far);
   const maxTier = ZONES[z].tier;
   // r2 econ: an aimed print (`print weapon`) rolls within one family
-  // v2 balance (r1 pace): the cradle is melee only; the first ranged weapon is the choir nave's (its kit)
-  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique' && (z >= 3 || !FURNACE_KIT.includes(m.id)) && (family ? m.family === family : !kitOnly(m)) && !(cradle && ranged(m)));
+  // v2 balance (r1 pace): the cradle is melee only; the first ranged weapon is the choir nave's (its kit).
+  // v2-view: and it rolls no eye: the first is the one find by the landing (the pinhole)
+  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique' && (z >= 3 || !FURNACE_KIT.includes(m.id)) && (family ? m.family === family : !kitOnly(m)) && !(cradle && (ranged(m) || (!family && m.family === 'camera'))));
   const own = pool.filter((m) => (z >= 3 ? FURNACE_KIT.includes(m.id) : m.tier === maxTier));
   const m = r.pick(maxTier >= 1 && own.length && r.chance(0.6) ? own : pool);
   const item: Item = { kind: 'mod', mod: m.id };
@@ -122,7 +123,10 @@ export function fill(g: Game, c: Chunk): void {
   if (is(c, o.eye)) {
     // the first eye, one chunk out (v2-view: the run starts blind, with a map and a radar; the dawn eye is floor 2's)
     const [x, y] = cellIn(r, c, g.seed);
-    spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'pinhole-eye' } });
+    // the far side of its chunk, so the blind walk to it is a couple of minutes (its own rng: the chunk stays as it was)
+    const re = rng(hash(g.seed, 71, c.cx, c.cy));
+    const [ex, ey] = [[x, y], ...Array.from({ length: 5 }, () => cellIn(re, c, g.seed))].reduce((a, b) => (Math.hypot(b[0] - 8.5, b[1] - 8.5) > Math.hypot(a[0] - 8.5, a[1] - 8.5) ? b : a));
+    spawn(g, { kind: 'item', x: ex, y: ey, item: { kind: 'mod', mod: 'pinhole-eye' } });
   }
   if (is(c, o.reader)) {
     const [x, y] = cellIn(r, c, g.seed);

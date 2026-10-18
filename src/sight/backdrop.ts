@@ -190,6 +190,7 @@ function drawBase(g: Game, b: Bd, inst: Inst): void {
   const h = rowsOf(inst);
   const w = across(h);
   const fresh = b.baseOf !== inst.uid;
+  if (fresh) b.base?.cv.remove();
   b.base = pic(b, fresh ? null : b.base, w, h, 'eye bd-base');
   b.baseOf = inst.uid;
   const p = b.base;
@@ -427,6 +428,7 @@ function overlay(g: Game, b: Bd, base: Inst | null): void {
   }
   // what is after you outside the view: an arrow on that edge
   const out = foeOutside(g, fov, param<string>(base, 'filter', 'color') === 'heat' || [...b.layers.keys()].some((uid) => g.player.installed.find((i) => i.uid === uid && param<string>(i, 'filter', '') === 'heat')));
+  if ((b.root.dataset.arrow ?? '') !== (out?.text ?? '')) b.root.dataset.arrow = out?.text ?? '';
   if (out) {
     c.font = '24px VT323, monospace';
     const tw = c.measureText(out.text).width;

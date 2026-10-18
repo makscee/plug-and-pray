@@ -228,6 +228,16 @@ function slide(g: Game, vx: number, vy: number, dt: number): void {
   if (open(g, p.x - R, ny + Math.sign(vy) * R) && open(g, p.x + R, ny + Math.sign(vy) * R)) p.y = ny;
 }
 
+/** the reins bring their own socket: the first time you wear a pair, your body grows a slot for them (v2-view: the
+ *  scope used to be the eye and the fps in one module; the sims lost a weapon's slot to the reins without it) */
+const socketed = new WeakSet<Game>();
+tickHooks.push((g) => {
+  if (socketed.has(g) || !g.player.installed.some((i) => param<string>(i, 'what', '') === 'reins')) return;
+  socketed.add(g);
+  g.player.slots += 1;
+  say(g, `the reins bring their own socket: slots ${g.player.slots}.`);
+});
+
 // the reins' window: one button, take them or give the cursor back (src/body/input.ts locks the mouse on its click)
 const mind = families.mind;
 family('mind', {
