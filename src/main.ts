@@ -6,6 +6,8 @@ import { newGame, say, tick } from './core/game';
 import { Screen } from './ui';
 import { start } from './audio';
 import { startKit } from './tune/start';
+import { powerMax } from './core/mods';
+import { paused, togglePause } from './ui/pause';
 import './body/input';
 import './audio/hook';
 import './end';
@@ -23,11 +25,14 @@ const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e9);
 function boot(g: Game): void {
   startKit(g);
   const inst = (name: string) => ({ text: `install ${name}`, cmd: `install ${name}` });
+  const kit = ['pinhole eye', 'map spool', 'stepper relay', 'spark finger'];
+  // the install links last, so a short console still shows them (playtest r1)
   say(
     g,
-    'core ok. you hold four modules and wear none. slots 0/6. power 0/6.',
-    ['install them: ', inst('pinhole eye'), '  ', inst('map spool'), '  ', inst('stepper relay'), '  ', inst('spark finger')],
-    ['then walk with the buttons under the eye, or type ', { text: 'go e 3', cmd: 'go e 3' }, '. things move out there; the spark bites what comes close. lost or stuck? ', { text: 'unstuck', cmd: 'unstuck' }],
+    `core ok. you hold four modules and wear none. slots 0/${g.player.slots}. power 0/${powerMax(g)}.`,
+    ['the goal, the keys and every verb: ', { text: 'help', cmd: 'help' }, '. lost or stuck? ', { text: 'unstuck', cmd: 'unstuck' }],
+    ['once they are in, walk with the arrow keys (esc leaves the console) or ', { text: 'go e 3', cmd: 'go e 3' }, '. things move out there; the spark bites what comes close.'],
+    ['install them: ', { text: 'install all', cmd: kit.map((k) => `install ${k}`).join('; ') }, '  or one by one: ', ...kit.flatMap((k) => [inst(k), '  '])],
   );
 }
 
@@ -41,6 +46,7 @@ addEventListener('keydown', () => start(), { once: true });
 /** a new run on a new seed (death, or ?seed to replay one) */
 export function restart(nextSeed = Math.floor(Math.random() * 1e9)): void {
   document.getElementById('desk')?.replaceChildren();
+  togglePause(false);
   g = newGame(nextSeed);
   screen = new Screen(g);
   boot(g);
@@ -80,8 +86,8 @@ const still = params.has('still');
 function loop(now: number): void {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
-  if (!still) tick(g, dt);
-  screen.frame(dt);
+  if (!still && !paused()) tick(g, dt);
+  screen.frame(paused() ? 0 : dt);
   document.body.dataset.state = g.ended ?? 'live';
   if (g.ended === 'dead' && !document.querySelector('.dead')) deathCard();
   requestAnimationFrame(loop);

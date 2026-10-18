@@ -19,7 +19,7 @@ export class Console {
 
   constructor(g: Game) {
     this.g = g;
-    this.win = windows.open('console', 'console', [Math.max(16, innerWidth / 2 - 220), Math.max(16, innerHeight - 440)]);
+    this.win = windows.open('console', 'console', windows.consoleAt());
     this.win.el.classList.add('win-console');
     this.out = document.createElement('div');
     this.out.className = 'out';
@@ -56,9 +56,9 @@ export class Console {
     });
   }
 
-  /** run a command as if typed */
+  /** run a command as if typed; `a; b` runs both (the boot text's install all) */
   send(cmd: string): void {
-    exec(this.g, cmd);
+    for (const c of cmd.split(';')) exec(this.g, c);
     this.draw();
   }
 
