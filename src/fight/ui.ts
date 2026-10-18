@@ -8,12 +8,15 @@ import { pips } from '../ui/panels';
 import { hpText } from './report';
 import { fanfares } from './shard';
 import { turned } from './warn';
+import { armed, foesNear } from './unarmed';
 import { clean } from '../tune/start';
 import { mapHooks } from '../world/mind';
 
 let bar: HTMLElement | null = null;
 let flash: HTMLElement | null = null;
 let seenHurt = -99;
+/** the last moment one of your blows landed, to flash the fight line (src/sight/foes.ts hitAt) */
+let seenHit = -99;
 let seenGame: unknown = null;
 
 function els(): [HTMLElement, HTMLElement] {
@@ -36,19 +39,30 @@ frameHooks.push((g) => {
   const text = `${hpText(p.hp)}/${p.maxHp}`;
   const [su, pu, pm] = [p.installed.length, powerUsed(g), powerMax(g)];
   const fight = fightLine(g);
-  const key = `${text} ${su}/${p.slots} ${pu}/${pm} ${fight}`;
+  // Maks 10-18: no weapon on with foes near is a red tag that stays until you arm
+  const bare = !armed(g) && foesNear(g, 8);
+  const key = `${text} ${su}/${p.slots} ${pu}/${pm} ${fight} ${bare}`;
   if (b.dataset.text !== key) {
     b.dataset.text = key;
     // hp, then the two resources every choice spends: slots and power
-    b.innerHTML = `hp <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
+    b.innerHTML = `<span class="hud-k">hp</span> <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
+      (bare ? '<span class="sep">·</span><span class="hud-tag">NO WEAPON</span>' : '') +
       // in a fight slots and power give way to the fight line (r2: it ran off the edge at 1280 px)
-      (fight ? '' : `<span class="sep">·</span>slots ${su}/${p.slots} ${pips(su, p.slots)}<span class="sep">·</span>power ${pu}/${pm} ${pips(pu, pm)}`) +
-      (fight ? `<span class="sep">·</span><span class="fight" style="color:#ff6a50">${boxes(fight)}</span>` : '');
+      (fight ? '' : `<span class="sep">·</span><span class="hud-k">slots</span> ${su}/${p.slots} ${pips(su, p.slots)}<span class="sep">·</span><span class="hud-k">power</span> ${pu}/${pm} ${pips(pu, pm)}`) +
+      (fight ? `<span class="sep">·</span><span class="fight">${boxes(fight)}</span>` : '');
   }
   b.dataset.low = String(p.hp <= p.maxHp * 0.3);
   if (seenGame !== g) {
     seenGame = g;
     seenHurt = p.hurtAt;
+  }
+  // one of your blows landed: the fight line flashes white (a miss does not)
+  const hitAt = Math.max(-99, ...g.ents.map((e) => (e.enemy?.data.hitAt as number) ?? -99));
+  if (hitAt > seenHit) {
+    seenHit = hitAt;
+    b.classList.remove('struck');
+    void b.offsetWidth;
+    b.classList.add('struck');
   }
   if (p.hurtAt > seenHurt) {
     seenHurt = p.hurtAt;
@@ -97,7 +111,7 @@ const clip = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…`
 /** your side of the fight line: auto weapons' next blow, aimed ones' shot, or out of reach (`r` cells off) */
 export function weaponLine(g: Game, r: number): string {
   const ws = active(g, 'weapon');
-  if (!ws.length) return 'no weapon on';
+  if (!ws.length) return 'you hit nothing';
   const wait = (i: Inst) => Math.max(0, ((i.data.readyAt as number) ?? 0) - g.t);
   const range = (i: Inst) => param<number>(i, 'range', param<string>(i, 'aim', 'auto') === 'aimed' ? 6 : 1.3);
   const inReach = ws.filter((i) => range(i) >= r);
