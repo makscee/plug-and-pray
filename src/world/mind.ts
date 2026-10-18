@@ -8,6 +8,7 @@ import { cells, say, tickHooks } from '../core/game';
 import { active, families, family, param } from '../core/mods';
 import type { Entity, Game, Inst } from '../core/types';
 import { view, VIEWS, type View } from '../ui/views';
+import { consoleAt, TOP } from '../ui/windows';
 import { nearestOpen } from './vectors';
 import { isNamed } from './secrets';
 import '../sight/reveal';
@@ -46,10 +47,16 @@ export const mapHooks = {
   fast: [] as ((g: Game) => boolean)[],
 };
 
-/** the map's cell size in px for a span of cells: big on a tall screen, small on a short one, unless zoom is set (the map's zoom link) */
+/** the map window's cell size and how many cells it shows (v2r1 ux: 6 px a cell hid one-cell corridors and
+ *  the arrow read a cell off): 8 px a cell, as many of the map's cells as fit above the console at this
+ *  height; the big map (M, src/ui/bigmap.ts) shows them all at 12 px */
 export const mapCell = {
-  zoom: null as boolean | null,
-  px: (span: number) => ((mapCell.zoom ?? innerHeight >= 900) ? 297 : 198) / span,
+  px: (_span: number) => 8,
+  cells: (span: number) => {
+    // the map window's title, legend and padding take about 90 px; 8 px of gap above the console
+    const fit = Math.floor((consoleAt()[1] - TOP - 8 - 90) / 8);
+    return Math.min(span, Math.max(21, fit - (fit % 2 ? 0 : 1)));
+  },
 };
 
 /** veins a colour eye named, in their own colours */
@@ -134,8 +141,10 @@ function drawMark(g: Game, ctx: CanvasRenderingContext2D, m: Mark, ox: number, o
 let toldClick = new WeakSet<Game>();
 export const resetMapTold = () => (toldClick = new WeakSet());
 
-function mapView(el: HTMLElement, inst: Inst, game: Game): View {
-  const span = Math.round(param<number>(inst, 'span', 33));
+export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => number): View {
+  const all = Math.round(param<number>(inst, 'span', 33));
+  /** cells shown across: the window crops to what fits, the big map shows them all */
+  let span = all;
   const detail = detailOf(inst);
   // a cell's size follows mapCell (the map's zoom link, playtest r1: 6 px hid one-cell corridors)
   let px = 0;
@@ -162,8 +171,10 @@ function mapView(el: HTMLElement, inst: Inst, game: Game): View {
   return {
     update(g: Game) {
       if (!(inst.on && g.t >= inst.readyAt)) return;
-      const want = Math.max(3, Math.floor(mapCell.px(span)));
-      if (want !== px) [px, next, canvas.width, canvas.height] = [want, 0, span * want, span * want];
+      const want = big ? big() : mapCell.px(all);
+      const n = big ? all : mapCell.cells(all);
+      if (want !== px || n !== span) [px, span, next, canvas.width, canvas.height] = [want, n, 0, n * want, n * want];
+      canvas.dataset.cells = String(span);
       if (g.t < next) return;
       next = g.t + (mapHooks.fast.some((f) => f(g)) ? 1 / 12 : 0.25);
       const p = g.player;
@@ -272,16 +283,27 @@ function mapView(el: HTMLElement, inst: Inst, game: Game): View {
       for (const f of mapHooks.draw) f(g, ctx, ox, oy, px);
       const yx = (p.x - ox) * px;
       const yy = (p.y - oy) * px;
-      // you: an arrowhead pointing the way you face, big enough to read at a glance
+      // you: your cell ringed, and an arrowhead centred on it pointing the way you face (v2r1 ux: the
+      // arrow's tip reached 1.6 cells ahead and read as a cell off)
+      const [cx, cy] = [(Math.floor(p.x) - ox) * px, (Math.floor(p.y) - oy) * px];
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(cx - 1, cy - 1, px + 2, px + 2);
+      ctx.strokeStyle = CSS.you;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx - 0.5, cy - 0.5, px + 1, px + 1);
       const [fx, fy] = [Math.sin(p.dir), -Math.cos(p.dir)];
-      const r = Math.max(5, px * 1.6);
+      const r = Math.max(5, px * 0.95);
       ctx.fillStyle = CSS.you;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(yx + fx * r, yy + fy * r);
-      ctx.lineTo(yx - fx * r * 0.6 - fy * r * 0.7, yy - fy * r * 0.6 + fx * r * 0.7);
-      ctx.lineTo(yx - fx * r * 0.2, yy - fy * r * 0.2);
-      ctx.lineTo(yx - fx * r * 0.6 + fy * r * 0.7, yy - fy * r * 0.6 - fx * r * 0.7);
+      ctx.lineTo(yx - fx * r * 0.7 - fy * r * 0.7, yy - fy * r * 0.7 + fx * r * 0.7);
+      ctx.lineTo(yx - fx * r * 0.3, yy - fy * r * 0.3);
+      ctx.lineTo(yx - fx * r * 0.7 + fy * r * 0.7, yy - fy * r * 0.7 - fx * r * 0.7);
       ctx.closePath();
+      ctx.stroke();
       ctx.fill();
     },
   };

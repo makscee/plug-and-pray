@@ -8,7 +8,9 @@ canvas.eye.scope { width: 240px; height: 135px; }
 #bigview .big-over { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 #bigview .big-lock { position: absolute; left: 50%; top: 72%; transform: translateX(-50%); padding: 3px 12px; color: var(--acc); background: #000b; border: 1px solid var(--acc); pointer-events: none; }
 #bigview .big-lock[hidden] { display: none; }
-#bigview .big-keys { position: absolute; left: 12px; top: 8px; white-space: nowrap; font-size: 16px; color: #c8b8a0; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+#bigview .big-keys { position: absolute; left: 12px; top: 8px; max-width: calc(50vw - 216px); padding: 3px 10px; white-space: nowrap; overflow: hidden; font-size: 20px; line-height: 20px; color: var(--fg); background: #000c; border: 1px solid var(--line); pointer-events: none; }
+#bigview .big-map { position: absolute; right: 12px; top: 10px; width: 168px; height: 168px; border: 1px solid var(--line); background: #000; image-rendering: pixelated; pointer-events: none; opacity: 0.92; }
+#bigview .big-map[hidden] { display: none; }
 #bigview .big-keys .dashkey { font-weight: normal; display: none; }
 #bigview[data-mk='2'] .big-keys .dashkey { display: inline; }
 #bigview .big-boss { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: min(400px, calc(100vw - 32px)); text-align: center; color: #ff8a6c; text-shadow: 1px 1px 0 #000; pointer-events: none; }

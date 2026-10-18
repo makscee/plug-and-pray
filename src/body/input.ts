@@ -147,6 +147,7 @@ addEventListener(
     if (k === 'q' || k === 'e') turn(g, k === 'q' ? -1 : 1);
     else if (k === 't') tidy();
     else if (k === 'p') togglePause();
+    else if (k === 'm') thaw().send('map');
     else if (k >= '1' && k <= '4') {
       const name = Object.keys(setupsOf(g))[Number(k) - 1];
       thaw().send(name ? `setup ${name}` : 'setup');
@@ -159,6 +160,10 @@ addEventListener('keyup', (e) => {
   held.delete(e.key.toLowerCase());
   held.delete(e.key);
 });
+
+/** when the mouse was last freed from the big view */
+let lockLost = -1e9;
+if (typeof document !== 'undefined') document.addEventListener('pointerlockchange', () => !document.pointerLockElement && (lockLost = performance.now()));
 
 /** the big view's keys; true when it took the key */
 function fpsKey(g: Game, e: KeyboardEvent, k: string): boolean {
@@ -177,8 +182,10 @@ function fpsKey(g: Game, e: KeyboardEvent, k: string): boolean {
   else if (k === 'f') lunge(g);
   else if (k === ' ') fpsFire(g);
   else if (k === 'escape') {
+    // the first Esc frees the mouse (the browser's own, or this one); only an Esc with the mouse already
+    // free leaves the big view (v2r1 ux: one press did both where the browser passed that Esc on)
     if (document.pointerLockElement) document.exitPointerLock();
-    else thaw().send('big');
+    else if (performance.now() - lockLost > 400) thaw().send('big');
   } else return false;
   return true;
 }

@@ -2,12 +2,13 @@
 // took, and one line on what would have helped, by rule. Pure: src/main.ts draws the card.
 import { ENEMIES, hurtHooks } from '../core/game';
 import type { Game } from '../core/types';
-import { def } from '../core/mods';
+import { def, param } from '../core/mods';
 import { ZONES, zoneAt, HEAT } from '../world/zones';
 import { light } from '../sight/lamp';
 import { perceives } from '../mods/sense';
 import { clock } from '../end/timeline';
 import { ELITE } from '.';
+import { BOSS } from './bosses';
 
 export interface Blow { type: string; name: string; n: number; t: number; seen: boolean; id?: number }
 const blows = new WeakMap<Game, Blow[]>();
@@ -38,6 +39,13 @@ export function lesson(g: Game): string {
   const kinds = new Set(last.map((b) => b.type));
   const dark = ZONES[zoneAt(g.player.x, g.player.y)].look.dark >= 0.3 && light(g) <= 0;
   if (killer.type === 'heat') return 'a rime hood, or anything heatproof, keeps the furnace off.';
+  // v2r1 ux: a keeper's death said "fight from range", which floor 1 has no way to do
+  const boss = BOSS[killer.type];
+  if (boss) {
+    const near = g.player.installed.every((i) => def(i).family !== 'weapon' || param<number>(i, 'range', 1.5) < 3);
+    const how = boss.floor === 0 || near ? 'up close, between its blows' : 'from range, out of its blows';
+    return `${boss.hint} fight it ${how}; and before its door, a stronger weapon or more hp (where weighs you there).`;
+  }
   if (ELITE.includes(killer.type)) {
     const how = { warden: 'step aside when it draws breath', abbot: 'step back when it lifts its arm, two cells away when it raises both arms', saint: 'come at it on a diagonal, off its lines' }[killer.type];
     return `a stronger weapon or a heal first; and ${how}.`;
@@ -51,7 +59,8 @@ export function lesson(g: Game): string {
   if (killer.type === 'seraph' || killer.type === 'pyre') return 'step out of its line: a lamp only fires down its row or column.';
   if (killer.type === 'walker') return 'step back when it lifts its arm.';
   if (!killer.seen) return 'an eye on the threat: turn to what hits you, or carry a scanner.';
-  return 'mend to full before the next fight, or fight from range.';
+  const ranged = g.player.installed.some((i) => def(i).family === 'weapon' && param<number>(i, 'range', 1.5) >= 3);
+  return ranged ? 'mend to full before the next fight, or fight from range.' : 'mend to full before the next fight, or find a second weapon.';
 }
 
 /** blows of one kind within this many seconds read as one volley */
