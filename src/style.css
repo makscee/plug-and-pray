@@ -199,3 +199,50 @@ canvas.map { cursor: crosshair; }
 /* fight: an elite turns to you (src/fight/warn.ts, src/fight/ui.ts) */
 .elite-warn { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); z-index: 9001; pointer-events: none; padding: 4px 14px; color: #ff6a50; background: #000d; border: 1px solid #ff6a50; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; animation: elitewarn 4s ease-out both; }
 @keyframes elitewarn { 0%, 10%, 20% { opacity: 1; } 5%, 15% { opacity: 0.35; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* v2 inventory: drag tiles between and within the grids, two-slot tiles, rarity (src/ui/panels.ts) */
+:root {
+  --rar-common: #6e6660;
+  --rar-common-fg: #b8ada2;
+  --rar-fine: #5fbf6a;
+  --rar-rare: #4f94ff;
+  --rar-unique: #f0c040;
+}
+.win.panel .grid { grid-auto-flow: row dense; }
+.win.panel .cell[data-key] { touch-action: none; }
+.win.panel .cell img { -webkit-user-drag: none; pointer-events: none; }
+/* a module that takes two slots: one wide tile, a pip per slot under the icon */
+.win.panel .cell.wide { justify-self: start; }
+.win.panel .cell .span-pips { position: absolute; left: 0; right: 0; bottom: 2px; display: flex; justify-content: center; gap: 3px; pointer-events: none; }
+.win.panel .cell .span-pips b { width: 4px; height: 4px; background: var(--dim); }
+/* rarity: the tile's border, a glow past common, a slow gold shimmer on a unique */
+.cell.rar-common { border-color: var(--rar-common); }
+.cell.rar-fine { border-color: var(--rar-fine); }
+.cell.rar-rare { border-color: var(--rar-rare); }
+.cell.rar-unique { border-color: var(--rar-unique); }
+.cell.rar-fine::before, .cell.rar-rare::before, .cell.rar-unique::before { content: ''; position: absolute; inset: -1px; pointer-events: none; }
+.cell.rar-fine::before { box-shadow: 0 0 5px -1px var(--rar-fine); }
+.cell.rar-rare::before { box-shadow: 0 0 6px 0 var(--rar-rare); }
+.cell.rar-unique::before { box-shadow: 0 0 7px 0 var(--rar-unique); animation: rar-glow 2.4s ease-in-out infinite; }
+.cell.rar-unique::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 35%, #fff3d080 50%, transparent 65%) no-repeat; background-size: 250% 100%; animation: rar-shimmer 3.2s linear infinite; mix-blend-mode: screen; }
+@keyframes rar-glow { 50% { box-shadow: 0 0 11px 1px var(--rar-unique); } }
+@keyframes rar-shimmer { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+.win.panel .cell.sel.rar-common, .win.panel .cell.sel.rar-fine, .win.panel .cell.sel.rar-rare, .win.panel .cell.sel.rar-unique { outline: 1px solid var(--acc); outline-offset: 1px; }
+.name.rar-common { color: var(--rar-common-fg); }
+.name.rar-fine, .rar-line.rar-fine { color: var(--rar-fine); }
+.name.rar-rare, .rar-line.rar-rare { color: var(--rar-rare); }
+.name.rar-unique, .rar-line.rar-unique { color: var(--rar-unique); text-shadow: 0 0 6px #f0c04060; }
+.win.panel .detail .rar-line { font-size: 16px; margin: -2px 0 2px; }
+.rar-line.rar-common { color: var(--rar-common-fg); }
+/* the drag: the lifted tile leaves a hole, its ghost follows the pointer, grids say yes or no */
+.win.panel .cell.lifted { opacity: 0.25; }
+.cell.drag-ghost { position: fixed; z-index: 9800; pointer-events: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--acc); background: #1c140ee8; box-shadow: 0 6px 16px #000c; transform: scale(1.08); }
+.cell.drag-ghost.snap { transition: left 0.16s ease-out, top 0.16s ease-out; }
+.cell.drag-ghost .badge { position: absolute; right: 2px; bottom: 0; font-size: 16px; line-height: 1; color: var(--fg); text-shadow: 1px 1px 0 #000, -1px -1px 0 #000; }
+.cell.drag-ghost .span-pips { position: absolute; left: 0; right: 0; bottom: 2px; display: flex; justify-content: center; gap: 3px; }
+.cell.drag-ghost .span-pips b { width: 4px; height: 4px; background: var(--dim); }
+body.dragging, body.dragging * { cursor: grabbing !important; }
+.win.panel .grid.drop-ok { outline: 1px dashed var(--rar-fine); outline-offset: 2px; }
+.win.panel .grid.drop-no { outline: 1px dashed var(--hurt); outline-offset: 2px; }
+.drag-why { position: fixed; z-index: 9900; width: 260px; padding: 3px 8px; font-size: 16px; color: var(--fg); background: #000e; border: 1px solid var(--hurt); pointer-events: none; animation: drag-why 2.4s ease-out both; }
+@keyframes drag-why { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }

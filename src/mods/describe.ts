@@ -1,7 +1,7 @@
 // What a module does, in plain words, built from its family and params (with the find's roll applied),
 // so every module and every attuned/cracked variant explains itself without a hand-written line.
 
-import { def, param } from '../core/mods';
+import { def, param, size } from '../core/mods';
 import type { Roll } from '../core/types';
 
 type Modish = { mod: string; roll?: Roll };
@@ -84,6 +84,7 @@ export function does(m: Modish): string {
 export function costs(m: Modish): string {
   const d = def(m);
   const parts = [d.family === 'power' ? 'draws no power' : `uses ${d.power} power`];
+  if (size(m) > 1) parts.push(`takes ${size(m)} slots`);
   if (d.warm) parts.push(`warms ${n(d.warm)} s`);
   const loud = param<number>(m, 'loud', 0);
   if (loud) parts.push(`loud: things notice you ${n(loud)} cells farther`);

@@ -6,7 +6,7 @@
 import '../../src/mods';
 import { dist, ENEMIES, newGame, tick } from '../../src/core/game';
 import { CHUNK, Cell, clear } from '../../src/core/grid';
-import { active, def, MODS, param, powerMax, powerUsed } from '../../src/core/mods';
+import { active, def, MODS, param, powerMax, powerUsed, size, slotsUsed } from '../../src/core/mods';
 import { exec } from '../../src/core/verbs';
 import type { Entity, Game, Res, Roll } from '../../src/core/types';
 import * as printer from '../../src/world/printer';
@@ -197,8 +197,9 @@ function bestLoadout(g: Game, zone: number, wantReader: boolean, lift: { power?:
       cap += param<number>(pw, 'power', 0);
     }
     if (used + m.power > cap) continue;
+    if (slots < size(a)) continue;
     pick.add(a.ref);
-    slots--;
+    slots -= size(a);
     used += m.power;
     if (m.family === 'camera') cams++;
     fams.set(m.family, (fams.get(m.family) ?? 0) + 1);
@@ -427,7 +428,7 @@ export function play(seed: number, o: Opts): Run {
     if (handReader && P.inv.some((i) => i.kind === 'card') && !active(g, 'mind').some((i) => param(i, 'what', '') === 'reader')) return 'read card';
     const wantReader = !handReader && (g.cards.length < 4 || P.inv.some((i) => i.kind === 'card'));
     if (P.inv.some((i) => i.kind === 'mod' && i.mod === 'thaw-engine')) {
-      if (P.installed.length < P.slots) return 'install thaw engine';
+      if (slotsUsed(g) < P.slots) return 'install thaw engine';
       const out = P.installed.find((i) => MODS[i.mod].family !== 'gait');
       if (out) return 'remove ' + words(out.mod);
     }
@@ -435,8 +436,8 @@ export function play(seed: number, o: Opts): Run {
     // two setups (docs/modules.md): explore on, battle's extra weapons installed but off while slots allow
     const keep = withBattle(pick, bestLoadout(g, Math.max(zt, zoneHere()), wantReader, {}, 'battle'));
     for (const i of P.installed) if (!keep.has(i)) return run.offs++, 'remove ' + labelOf(i);
-    for (const i of P.inv) if (i.kind === 'mod' && pick.has(i) && P.installed.length < P.slots) return 'install ' + labelOf(i);
-    for (const i of P.inv) if (i.kind === 'mod' && keep.has(i) && P.installed.length < P.slots) return 'install ' + labelOf(i);
+    for (const i of P.inv) if (i.kind === 'mod' && pick.has(i) && slotsUsed(g) + size(i) <= P.slots) return 'install ' + labelOf(i);
+    for (const i of P.inv) if (i.kind === 'mod' && keep.has(i) && slotsUsed(g) + size(i) <= P.slots) return 'install ' + labelOf(i);
     const sw = g.t < battleUntil ? null : setupStep('explore', pick);
     if (sw) return sw;
     if (active(g, 'mind').some((i) => param(i, 'what', '') === 'reader') && P.inv.some((i) => i.kind === 'card')) return 'read card';
@@ -489,8 +490,8 @@ export function play(seed: number, o: Opts): Run {
   /** the explore pick plus the battle pick's extras, while slots last (slot boards take none) */
   function withBattle(pick: Set<object>, fight: Set<object>): Set<object> {
     const out = new Set(pick);
-    const used = () => [...out].filter((r) => !param(r as any, 'slots', 0)).length;
-    for (const r of fight) if (!out.has(r) && used() < P.slots) out.add(r);
+    const used = () => [...out].filter((r) => !param(r as any, 'slots', 0)).reduce((s, r) => s + size(r as any), 0);
+    for (const r of fight) if (!out.has(r) && used() + size(r as any) <= P.slots) out.add(r);
     return out;
   }
   /** one step toward having exactly `want`'s installed modules on, by `setup name` once it is saved */
@@ -725,7 +726,7 @@ export function play(seed: number, o: Opts): Run {
     if (g.t >= nextBound) {
       nextBound += 10;
       const pFree = powerMax(g) - powerUsed(g);
-      const sFree = P.slots - P.installed.length;
+      const sFree = P.slots - slotsUsed(g);
       // what it would run with unlimited power, or unlimited slots, against what it can run now
       const zb = Math.max(targetZone(), zoneHere());
       const value = (set: Set<object>) => [...set].reduce((n, r) => n + ('mod' in (r as any) && MODS[(r as any).mod].family !== 'power' ? Math.min(worth(g, r as any, zb, false), 500) : 0), 0);
