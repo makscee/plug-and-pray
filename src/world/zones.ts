@@ -7,7 +7,8 @@
 //   3 the furnace     furnace seraphs, walkers, hum packs; HEAT sears 0.15 hp/s unless something keeps it off. the furnace saint guards shard 3 and the engine.
 // The gate is felt, never a wall: `readiness` is what a careful player (and the sim) waits for.
 import { CHUNK } from '../core/grid';
-import { active, def, param } from '../core/mods';
+import { active, def, param, powerMax, powerUsed } from '../core/mods';
+import { makeRoom } from '../body';
 import { say, tickHooks } from '../core/game';
 import type { Game, Line } from '../core/types';
 import { dpsOf } from './zonemath';
@@ -84,11 +85,19 @@ const ANSWERS: Record<number, (m: { mod: string }) => boolean> = {
   3: (m) => param<number>(m, 'heatproof', 0) > 0,
 };
 
-/** buttons for the carried modules that answer a zone, on the line after its entry text */
+/** buttons for the carried modules that answer a zone, on the line after its entry text. One that
+ * would not fit (no slot, short of power) is a `swap in` that makes room first (playtest r2) */
 export function answers(g: Game, z: number): Line[] {
   const fits = ANSWERS[z];
   if (!fits) return [];
-  const names = [...new Set(g.player.inv.flatMap((i) => (i.kind === 'mod' && fits(i) ? [def(i).name] : [])))].slice(0, 4);
-  if (!names.length) return z === HEAT ? [['nothing you carry keeps it off. a rime hood would.']] : [];
-  return [['you carry what answers it: ', ...names.flatMap((n, k) => [k ? '  ' : '', { text: `install ${n}`, cmd: `install ${n}` }])]];
+  const p = g.player;
+  const mods = [...new Map(p.inv.flatMap((i) => (i.kind === 'mod' && fits(i) ? [[def(i).name, i] as const] : []))).values()].slice(0, 4);
+  if (!mods.length) return z === HEAT ? [['nothing you carry keeps it off. a rime hood would.']] : [];
+  const spare = powerMax(g) - powerUsed(g);
+  const cmd = (it: { mod: string }) => {
+    const n = def(it).name;
+    if (p.installed.length < p.slots && def(it).power <= spare) return `install ${n}`;
+    return typeof makeRoom(g, it, false) === 'string' ? `install ${n}` : `swap in ${n}`;
+  };
+  return [['you carry what answers it: ', ...mods.flatMap((it, k) => [k ? '  ' : '', { text: cmd(it), cmd: cmd(it) }])]];
 }

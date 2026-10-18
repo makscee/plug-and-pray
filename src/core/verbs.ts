@@ -38,10 +38,21 @@ export function findItem(g: Game, args: string[]): number {
   return g.player.inv.findIndex((it) => itemName(it).includes(q));
 }
 export function findInst(g: Game, args: string[], prefer?: (i: Inst) => boolean): Inst | undefined {
-  const q = args.join(' ');
+  // two of the same: `off spark finger 2` is the second (what a window's dot and the panel type)
+  const nth = args.length > 1 && /^\d+$/.test(args[args.length - 1]) ? Number(args[args.length - 1]) : 0;
+  const q = (nth ? args.slice(0, -1) : args).join(' ');
   if (!q) return undefined;
+  if (nth) {
+    const same = g.player.installed.filter((i) => label(i) === q);
+    if (same[nth - 1]) return same[nth - 1];
+  }
   const all = g.player.installed.filter((i) => label(i).includes(q));
   return (prefer && all.find(prefer)) || all[0];
+}
+/** the words that name this one installed module: its label, and its place among same-named ones */
+export function instRef(g: Game, inst: Inst): string {
+  const same = g.player.installed.filter((i) => label(i) === label(inst));
+  return same.length > 1 ? `${label(inst)} ${same.indexOf(inst) + 1}` : label(inst);
 }
 
 /** the button for an inventory item: what a click on it does */
@@ -95,9 +106,10 @@ verb('inv', {
 });
 
 verb('take', {
-  help: 'take what is within reach: take, take pinhole',
+  help: 'take what is within reach: take (or take all), take pinhole',
   run(g, args) {
-    const q = args.join(' ');
+    // `take all` is `take` (the nearby panel's button says so)
+    const q = args.join(' ') === 'all' ? '' : args.join(' ');
     const near = reach(g).filter((e) => !q || itemName(e.item!).includes(q));
     if (!near.length) return say(g, q ? `no ${q} within reach.` : 'nothing within reach.');
     for (const e of near) {
@@ -222,7 +234,7 @@ verb('listen', {
 export const allMods = () => Object.keys(MODS);
 
 /** verbs that need a word after them; the actions bar spells those out itself */
-const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'crawl', 'face', 'step', 'print', 'save', 'setup', 'conjure', 'read', 'goto', 'buy', 'info', 'recycle']);
+const ARGS = new Set(['take', 'drop', 'install', 'remove', 'on', 'off', 'go', 'crawl', 'face', 'step', 'print', 'save', 'setup', 'conjure', 'read', 'goto', 'buy', 'info', 'recycle', 'swap']);
 const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].when!(g));
 
 export interface Action { label: string; cmd: string }

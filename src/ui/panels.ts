@@ -6,7 +6,7 @@
 import { dist, itemName, reach } from '../core/game';
 import { Cell, cell, veinOf } from '../core/grid';
 import { def, label, powerMax, powerUsed, working } from '../core/mods';
-import { VERBS } from '../core/verbs';
+import { instRef, VERBS } from '../core/verbs';
 import type { Game, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { costs, does } from '../mods/describe';
@@ -17,7 +17,7 @@ import { setupsOf } from '../body';
 
 type Send = (cmd: string) => void;
 /** a button: a command, or greyed with a note saying why */
-type Btn = { label: string; cmd?: string; note?: string };
+type Btn = { label: string; cmd?: string; note?: string; on?: boolean };
 /** a grid cell: an icon (or an empty socket), what selecting it shows */
 interface GridCell {
   sel: string;
@@ -96,11 +96,19 @@ export class Panels {
 
   /** saved setups as buttons (keys 1-4 do the first four), and one to save what is on now */
   setups(g: Game): Btn[] {
-    const names = Object.keys(setupsOf(g));
+    const all = setupsOf(g);
+    const names = Object.keys(all);
     let n = names.length + 1;
     while (names.includes(String(n))) n++;
+    // the one whose modules are exactly what is on now is marked
+    const now = g.player.installed.filter((i) => i.on).map((i) => i.mod).sort().join();
     return [
-      ...names.map((name, k) => ({ label: k < 4 ? `${k + 1} ${name}` : name, cmd: `setup ${name}` })),
+      ...names.map((name, k) => ({
+        // the key, then the name, unless the name is the key ("1", not "1 1")
+        label: k < 4 && name !== String(k + 1) ? `${k + 1} ${name}` : name,
+        cmd: `setup ${name}`,
+        on: [...all[name]].sort().join() === now,
+      })),
       { label: '+ save', cmd: `save setup ${n}` },
     ];
   }
@@ -110,7 +118,7 @@ export class Panels {
     const p = g.player;
     const cells: GridCell[] = p.installed.map((i) => {
       const state = !i.on ? 'off' : working(g, i) ? 'on' : 'warm';
-      return { sel: 'u' + i.uid, icon: { mod: i.mod, roll: i.roll }, title: `${label(i)} · ${state}`, state, mod: i.mod, dbl: `${i.on ? 'off' : 'on'} ${label(i)}` };
+      return { sel: 'u' + i.uid, icon: { mod: i.mod, roll: i.roll }, title: `${label(i)} · ${state}`, state, mod: i.mod, dbl: `${i.on ? 'off' : 'on'} ${instRef(g, i)}` };
     });
     for (let k = p.installed.length; k < p.slots; k++) cells.push({ sel: 'empty' + k, title: 'an empty socket' });
     const s = this.sel.get('modules');
@@ -120,7 +128,7 @@ export class Panels {
       icon: { mod: inst.mod, roll: inst.roll },
       title: label(inst),
       lines: [!inst.on ? 'off' : working(g, inst) ? 'on' : 'warming up', ...modLines(inst)],
-      buttons: [{ label: inst.on ? 'off' : 'on', cmd: `${inst.on ? 'off' : 'on'} ${label(inst)}` }, { label: 'remove', cmd: `remove ${label(inst)}` }],
+      buttons: [{ label: inst.on ? 'off' : 'on', cmd: `${inst.on ? 'off' : 'on'} ${instRef(g, inst)}` }, { label: 'remove', cmd: `remove ${instRef(g, inst)}` }],
     }];
   }
 
@@ -301,6 +309,7 @@ export class Panels {
     for (const part of list) {
       const b = document.createElement('button');
       b.textContent = part.label;
+      if (part.on) b.className = 'on';
       if (part.cmd) {
         b.dataset.cmd = part.cmd;
         b.addEventListener('click', () => this.send(part.cmd!));
@@ -341,7 +350,9 @@ export class Panels {
   }
 
   /** the panels stack down the right edge, each under the one above, unless dragged; when they would
-   * run off the bottom, the inventory (then the modules) scroll so nearby still shows */
+   * run off the bottom, each keeps a floor (nearby 150 px, modules 140, inventory 100, or less if that
+   * is all it needs) and what is left goes to nearby, then the modules, then the inventory, each up to
+   * what it needs (playtest r2: nearby was cut while the column sat empty) */
   stack(): void {
     const ws = ['modules', 'inv', 'near'].map((id) => windows.get(id)).filter((w) => w && !w.el.dataset.moved) as windows.Win[];
     const natural = (w: windows.Win) => w.el.offsetHeight - w.body.clientHeight + w.body.scrollHeight;
@@ -350,13 +361,15 @@ export class Panels {
     const total = want.reduce((a, b) => a + b, 0);
     const caps = new Map<windows.Win, number>();
     if (total > room) {
-      // nearby keeps up to 150 px, modules up to its natural height but at most half; inventory takes what is left
-      const near = ws.find((w) => w.id === 'near');
-      const mods = ws.find((w) => w.id === 'modules');
-      const inv = ws.find((w) => w.id === 'inv');
-      if (near) room -= Math.min(natural(near), 150), caps.set(near, 150);
-      if (mods) { const m = Math.min(natural(mods), Math.max(140, room / 2)); caps.set(mods, m); room -= m; }
-      if (inv) caps.set(inv, Math.max(100, room));
+      const order = ['near', 'modules', 'inv'].map((id) => ws.find((w) => w.id === id)).filter((w): w is windows.Win => !!w);
+      const floor: Record<string, number> = { near: 150, modules: 140, inv: 100 };
+      for (const w of order) caps.set(w, Math.min(natural(w), floor[w.id]));
+      room -= [...caps.values()].reduce((a, b) => a + b, 0);
+      for (const w of order) {
+        const more = Math.max(0, Math.min(room, natural(w) - caps.get(w)!));
+        caps.set(w, caps.get(w)! + more);
+        room -= more;
+      }
     }
     let y = windows.TOP;
     for (const w of ws) {
@@ -364,6 +377,9 @@ export class Panels {
       const chrome = w.el.offsetHeight - w.body.clientHeight;
       const mh = cap ? Math.max(60, cap - chrome) + 'px' : '';
       if (w.body.style.maxHeight !== mh) w.body.style.maxHeight = mh;
+      // a body cut short fades at the bottom while there is more below
+      const b = w.body;
+      b.classList.toggle('more', b.scrollHeight - b.scrollTop - b.clientHeight > 2);
       w.el.style.left = innerWidth - PANEL_W - 16 + 'px';
       w.el.style.top = y + 'px';
       y += w.el.offsetHeight + 8;

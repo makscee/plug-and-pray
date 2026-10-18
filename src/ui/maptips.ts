@@ -1,16 +1,19 @@
 // The map spool, readable (playtest r1): what the hints and the cards name gets a filled diamond in
 // the accent colour (on the edge when it lies off the map); hovering a cell names what is there, with
-// the legend; a line under the map keys the diamond and has a zoom link (6 or 9 px a cell).
+// the legend; a line under the map keys the diamond and has a zoom link (6 or 9 px a cell) and `where`.
+// Playtest r2: a click on the map with no pilot walks the first straight leg toward that cell.
 
-import { ENEMIES, itemName } from '../core/game';
+import { ENEMIES, itemName, say } from '../core/game';
+import { active, param } from '../core/mods';
+import { VERBS } from '../core/verbs';
+import { firstLeg, HINTED } from '../tune/hints';
 import { cell, Cell, veinOf } from '../core/grid';
 import type { Game } from '../core/types';
 import { mapCell, mapHooks } from '../world/mind';
-import { HINTED } from '../tune/hints';
 import { refit } from './windows';
 
 const ACC = '#f0a050';
-/** the hint targets still lying out there: the clear eye and the card reader until you hold one */
+/** the hint targets still lying out there: the dawn eye and the card reader until you hold one */
 function targets(g: Game): { x: number; y: number; name: string }[] {
   const p = g.player;
   const out: { x: number; y: number; name: string }[] = [];
@@ -44,14 +47,29 @@ function hover(c: HTMLCanvasElement): void {
   const big = () => mapCell.zoom ?? innerHeight >= 900;
   zoom.textContent = big() ? 'smaller' : 'zoom';
   addEventListener('resize', () => (zoom.textContent = big() ? 'smaller' : 'zoom'));
+  const label = () => document.querySelectorAll<HTMLButtonElement>('.map-legend .zoom').forEach((b) => (b.textContent = big() ? 'smaller' : 'zoom'));
+  zoom.className = 'zoom';
   zoom.addEventListener('click', () => {
     mapCell.zoom = !big();
-    document.querySelectorAll<HTMLButtonElement>('.map-legend button').forEach((b) => (b.textContent = big() ? 'smaller' : 'zoom'));
-    // the map redraws at its new size next frame; then it moves off anything it now covers, if it can
+    label();
+    // the map redraws at its new size next frame; then it moves off anything it now covers, docking
+    // lower windows if it must; with no room even so, it goes back to the smaller size (playtest r2:
+    // the zoomed map grew over the console)
     const win = c.closest<HTMLElement>('.win');
-    if (win) setTimeout(() => refit(win), 100);
+    if (win)
+      setTimeout(() => {
+        if (refit(win)) return;
+        mapCell.zoom = !big();
+        label();
+        zoom.textContent = 'no room to zoom';
+        setTimeout(label, 1500);
+      }, 100);
   });
-  legend.append(zoom);
+  const where = document.createElement('button');
+  where.textContent = 'where';
+  where.title = 'where the hints point, again';
+  where.addEventListener('click', () => (window as unknown as { thaw: { send(c: string): void } }).thaw.send('where'));
+  legend.append(zoom, ' · ', where);
   c.after(legend);
 }
 
@@ -104,4 +122,20 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
     ctx.closePath();
     ctx.fill();
   }
+});
+
+/** no pilot: a click on the map walks the first straight leg toward that cell (playtest r2: it did nothing) */
+const toldPilot = new WeakSet<Game>();
+mapHooks.click.push((g, x, y) => {
+  if (VERBS.goto && (!VERBS.goto.when || VERBS.goto.when(g))) return; // the pilot's own click
+  const p = g.player;
+  if (Math.floor(p.x) === x && Math.floor(p.y) === y) return;
+  const send = (window as unknown as { thaw: { send(c: string): void } }).thaw.send;
+  const leg = firstLeg(g, x + 0.5, y + 0.5);
+  if (!leg) return say(g, 'no open way there that you know of.');
+  const goes = active(g, 'gait').some((i) => param(i, 'go', false));
+  send(goes ? `go ${leg[0]} ${leg[1]}` : `crawl ${leg[0]}`);
+  if (toldPilot.has(g)) return;
+  toldPilot.add(g);
+  say(g, 'the first leg of the way there. a pilot (the wayfinder moth) walks all of it.');
 });
