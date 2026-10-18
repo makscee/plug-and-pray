@@ -118,3 +118,22 @@ number that rolls (the mirror ward's recharge gets shorter). `test/econ.test.ts`
 
 Sims (`node scripts/sim.mjs 20 both`, 40 runs) before → after: finish 24 → 27, median Engine 24:42 → 22:33,
 power binding (power alone or with slots) 21% → 42%, slots alone 1% → 0%; nail psalms per end loadout 1.6 → 1.2 (it stays the lamp answer), bone lance in end loadouts 20–38% → 45–75%.
+
+## Glass, the Engine's offering and one layer per eye (r2 econ)
+
+- **Glass unlocks early.** The first point of power is 4 bone and 2 copper (no glass); later points want glass n,
+  not 2+n. A tier-0 attune wants 1 glass (was 2), slot 7 wants 2 (was 3), and grinding a tier-0 module gives a
+  glass half the time. Sims: glass held at 3:00 median 3-4 → 7-8, runs with none 6/40 → 0/40.
+- **The Engine weighs what you bring.** Waking it takes every resource you carry; the end card tallies them line
+  by line and grades the thaw: under 40 "a cold waking", 40-99 "the god stirs", 100+ "spring" (the sims carry
+  ~100). So "temper now or carry it in" is a choice to the end.
+- **Aimed prints.** `print weapon` (eye, body, lamp, scanner, legs, mind, tool) rolls within that family for 2
+  copper more than `print module`. A temper always works the altar's key (an eye's range, a weapon's damage): a
+  module found attuned on another number is set to the key first. The first temper wants no ichor.
+- **One layer per eye.** Scripture names only caches (the cradle's scratched wall still names the hollow wall
+  beside it), so shells want sonar; the carrion eye costs 2 power. Colour eyes (dawn, vidicon, fog of saints,
+  saint's lens, ninth) name glass, copper and ichor veins in view, tint them on the eye and mark them on the map.
+  Each eye says again, in each new zone, how much of its layer lies within two chunks.
+- **Small things.** A carried card reader reads for a bone (installed, free). Out of reach, `offer`, `print`,
+  `buy` and `break` say where to stand, with a [go there] button. Three or more foes closing on you at a machine
+  get one warning.
