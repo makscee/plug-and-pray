@@ -6,7 +6,7 @@
 //   pick <name>   take one (free while picks are left, then bone)
 //   scrap         fold the rest into bone and close the cache
 //   cache         what it holds, and the card again
-import { dist, say, spawn } from '../core/game';
+import { dist, say, spawn, tickHooks } from '../core/game';
 import { CHUNK } from '../core/grid';
 import { def, label, maxLevel, moduleLevel, MODS, param, rarityKey, ROMAN } from '../core/mods';
 import { hash, rng } from '../core/rng';
@@ -220,29 +220,68 @@ export function placeCache(g: Game, cx: number, cy: number, f: number): void {
   spawn(g, { kind: 'prop', x: cx * CHUNK + SPOT[0] + 0.5, y: cy * CHUNK + SPOT[1] + 0.5, data: { cache: f + 1 } });
 }
 
-/** the card's state for the screen (src/ui/cache.ts): hidden by `later` until you walk off and back */
-const hidden = new WeakMap<Game, boolean>();
-export const cardHidden = (g: Game): boolean => !!hidden.get(g);
-export const hideCard = (g: Game, v: boolean): void => void hidden.set(g, v);
+/** the card's state for the screen (src/ui/cache.ts). v4 inv (Maks 10-18: "the window where you just take any
+ *  item out of 3 is weird, no idea why it appeared"): it never comes by itself. It opens when you walk into the
+ *  reliquary or `open` it (the nearby row's button), and closes when you walk off or press `later` */
+const shown = new WeakMap<Game, number>();
+export const cardOpen = (g: Game): boolean => shown.get(g) === floorOf(g) && !!cacheNear(g);
+export const cardHidden = (g: Game): boolean => !cardOpen(g);
+export const hideCard = (g: Game, v: boolean): void => void (v ? shown.delete(g) : shown.set(g, floorOf(g)));
+/** the floors whose reliquary you have opened (`where` names an unopened one) */
+const opened = new WeakMap<Game, Set<number>>();
+export const wasOpened = (g: Game, f = floorOf(g)): boolean => !!opened.get(g)?.has(f);
+/** the one-line intro */
+export const INTRO = 'a reliquary of the old machines: take what you need.';
+
+/** open the card: say the intro and the picks */
+export function openCache(g: Game): void {
+  const c = cacheNear(g);
+  if (!c) return void say(g, notHere(g));
+  let o = opened.get(g);
+  if (!o) opened.set(g, (o = new Set()));
+  o.add(floorOf(g));
+  hideCard(g, false);
+  say(g, `${INTRO} ${FREE} free; each pick after costs bone; the rest folds into scrap.`);
+  tell(g, c);
+}
+
+// walking into it opens it (once per approach: `later` while you stand by keeps it shut); walking off shuts it
+const touching = new WeakMap<Game, boolean>();
+tickHooks.push((g) => {
+  const e = cacheProp(g);
+  const near = !!e && dist(e, g.player) <= NEAR && !!cacheNear(g);
+  if (!near) {
+    shown.delete(g);
+    touching.delete(g);
+    return;
+  }
+  const touch = dist(e!, g.player) < 1.2;
+  if (touch && !touching.get(g)) openCache(g);
+  touching.set(g, touch);
+});
 
 const atCache = (g: Game): boolean => !!cacheNear(g);
 const notHere = (g: Game): string => {
   const e = cacheProp(g);
-  if (!e) return 'there is no cache on this floor.';
-  if (cacheOf(g).done) return 'the cache is empty.';
-  return 'the cache is where you landed: go back to it.';
+  if (!e) return 'there is no reliquary on this floor.';
+  if (cacheOf(g).done) return 'the reliquary is empty.';
+  return 'the reliquary stands where you landed: go back to it.';
 };
 
 verb('cache', {
-  help: 'the floor\'s kit cache where you land: what it offers, two picks free',
+  help: 'the floor\'s reliquary where you land: open it, take two of its kit for nothing',
   when: atCache,
   whenFail: notHere,
   run(g) {
-    const c = cacheNear(g);
-    if (!c) return say(g, notHere(g));
-    hideCard(g, false);
-    say(g, `the cache holds this floor's kit. take ${FREE} for nothing; each pick after costs bone; the rest folds into scrap.`);
-    tell(g, c);
+    openCache(g);
+  },
+});
+verb('open', {
+  help: 'open the reliquary where you land (the floor\'s kit: two free)',
+  when: atCache,
+  whenFail: notHere,
+  run(g) {
+    openCache(g);
   },
 });
 verb('pick', {

@@ -12,14 +12,15 @@ import { BAG, bagMods, inPlace, instRef, lastLegs, owned, VERBS } from '../core/
 import { upgradable, upgradeCost, upgradeText } from '../world/upgrade';
 import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
-import { attach } from './card';
-import { mechanic } from './cardText';
+import { attach, hide as hideCard } from './card';
+import { kindOf, mechanic } from './cardText';
 import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear, shutEye } from '../world/printer';
 import { altarNear, GIVES, offers as altarOffers } from '../world/altar';
 import { atStairs, STAIRS, type Stairs } from '../world/floors';
 import { nearPieces } from '../world/events';
+import { cacheNear, cardOpen, freeLeft } from '../world/cache';
 import { img, type Of } from './icons';
-import { makeRoom, setupsOf } from '../body';
+import { freeing, makeRoom, setupsOf } from '../body';
 
 type Send = (cmd: string) => void;
 /** a button: a command, or greyed with a note saying why */
@@ -45,6 +46,8 @@ interface GridCell {
   drag?: boolean;
   /** v2r2 fun: the "+N more" (or "fewer") cell that opens or folds a long inventory */
   more?: string;
+  /** v4 inv: the module's kind (eye, weapon, legs...) for its corner mark */
+  fam?: string;
 }
 interface Detail {
   icon: Of;
@@ -110,6 +113,32 @@ export function installBtn(g: Game, it: Item & { kind: 'mod' }): Btn {
     : { label: 'install', cmd: `install ${label(it)}` };
 }
 
+/** v4 inv (Maks 10-18: "double click on module should be allowed to quickly switch"): what a double-click
+ *  on a bag module types. In when it fits; else swapped in, but never giving up the map or your last eye;
+ *  else one of its own kind (or the lightest) taken out by hand; else `install`, which says why not */
+export function switchCmd(g: Game, it: Item & { kind: 'mod' }): string {
+  const name = label(it);
+  const p = g.player;
+  const fits = slotsUsed(g) + size(it) <= p.slots + ownSocket(g, it) && def(it).power <= powerMax(g) - powerUsed(g);
+  if (fits) return `install ${name}`;
+  const room = makeRoom(g, it, false, true);
+  const eyes = p.installed.filter((i) => i.on && def(i).family === 'camera');
+  const keep = (i: Inst) => param<string>(i, 'what', '') === 'map' || (def(i).family === 'camera' && def(it).family !== 'camera' && eyes.length === 1 && eyes[0] === i);
+  if (typeof room !== 'string' && ![...(room.remove ? [room.remove, ...(room.more ?? [])] : []), ...room.off].some(keep)) return `swap in ${name}`;
+  const out = freeing(g, it);
+  return out && !keep(out) ? `remove ${instRef(g, out)}; install ${name}` : `install ${name}`;
+}
+
+/** v4 inv: the corner mark's colour per kind (src/style.css .fam-*) */
+const famOf = (m: { mod: string }): string => {
+  const k = kindOf(m);
+  return ['eye', 'map', 'legs', 'pilot', 'digger', 'radar', 'scanner', 'power', 'slot board', 'weapon', 'lamp', 'body'].includes(k) ? k.replace(' ', '-') : def(m).family;
+};
+
+/** a double-click: two clicks on the same cell this close (ms). Counted by hand: the first click redraws the
+ *  grid, so the browser's own dblclick lands on a new element and never fires */
+const DOUBLE = 380;
+
 export class Panels {
   g: Game;
   send: Send;
@@ -124,6 +153,8 @@ export class Panels {
   dragged = false;
   /** v2r2 fun: a long inventory shows its top INV_TOP cells and "+N more" until opened */
   invAll = false;
+  /** v4 inv: the last click on a cell (grid, cell, when), for a double-click */
+  lastClick: { id: string; key: string; at: number } | null = null;
 
   constructor(g: Game, send: Send) {
     this.g = g;
@@ -180,7 +211,7 @@ export class Panels {
     const p = g.player;
     const cells: GridCell[] = p.installed.map((i) => {
       const state = !i.on ? 'off' : working(g, i) ? 'on' : 'warm';
-      return { sel: 'u' + i.uid, icon: { mod: i.mod, roll: i.roll }, title: `${label(i)} · ${state}`, state, mod: i.mod, dbl: `${i.on ? 'off' : 'on'} ${instRef(g, i)}`, span: size(i), rar: rarOf(i), drag: true, badge: lvlOf(i) };
+      return { sel: 'u' + i.uid, icon: { mod: i.mod, roll: i.roll }, title: `${label(i)} · ${state}`, state, mod: i.mod, dbl: `remove ${instRef(g, i)}`, span: size(i), rar: rarOf(i), drag: true, badge: lvlOf(i), fam: famOf(i) };
     });
     for (let k = slotsUsed(g); k < p.slots; k++) cells.push({ sel: 'empty' + k, title: 'an empty socket' });
     const s = this.sel.get('modules');
@@ -219,7 +250,7 @@ export class Panels {
         const recycle: Btn = Object.keys(scrap).length ? { label: 'recycle', cmd: `recycle ${label(it)}`, note: `recycle: ${fmt(scrap)}` } : { label: 'recycle', note: 'it will not break' };
         buttons = [install, { label: '?', cmd: `info ${label(it)}` }, recycle, drop];
         lines = modLines(it);
-        c = { sel, icon: it, title: label(it), mod: it.mod, dbl: install.cmd, dim: !install.cmd, span: size(it), rar: rarOf(it), drag: true, badge: lvlOf(it) };
+        c = { sel, icon: it, title: label(it), mod: it.mod, dbl: switchCmd(g, it), dim: !install.cmd, span: size(it), rar: rarOf(it), drag: true, badge: lvlOf(it), fam: famOf(it) };
       } else if (it.kind === 'card') {
         const scripture = !it.card.startsWith('log');
         buttons = [ok(g, 'read') ? { label: 'read', cmd: 'read card' } : { label: 'read', note: 'needs a card reader' }, drop];
@@ -274,6 +305,9 @@ export class Panels {
     };
     const atPrinter = g.ents.some((e) => e.kind === 'printer' && !e.data?.shop && dist(e, p) < 1.6);
     if (atPrinter) ups();
+    // v4 inv: the floor's reliquary (its kit) opens by hand, never by itself
+    const kc = cacheNear(g);
+    if (kc && !cardOpen(g)) rows.push({ icon: { thing: 'shop' }, name: 'reliquary (kit)', tip: `the floor's kit: ${freeLeft(kc)} free picks of ${kc.offer.length}`, buttons: [{ label: 'open', cmd: 'open' }] });
     const shop = shopNear(g);
     if (shop) {
       rows.push({ icon: { thing: 'shop' }, name: 'reliquary', buttons: [{ label: 'reroll', cmd: 'reroll', note: `reroll: ${fmt(PRICES.reroll)}` }] });
@@ -528,14 +562,38 @@ export class Panels {
         s.textContent = c.badge;
         b.append(s);
       }
+      // v4 inv: a kind mark in the corner, and an off module says so
+      if (c.fam) {
+        const s = document.createElement('span');
+        s.className = `fam fam-${c.fam}`;
+        b.append(s);
+      }
+      if (c.state === 'off') {
+        const s = document.createElement('span');
+        s.className = 'off-tag';
+        s.textContent = 'off';
+        b.append(s);
+      }
       if (c.icon) {
         b.addEventListener('click', () => {
+          const now = performance.now();
+          const l = this.lastClick;
+          // v4 inv: the second click of a double switches the module (in ↔ bag); no card, no selection left open
+          if (c.dbl && l && l.id === id && l.key === c.sel && now - l.at < DOUBLE) {
+            this.lastClick = null;
+            this.sel.delete(id);
+            this.keys.delete(id);
+            hideCard();
+            this.send(c.dbl);
+            this.frame();
+            return;
+          }
+          this.lastClick = { id, key: c.sel, at: now };
           if (this.sel.get(id) === c.sel) this.sel.delete(id);
           else this.sel.set(id, c.sel);
           this.keys.delete(id);
           this.frame();
         });
-        if (c.dbl) b.addEventListener('dblclick', () => this.send(c.dbl!));
         if (c.drag) b.addEventListener('pointerdown', (e) => {
           if (e.button !== 0) return;
           const r = b.getBoundingClientRect();
