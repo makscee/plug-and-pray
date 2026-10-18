@@ -1,6 +1,0 @@
-
-> thaw@0.1.0 play
-> node scripts/play.mjs
-
-play: 232 steps ok
-play 0
