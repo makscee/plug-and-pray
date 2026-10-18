@@ -2,7 +2,7 @@
 
 You are an old machine waking blind inside a dead god's body: ribbed chambers, bone-iron and veins that still glow.
 
-You start with a map and nothing to see with. You click the map and walk; a radar sweeps it for heartbeats. Everything you become is a **module** you find, pick and install: eyes, radars, legs, lamps, weapons, power cells. The first eye turns the whole screen into a coarse grey view, better eyes sharpen it into colour, and extra eyes layer their sight on top (one shows heat, one shows scripture on the walls). Slots and power are tight, so every module you carry is a choice. Rare and unique modules turn up a few times a run.
+You start with a map and nothing to see with. You click the map and walk; a radar sweeps it for heartbeats. Everything you become is a **module** you find, pick and install: eyes, radars, legs, lamps, weapons, power cells. The first eye turns the whole screen into a coarse grey view, better eyes sharpen it into colour, and extra eyes layer their sight on top (one shows heat, one shows scripture on the walls). Modules are rare finds: one you already own upgrades instead (I, II, III), and printers and altars upgrade them for scrap. Slots, power and a small bag are tight, so every module you keep is a choice; the first eye alone drinks most of your power.
 
 ## Four floors
 
@@ -16,7 +16,7 @@ Each floor down looks different, plays a little differently and ends at a **keep
 
 - Click the map to walk, click the orange words and buttons, drag modules to install them. Every button types a console command; `help` lists them and `where` says where to go next.
 - Arrow keys or WASD walk; M shows the big map. A trackpad is enough: no mouse needed.
-- Die and you wake again on a new world. A run takes 25–35 minutes.
+- Die and you wake again on a new world. A run takes 20–30 minutes.
 
 Desktop browser, sound on.
 
