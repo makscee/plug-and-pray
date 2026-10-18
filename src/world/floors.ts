@@ -48,7 +48,7 @@ export const LAST = FLOORS.length - 1;
 /** v2 variety: what each floor wants from you, said on arrival (its tricks: src/world/gimmicks.ts, src/fight/dodge.ts) */
 export const WANTS: Record<number, string> = {
   0: 'tip: kite swarms over cracked floor.',
-  1: 'tip: aim with space or a click. a spinning gem = it dodges once. kill cantors first.', // (not ◇: that is a find on the map)
+  1: 'tip: space or a click aims. a spinning gem dodges once.', // (not ◇: that is a find on the map)
   2: 'tip: bring a lamp, and armour for the walkers. light draws foes.',
   3: 'tip: wear a rime hood. vents fire on a beat: cross between.',
   4: 'tip: bring everything you have.',
