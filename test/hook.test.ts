@@ -40,6 +40,12 @@ describe('r2 hook', () => {
     expect(text(g)).toMatch(/the next shard lies in the ossuary/);
     const v = g.vectors.find((v) => v.what === 'scripture shard')!;
     expect(Math.floor(v.x / 16)).toBe(plan(5).shards[1][0]);
+    // shard 2 points to shard 3, on the map and in `vectors`
+    g.player.inv.push({ kind: 'card', card: 'shard-2' });
+    exec(g, 'read card');
+    const v3 = g.vectors.filter((v) => v.what === 'scripture shard').at(-1)!;
+    expect([Math.floor(v3.x / 16), Math.floor(v3.y / 16)]).toEqual(plan(5).shards[2]);
+    expect(text(g)).toMatch(/the next shard lies in the furnace/);
   });
 
   it('recycle asks once before it grinds the only card reader while a card is unread', () => {

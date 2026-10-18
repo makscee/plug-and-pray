@@ -200,21 +200,22 @@ verb('read', {
       const [ex, ey] = engineAt(g);
       const fromStart = Math.round(Math.hypot(ex - 8.5, ey - 8.5) / 10) * 10;
       const deg = Math.round(((Math.atan2(ex - g.player.x, -(ey - g.player.y)) * 180) / Math.PI + 360) % 360);
-      if (n === 1) {
-        // r2 hook: the first shard says which way too, and where the next one lies (what next after shard 1)
-        const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(deg / 45) % 8];
-        say(g, `  the engine: about ${fromStart} cells from where you woke, bearing near ${Math.round(deg / 45) * 45} (${word}) from here.`);
-        const k = [0, 1, 2].find((k) => !L(g).pointed.includes(k) && !holds(g, SHARDS[k].id));
+      // r2 hook: the first shard says which way too; each shard but the last points to the next one (what next)
+      const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(deg / 45) % 8];
+      if (n === 1) say(g, `  the engine: about ${fromStart} cells from where you woke, bearing near ${Math.round(deg / 45) * 45} (${word}) from here.`);
+      else if (n === 2) say(g, `  the engine: about ${fromStart} cells out, bearing near ${Math.round(deg / 45) * 45} from here.`);
+      if (n < 3) {
+        const k = [0, 1, 2].find((k) => !holds(g, SHARDS[k].id));
+        const [x, y] = k === undefined ? [0, 0] : shardAt(g, k);
         if (k !== undefined) {
-          L(g).pointed.push(k);
-          const [x, y] = shardAt(g, k);
-          g.vectors.push({ card: it.card, x, y, what: 'scripture shard', found: false });
+          if (!L(g).pointed.includes(k)) L(g).pointed.push(k);
+          // a card may have pointed there already: one vector is enough
+          if (!g.vectors.some((v) => !v.found && v.what === 'scripture shard' && v.x === x && v.y === y)) g.vectors.push({ card: it.card, x, y, what: 'scripture shard', found: false });
           say(g, [`  the next shard lies in ${ZONES[zoneAt(x, y)].name}. vector: ${bearing(g, x, y)}. `, { text: 'vectors', cmd: 'vectors' }]);
           const guard = GUARD_HINT[ELITE[Math.max(1, Math.min(3, zoneAt(x, y)))]];
           if (guard) say(g, `  ${guard}`);
         }
-      } else if (n === 2) say(g, `  the engine: about ${fromStart} cells out, bearing near ${Math.round(deg / 45) * 45} from here.`);
-      else {
+      } else {
         const v: Vector = { card: it.card, x: ex, y: ey, what: 'thaw engine', found: false };
         g.vectors.push(v);
         say(g, [`  vector: ${bearing(g, ex, ey)}. `, 'the thaw engine.']);
