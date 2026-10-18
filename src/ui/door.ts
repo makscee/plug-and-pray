@@ -29,6 +29,7 @@ export function tight(g: Game, why: string): string {
   if (short) return `${short[1]} hp short for this fight: flesh, armour or a stronger weapon`;
   return w
     .replace(/^(temper|attune) your (.*) at an altar first/, '$1 $2 at an altar')
+    .replace(/^upgrade your (.*) at a printer or altar first/, 'upgrade $1 at a printer or altar')
     .replace(/^your weapons are weak for it: find or print a stronger one, or a second$/, 'weapons too weak: a stronger one, or a second');
 }
 

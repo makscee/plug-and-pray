@@ -5,6 +5,7 @@ import './fight/ui';
 import './fight/telegraph';
 import './ui/floors';
 import './ui/cache';
+import './ui/toast';
 import { newGame, say, tick } from './core/game';
 import { Screen } from './ui';
 import './ui/bigmap';

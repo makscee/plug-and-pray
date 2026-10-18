@@ -77,6 +77,9 @@ export interface Run {
   uniques: { seen: string[]; held: string[]; dealt: number };
   /** v3 modules: module finds (dupes, which upgrade, included) */
   found?: number;
+  /** module finds and printer prints, per floor (index 0 = floor 1) */
+  foundF?: number[];
+  printsF?: number[];
   /** v2 balance: what it had on when it first took on each floor's keeper (the boss sim replays these) */
   atBoss: Record<number, BossKit>;
   /** v2 balance: times it broke off from each floor's keeper nearly dead */
@@ -589,7 +592,7 @@ export function play(seed: number, o: Opts): Run {
     if (active(g, 'mind').some((i) => param(i, 'what', '') === 'reader') && P.inv.some((i) => i.kind === 'card')) return 'read card';
     // grind what the loadout leaves out (keep spare power modules: they come in when power runs short)
     const wouldRun = bestLoadout(g, Math.max(zt, zoneHere()), wantReader, { power: 99 });
-    const spare = P.inv.find((i) => i.kind === 'mod' && !pick.has(i) && !wouldRun.has(i) && MODS[i.mod].family !== 'unique' && (MODS[i.mod].family !== 'power' || (param(i, 'slots', 0) > 0 && P.slots >= printer.MAX_SLOTS)) && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader') && !(MODS[i.mod].family === 'lamp' && ![...P.inv, ...P.installed].some((x) => x !== i && 'mod' in x && MODS[x.mod].family === 'lamp')));
+    const spare = P.inv.find((i) => i.kind === 'mod' && !pick.has(i) && !wouldRun.has(i) && MODS[i.mod].family !== 'unique' && i.rarity !== 'unique' && (MODS[i.mod].family !== 'power' || (param(i, 'slots', 0) > 0 && P.slots >= printer.MAX_SLOTS)) && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader') && !(MODS[i.mod].family === 'lamp' && ![...P.inv, ...P.installed].some((x) => x !== i && 'mod' in x && MODS[x.mod].family === 'lamp')));
     if (spare && 'mod' in spare) {
       run.recycled++;
       return 'recycle ' + labelOf(spare);
@@ -597,7 +600,7 @@ export function play(seed: number, o: Opts): Run {
     // v3 modules: a full bag keeps the best: recycle the weakest of the rest
     if (bagMods(g).length > BAG) {
       const zone = Math.max(zt, zoneHere());
-      const worst = bagMods(g).filter((i) => MODS[i.mod].family !== 'unique' && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader')).sort((a, b) => worth(g, a, zone, false) - worth(g, b, zone, false))[0];
+      const worst = bagMods(g).filter((i) => MODS[i.mod].family !== 'unique' && i.rarity !== 'unique' && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader')).sort((a, b) => worth(g, a, zone, false) - worth(g, b, zone, false))[0];
       if (worst) return run.recycled++, 'recycle ' + labelOf(worst);
     }
     // buy at a machine in reach
@@ -772,15 +775,15 @@ export function play(seed: number, o: Opts): Run {
         if (P.slots < pr.MAX_SLOTS) out.push({ cmd: 'print slot', ok: afford(pr.slotCost(g)) });
         upgrades(out);
         // a module only with plenty to spare
-        const mc = pr.modCost((m.data?.far as number) ?? 0);
+        const mc = pr.modCost((m.data?.far as number) ?? 0, pr.madeAt(g, m));
         // r2 econ: with R2_AIM=1, an aimed print first once the core is full, at the family whose best piece on is
         // weakest (weapon, body, eye). Off by default: every aiming rule tried cost the sims 1-5 thaws of 40
         const zone = Math.max(targetZone(), zoneHere());
         const best = (f: string) => Math.max(0, ...P.installed.filter((i) => MODS[i.mod].family === f).map((i) => worth(g, i, zone, false)));
         const fam = (['weapon', 'body', 'camera'] as const).slice().sort((a, b) => best(a) - best(b))[0];
-        const ac = pr.aimedCost((m.data?.far as number) ?? 0);
-        if (process.env.R2_AIM && P.core >= altar.MAX_CORE) out.push({ cmd: `print ${fam === 'camera' ? 'eye' : fam}`, ok: afford(Object.fromEntries(Object.entries(ac).map(([k, v]) => [k, (v as number) * 2]))) });
-        out.push({ cmd: 'print module', ok: afford(Object.fromEntries(Object.entries(mc).map(([k, v]) => [k, (v as number) * 2]))) });
+        const ac = pr.aimedCost((m.data?.far as number) ?? 0, pr.madeAt(g, m));
+        if (process.env.R2_AIM && P.core >= altar.MAX_CORE) out.push({ cmd: `print ${fam === 'camera' ? 'eye' : fam}`, ok: pr.madeAt(g, m) < pr.PRINT_CAP && afford(Object.fromEntries(Object.entries(ac).map(([k, v]) => [k, (v as number) * 2]))) });
+        out.push({ cmd: 'print module', ok: pr.madeAt(g, m) < pr.PRINT_CAP && afford(Object.fromEntries(Object.entries(mc).map(([k, v]) => [k, (v as number) * 2]))) });
       }
     }
     return out;
@@ -973,6 +976,7 @@ export function play(seed: number, o: Opts): Run {
     }
     for (const i of [...P.inv, ...P.installed]) if ('mod' in i && i.rarity === 'unique' && !run.uniques.held.includes(i.mod)) run.uniques.held.push(i.mod);
     const before = resAll(g);
+    const fb = FOUND.get(g) ?? 0, fl = g.floor ?? 0;
     const c = decide();
     if (o.debug && (process.env.ALL || typeof c === 'string' || run.log.length === 0 || !run.log[run.log.length - 1].endsWith('wait'))) run.log.push(`${g.t.toFixed(1)} ${Math.floor(P.x)},${Math.floor(P.y)} hp${P.hp.toFixed(1)} > ${typeof c === 'number' ? 'wait' : c + ' ' + why}${typeof c === 'number' ? ' ' + why + ' wait' : ''}`);
     if (typeof c === 'number') advance(c);
@@ -983,6 +987,12 @@ export function play(seed: number, o: Opts): Run {
       advance(same > 2 ? 1 : 0.2);
     }
     run.income += Math.max(0, resAll(g) - before);
+    const df = (FOUND.get(g) ?? 0) - fb;
+    if (df > 0) {
+      (run.foundF ??= [0, 0, 0, 0, 0])[fl] += df;
+      if (o.debug) run.log.push(`FOUND f${fl + 1} +${df} via ${c}`);
+      if (typeof c === 'string' && c.startsWith('print ') && c !== 'print slot') (run.printsF ??= [0, 0, 0, 0, 0])[fl] += df;
+    }
   }
   snap();
   run.loadouts.end = onNow();

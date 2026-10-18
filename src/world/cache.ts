@@ -36,6 +36,17 @@ export interface Cache {
   taken: number;
   /** scrapped: nothing left to take */
   done: boolean;
+  /** v3 econ (v3r2: a second pick swapped the first back out): uids this cache put in; a later pick never moves them */
+  put?: number[];
+}
+
+/** room for a pick that never takes out (or switches off) what this cache just put in, or why not */
+function roomFor(g: Game, it: Item & { kind: 'mod' }): ReturnType<typeof makeRoom> {
+  const room = makeRoom(g, it, false, true); // as `swap in` (the pick's install) weighs it
+  if (typeof room === 'string') return room;
+  const put = cacheOf(g).put ?? [];
+  const gone = [...(room.remove ? [room.remove, ...(room.more ?? [])] : []), ...room.off];
+  return gone.some((o) => put.includes(o.uid)) ? `your ${gone.filter((o) => put.includes(o.uid)).map((o) => label(o)).join(', ')} came from this cache and stays in` : room;
 }
 
 /** the floor's offer: its headline (the kit's first module; on floor 3 its first two) always, then the rest of the kit in a seed order, five at most.
@@ -133,10 +144,10 @@ export function fitOf(g: Game, it: Item): string {
   // v3 modules: one you own is an upgrade, not a second copy
   const have = owned(g, it.mod);
   if (have) return `▲ upgrades your ${label(have)} to ${ROMAN[Math.min(maxLevel(have), moduleLevel(have) + Math.max(1, moduleLevel(it) - 1))]}`;
-  const room = makeRoom(g, it, false);
+  const room = roomFor(g, it);
   // v2r4 run: a pick that would cost you your last weapon for swarms says so, loud (src/ui/cache.ts draws ⚠ big)
   const bell = g.player.installed.find((o) => lastSwarm(g, o, it));
-  if (typeof room === 'string') return bell && def(it).family === 'weapon' ? `⚠ to your bag: your ${label(bell)} stays in, your only weapon for swarms` : 'to your bag: nothing gives way';
+  if (typeof room === 'string') return bell && def(it).family === 'weapon' ? `⚠ to your bag: your ${label(bell)} stays in, your only weapon for swarms` : `to your bag: ${room.includes('this cache') ? room : 'nothing gives way'}`;
   const gone = [...(room.remove ? [room.remove, ...(room.more ?? [])] : []), ...room.off];
   const out = [...(room.remove ? [room.remove, ...(room.more ?? [])] : [])].map((o) => `${label(o)} out`);
   const off = room.off.map((o) => `${label(o)} off`);
@@ -165,10 +176,11 @@ export function pick(g: Game, k: number): string | null {
   }
   const name = label(it);
   // a free install: straight in, or in with the lightest giving way (as `swap in` does)
-  const room = makeRoom(g, it, false);
+  const room = roomFor(g, it);
   const before = new Set(g.player.installed);
   if (typeof room !== 'string' && VERBS.swap) VERBS.swap.run(g, ['in', name]);
   const added = g.player.installed.find((i) => !before.has(i));
+  if (added) (c.put ??= []).push(added.uid);
   // v2r2 fun: nothing gave way (legs, the map, a better eye stay): it waits, and a button makes room by hand
   // v2r3 ux: the obvious swap first, one of its own kind (the survey spool for the map spool, not the bell)
   // v2r5 run: only one that frees what it lacks, slot or power (the 0-power thread bell was offered for the moth)

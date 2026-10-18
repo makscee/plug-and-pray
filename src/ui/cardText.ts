@@ -114,6 +114,21 @@ export const CARD_TEXT: Record<string, CardText> = {
 const n = (v: number) => (Math.round(v * 10) / 10).toString();
 const FILTER: Record<string, string> = { color: 'colour', gray: 'grey', '1bit': 'b&w', heat: 'heat', sonar: 'sonar', edge: 'outlines' };
 
+/** v3 econ (v3r2: the log said "damage 1.5 → 2", the card "1.1 → 1.4 dmg/s"): what a level step moves, in the
+ *  card's own number: "1.1 → 1.4 dmg/s", with the real gain in % */
+export function levelDiff(m: Modish, to: number): { text: string; pct: number } {
+  const a = keyNums(m)[0], b = keyNums({ ...m, level: to })[0];
+  // the gain from the real numbers, not the rounded ones on the card
+  const key = levelKey(m);
+  const x = key ? param<number>(m, key, 0) : 0, y = key ? param<number>({ ...m, level: to }, key, 0) : 0;
+  const pct = x > 0 && y > 0 ? Math.round((Math.max(x, y) / Math.min(x, y) - 1) * 100) : 0;
+  if (!a || !b || a === b) return { text: '', pct };
+  // "sees 6 cells" → "sees 6 → 8.1 cells": the words round the number once
+  const re = /^(.*?)([+−-]?[\d.]+)(.*)$/;
+  const [, pa, xa, sa] = re.exec(a) ?? [], [, pb, xb, sb] = re.exec(b) ?? [];
+  return { text: xa && xb && pa === pb && sa === sb ? `${pa}${xa} → ${xb}${sa}` : `${a} → ${b}`, pct };
+}
+
 /** v3-modules adds a level (1-3) on module instances; nothing when it is absent */
 export function levelOf(m: Modish): number {
   const l = (m as { level?: number }).level;

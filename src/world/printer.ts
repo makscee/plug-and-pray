@@ -15,6 +15,8 @@ import { upgradeLines } from './upgrade';
 import { dealUnique } from '../mods/uniques';
 import { cradleEye } from './secrets';
 import { ZONES, zoneFar } from './zones';
+import { floorOfChunk } from './floors';
+import { CHUNK } from '../core/grid';
 
 export const MAX_SLOTS = 8;
 /** the chance a reliquary past the cradle keeps a unique (v2 rarity) */
@@ -29,7 +31,8 @@ export const PRICES = {
   reroll: { bone: 1, glass: 1 } as Cost,
   /** v2 rarity: on top of a relic's shop price */
   rarity: { fine: { copper: 1 }, rare: { glass: 1, copper: 2 }, unique: { bone: 1, glass: 1, copper: 2, ichor: 1 } } as Partial<Record<string, Cost>>,
-  scrap: [{ bone: 2, copper: 1 }, { bone: 2, glass: 1, copper: 1 }, { bone: 2, glass: 2, copper: 1, ichor: 1 }] as Cost[],
+  // v3 econ: finds are fewer and the print → recycle loop is gone, so a found module grinds out a copper more
+  scrap: [{ bone: 2, copper: 2 }, { bone: 2, glass: 1, copper: 2 }, { bone: 2, glass: 2, copper: 2, ichor: 1 }] as Cost[],
 };
 
 export function slotCost(g: Game): Cost {
@@ -41,8 +44,10 @@ export function slotCost(g: Game): Cost {
 }
 
 export const tierAt = (far: number) => ZONES[zoneFar(far)].tier;
-export function modCost(far: number): Cost {
-  return PRICES.print[tierAt(far)];
+export function modCost(far: number, made = 0): Cost {
+  const c = { ...PRICES.print[tierAt(far)] };
+  if (made) c.bone = (c.bone ?? 0) + PRINT_STEP * made;
+  return c;
 }
 
 const have = (g: Game, res: Res) => g.player.inv.reduce((n, i) => n + (i.kind === 'res' && i.res === res ? i.n : 0), 0);
@@ -78,17 +83,28 @@ export const printerNear = (g: Game): Entity | undefined =>
 /** r2 econ: aimed prints, a module of one family for 2 copper more than a random one ("print eye") */
 export const AIMED: Record<string, string> = { weapon: 'weapon', eye: 'camera', body: 'body', lamp: 'lamp', scanner: 'scanner', legs: 'gait', mind: 'mind', tool: 'tool' };
 export const AIM_COPPER = 2;
-export const aimedCost = (far: number): Cost => {
-  const c = { ...modCost(far) };
+export const aimedCost = (far: number, made = 0): Cost => {
+  const c = { ...modCost(far, made) };
   c.copper = (c.copper ?? 0) + AIM_COPPER;
   return c;
 };
+/** v3 econ (v3r2: the sim printed 30 modules on floor 1, print → recycle): a floor's printers make PRINT_CAP
+ *  modules between them, each PRINT_STEP bone dearer than the last, and a printed module grinds back to 1 bone */
+export const PRINT_STEP = 2;
+export const PRINT_CAP = 3;
+const floorAt = (e: Entity) => floorOfChunk(Math.floor(e.x / CHUNK));
+/** modules printed so far on this printer's floor */
+export const madeAt = (g: Game, e: Entity): number =>
+  g.ents.filter((o) => o.kind === 'printer' && !o.data?.shop && floorAt(o) === floorAt(e)).reduce((n, o) => n + ((o.data?.made as number) ?? 0), 0);
 
 function menu(g: Game, e: Entity): Line[] {
   const far = (e.data?.far as number) ?? 0;
   const slot: Line = g.player.slots >= MAX_SLOTS ? ['  slots: the board is full (8).'] : [{ text: 'print slot', cmd: 'print slot' }, `  +1 slot: ${fmt(slotCost(g))}`];
-  const aimed: Line = ['  or one kind: ', ...Object.keys(AIMED).flatMap((k, n) => [...(n ? [' '] : []), { text: k, cmd: `print ${k}` }]), `: ${fmt(aimedCost(far))}`];
-  return [slot, [{ text: 'print module', cmd: 'print module' }, `  a module: ${fmt(modCost(far))}`], aimed, ...upgradeLines(g, 3)];
+  const aimed: Line = ['  or one kind: ', ...Object.keys(AIMED).flatMap((k, n) => [...(n ? [' '] : []), { text: k, cmd: `print ${k}` }]), `: ${fmt(aimedCost(far, madeAt(g, e)))}`];
+  // v3 econ: upgrades first, your weapon at the top: levelling is the main way to grow
+  const made = madeAt(g, e);
+  const mod: Line[] = made >= PRINT_CAP ? [[`  modules: this floor's printers are spent (${PRINT_CAP} a floor). slots and upgrades still work.`]] : [[{ text: 'print module', cmd: 'print module' }, `  a module: ${fmt(modCost(far, made))} (${PRINT_CAP - made} of ${PRINT_CAP} left this floor, +${PRINT_STEP} bone each)`], aimed];
+  return [...upgradeLines(g, 3), slot, ...mod];
 }
 
 /** damage a second per power (a 0p one counts as 1p) */
@@ -124,7 +140,8 @@ verb('print', {
     }
     const fam = AIMED[what];
     if (what === 'module' || fam) {
-      const c = fam ? aimedCost(far) : modCost(far);
+      if (madeAt(g, e) >= PRINT_CAP) return say(g, `this floor's printers are spent on modules: ${PRINT_CAP} a floor. slots and upgrades still work here.`);
+      const c = fam ? aimedCost(far, madeAt(g, e)) : modCost(far, madeAt(g, e));
       if (!affords(g, c)) return say(g, `the printer wants ${fmt(c)}.${glassTip(g, c)}`);
       pay(g, c);
       const made = ((e.data!.made as number) ?? 0) + 1;
@@ -136,6 +153,7 @@ verb('print', {
       // (a few tries at its own reach, then a little deeper: the cradle's only melee weapon is the spark finger)
       // v2r3 fun: nor one weaker than what you hold of its kind (a 2p censer flail for the 1p choir bell)
       for (let k = 0; k < 16 && it.kind === 'mod' && (own(it.mod) || outdone(g, it)); k++) it = lootMod(r, far + Math.max(0, k - 7), fam, !g.floor);
+      if (it.kind === 'mod') it.printed = true;
       addItem(g, it);
       g.events.push({ type: 'print', at: [e.x, e.y] });
       if (it.kind === 'mod') say(g, ['the printer spits out: ', { text: label(it), cmd: `install ${label(it)}` }]);
@@ -278,7 +296,7 @@ verb('reroll', {
 export const SCRAP_GLASS = 0.5;
 /** modules ground so far, per game: seeds the glass roll */
 const ground = new WeakMap<Game, number>();
-export const scrapOf = (it: Item): Cost => (it.kind === 'mod' && def(it).family !== 'unique' ? PRICES.scrap[Math.min(2, def(it).tier)] : {});
+export const scrapOf = (it: Item): Cost => (it.kind === 'mod' && def(it).family !== 'unique' && it.rarity !== 'unique' ? (it.printed ? { bone: 1 } : PRICES.scrap[Math.min(2, def(it).tier)]) : {});
 
 /** r4 final: why this card reader may not leave you (the last one, with floors still to find the way down on), or null */
 export function lastReader(g: Game, it: Item | undefined): string | null {
@@ -328,7 +346,7 @@ verb('recycle', {
     // r2 econ: a tier-0 module grinds out a glass half the time (glass was the early lock)
     const made = (ground.get(g) ?? 0) + 1;
     ground.set(g, made);
-    if (def(it).tier === 0 && rng(hash(g.seed, 57, made)).chance(SCRAP_GLASS)) c.glass = (c.glass ?? 0) + 1;
+    if (def(it).tier === 0 && !it.printed && rng(hash(g.seed, 57, made)).chance(SCRAP_GLASS)) c.glass = (c.glass ?? 0) + 1;
     g.player.inv.splice(k, 1);
     for (const [r, n] of Object.entries(c)) addItem(g, { kind: 'res', res: r as Res, n: n! });
     g.events.push({ type: 'recycle' });

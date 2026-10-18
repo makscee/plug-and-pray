@@ -12,7 +12,7 @@ const STEPS = [
   // (v2-view: no eye; the map is the screen, the bell sweeps over it)
   [0, 'g.player.installed.length === 0 && g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector("[data-cmd=\'install thread bell\']") !== null'],
   ['install thread bell'], ['install map spool'], ['install stepper relay'], ['install spark finger', 'g.player.installed.length === 4'],
-  ['take', 'g.player.inv.some(i => i.mod === "halo")'],
+  [0, '(g.player.inv.push({ kind: "mod", mod: "halo" }), true)'], // v3 econ: no fixed halo at your feet now
   [1.5, 'document.body.dataset.view === "map" && document.querySelector("#backdrop canvas.map")?.width > 600 && /no eye/.test(document.querySelector(".bd-tag").textContent) && document.querySelector("[data-cmd^=\'go n\']") !== null'],
   ['face e'], [0.1, 'Math.abs(g.player.dir - Math.PI / 2) < 0.01'],
   // console (Maks's playtest): the actions bar lists what you can do now; go and unstuck from the start

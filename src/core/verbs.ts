@@ -2,6 +2,7 @@
 // available only while a module of it is on (`when`). Buttons anywhere type these same commands.
 
 import { does } from '../mods/describe';
+import { levelDiff } from '../ui/cardText';
 import { dist, itemName, reach, say, spawn, tickHooks } from './game';
 import { DIRS, open } from './grid';
 import { active, def, label, levelKey, maxLevel, moduleLevel, MODS, ownSocket, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits, type Modish } from './mods';
@@ -118,15 +119,24 @@ export function owned(g: Game, mod: string): Modish | undefined {
 }
 /** modules in the bag */
 export const bagMods = (g: Game): (Item & { kind: 'mod' })[] => g.player.inv.filter((i): i is Item & { kind: 'mod' } => i.kind === 'mod');
-/** raise a module one level (or to `to`); its line says what moved */
+/** v3 econ (Maks: "modules more like an event"): a find or an upgrade worth a moment; the toast shows it (src/ui/toast.ts) */
+export interface Moment { item: Modish; head: string; line: string }
+export const MOMENTS = new WeakMap<Game, Moment[]>();
+export const moment = (g: Game, m: Moment): void => void (MOMENTS.get(g) ?? MOMENTS.set(g, []).get(g)!).push(m);
+/** raise a module one level (or to `to`); its line says what moved, in the card's numbers */
 export function levelUp(g: Game, m: Modish, to = moduleLevel(m) + 1): void {
   const key = levelKey(m);
+  const from = moduleLevel(m);
+  const lv = Math.min(maxLevel(m), Math.max(from + 1, to));
+  const d = levelDiff(m, lv);
   const before = key ? param<number>(m, key, 0) : 0;
-  m.level = Math.min(maxLevel(m), Math.max(moduleLevel(m) + 1, to));
+  m.level = lv;
   const after = key ? param<number>(m, key, 0) : 0;
   const num = (v: number) => (Math.abs(v) >= 10 ? Math.round(v) : Math.round(v * 10) / 10);
+  const what = d.text || (key ? `${key} ${num(before)} → ${num(after)}` : '');
   g.events.push({ type: 'upgrade', data: m.mod });
-  say(g, [`▲ upgrade: ${label(m)}` + (key ? `  ·  ${key} ${num(before)} → ${num(after)}` : '')]);
+  say(g, [`▲ upgrade: ${label(m)}` + (what ? `  ·  ${what}` : '')]);
+  moment(g, { item: { ...m }, head: '▲ upgrade', line: what });
 }
 
 /** into the bag. A module find (not one coming back out of a slot: `back`) you already own upgrades yours
@@ -148,6 +158,7 @@ export function addItem(g: Game, it: Item, back = false): 'added' | 'upgraded' |
     }
   }
   g.player.inv.push(it);
+  if (it.kind === 'mod' && !back && (it.rarity === 'rare' || it.rarity === 'unique')) moment(g, { item: it, head: it.rarity === 'unique' ? '✦ unique find' : '✦ rare find', line: does(it) });
   if (it.kind === 'mod' && !back) bagFull(g);
   return 'added';
 }
@@ -155,7 +166,9 @@ export function addItem(g: Game, it: Item, back = false): 'added' | 'upgraded' |
 export function bagFull(g: Game): void {
   const bag = bagMods(g);
   if (bag.length <= BAG) return;
-  say(g, `⚠ bag full (${bag.length}/${BAG}): recycle one to keep the best.`, bag.map((m, k): Seg => ({ text: `${k ? ' · ' : ''}recycle ${label(m)}`, cmd: `recycle ${label(m)}` })));
+  // v3 econ: uniques never grind, so they are never offered
+  const grind = bag.filter((m) => m.rarity !== 'unique' && def(m).family !== 'unique');
+  say(g, `⚠ bag full (${bag.length}/${BAG}): recycle one to keep the best.`, grind.map((m, k): Seg => ({ text: `${k ? ' · ' : ''}recycle ${label(m)}`, cmd: `recycle ${label(m)}` })));
 }
 
 /** v2r3 ux: a swap puts what came out where what went in sat in the bag, so the grid doesn't shift under the

@@ -130,12 +130,7 @@ const menu = (g: Game) => [
   [{ text: 'offer copper', cmd: 'offer copper' }, `  give ${fmt(TITHE)} → 1 bone`],
   [{ text: 'offer bone', cmd: 'offer bone' }, `  give ${fmt(GRIND)} → 1 glass`],
   [{ text: 'offer bone for copper', cmd: 'offer bone for copper' }, `  give ${fmt(SMELT)} → 1 copper`],
-  ...attunable(g).map((i) => [{ text: `attune ${def(i).name}`, cmd: `attune ${def(i).name}` }, `  ${attuneText(i)} for good: ${fmt(attuneCost(i))}`]),
-  ...temperable(g).map((i) => {
-    const to = temperTo(i);
-    const what = to.key === i.roll!.key ? `${to.key} ×${temperStep(to.key)} more` : `${to.key} ×${to.mult} (for its ${i.roll!.key})`;
-    return [{ text: `temper ${def(i).name}`, cmd: `temper ${def(i).name}` }, `  ${what}: ${fmt(temperCost(i))}`];
-  }),
+  // v3 econ (one upgrade track): attune and temper still work typed, but the altar lists `upgrade` instead
 ];
 
 verb('offer', {
@@ -197,7 +192,7 @@ verb('offer', {
     }
     // r4: `offer bone` says what the altar takes rather than the bare menu again
     if (what) return say(g, `the altar takes no single ${what}. it takes these, and pays in power, flesh or mending:`, ...menu(g));
-    say(g, 'an altar. it wants an offering.', ...menu(g), ...upgradeLines(g, 2));
+    say(g, 'an altar. it wants an offering.', ...upgradeLines(g, 3), ...menu(g));
   },
 });
 
@@ -261,7 +256,7 @@ tickHooks.push((g) => {
   const e = altarNear(g);
   if (!e || e.data!.greeted) return;
   e.data!.greeted = true;
-  say(g, 'an altar stands here, stained and patient.', ...menu(g), ...upgradeLines(g, 2));
+  say(g, 'an altar stands here, stained and patient.', ...upgradeLines(g, 3), ...menu(g));
 });
 
 

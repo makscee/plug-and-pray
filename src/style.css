@@ -334,3 +334,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .win.panel .grid.drop-no { outline: 1px dashed var(--hurt); outline-offset: 2px; }
 .drag-why { position: fixed; z-index: 9900; width: 260px; padding: 3px 8px; font-size: 16px; color: var(--fg); background: #000e; border: 1px solid var(--hurt); pointer-events: none; animation: drag-why 2.4s ease-out both; }
 @keyframes drag-why { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
+/* v3 econ: a module's level reads at 1280×720; II and III in the accent colour; a bag past its room warns */
+.win.panel .cell .badge.lvl { font-size: 18px; font-weight: bold; right: 1px; bottom: -1px; color: var(--t-meta); }
+.win.panel .cell .badge.lvl-2, .win.panel .cell .badge.lvl-3 { font-size: 22px; color: var(--acc); }
+.res-row .bag-over { color: var(--warn); }

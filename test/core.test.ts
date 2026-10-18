@@ -13,10 +13,10 @@ const run = (g: Game, s: number) => {
 };
 
 describe('the spine', () => {
-  it('a bare game starts blind with a halo at your feet (the page adds the starting kit)', () => {
+  it('a bare game starts blind, nothing fixed at your feet (the page adds the starting kit)', () => {
     const g = newGame(1);
-    exec(g, 'take');
-    expect(text(g)).toContain('halo');
+    // v3 econ: no fixed halo on floor 1
+    expect(g.ents.some((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === 'halo' && Math.hypot(e.x - g.player.x, e.y - g.player.y) < 2)).toBe(false);
     g.player.inv.push({ kind: 'mod', mod: 'pinhole-eye' });
     exec(g, 'install pinhole');
     expect(g.player.installed).toHaveLength(1);

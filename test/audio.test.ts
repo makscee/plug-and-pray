@@ -31,10 +31,11 @@ describe('sound: what plays when', () => {
     const e = ear();
     const g = newGame(1);
     listen(e, g);
+    g.ents.push({ id: g.nextId++, kind: 'item', x: g.player.x, y: g.player.y, item: { kind: 'res', res: 'bone', n: 1 } }); // v3 econ: nothing fixed at your feet
     exec(g, 'take');
     expect(now(e, g)).toEqual(['take']);
     g.events = [];
-    g.player.inv.push({ kind: 'mod', mod: 'pinhole-eye' }); // the start chamber holds a halo now (10-18)
+    g.player.inv.push({ kind: 'mod', mod: 'pinhole-eye' });
     exec(g, 'install pinhole');
     const plays = listen(e, g);
     expect(plays.map((p) => p.cue)).toEqual(['install', 'warm']);

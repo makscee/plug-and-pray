@@ -381,16 +381,4 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
   }
 });
 
-// --- where they lie: a pilot and a log in the first ring, on their own dice ---------------------
-
-chunkHook((g, c) => {
-  const put = (mod: string) => {
-    const r = rng(hash(g.seed, 53, c.cx, c.cy));
-    const fs = floors(c);
-    if (!fs.length) return;
-    const [x, y] = fs[r.int(0, fs.length - 1)];
-    spawn(g, { kind: 'item', x: c.cx * CHUNK + x + 0.5, y: c.cy * CHUNK + y + 0.5, item: { kind: 'mod', mod } });
-  };
-  // v2: the wayfinder moth (click the map to walk) is the choir nave's kit now (src/world/floors.ts KIT)
-  if (c.cx === -1 && c.cy === 1) put('waystone-log');
-});
+// v3 econ (v3r2): the waystone log no longer lies fixed on floor 1 (it was the first thing recycled); it stays in the loot pools

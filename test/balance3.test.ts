@@ -101,6 +101,6 @@ describe('v2-balance3: the floor-2 door card weighs the temper', () => {
   it('a plain one is told to attune it first, with the price (v2r5 newcomer: a plain one cannot be tempered yet)', () => {
     const c = keeperCheck(kit(false), 1);
     expect(c.ready).toBe(false);
-    expect(c.why.join('; ')).toContain('attune your nail psalm at an altar first (');
+    expect(c.why.join('; ')).toContain('upgrade your nail psalm at a printer or altar first (');
   });
 });

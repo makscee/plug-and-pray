@@ -8,7 +8,7 @@ import { doorIn, walkPace } from '../mods/gait';
 import { endTrip, route } from '../mods/pilot';
 import { dist, say, tickHooks } from '../core/game';
 import { instRef, VERBS, way } from '../core/verbs';
-import { active, def, label, MODS, param } from '../core/mods';
+import { active, def, label, moduleLevel, MODS, param } from '../core/mods';
 import { freeing, makeRoom } from '../body';
 import type { Game, Line } from '../core/types';
 import { BOSS, LOADOUTS, variantOf, type BossDef } from '../fight/bosses';
@@ -17,7 +17,8 @@ import { readiness } from '../world/zones';
 import { dpsOf } from '../world/zonemath';
 import { keeperDoor } from './hints';
 import { sealedEye } from '../world/secrets';
-import { attuneCost, fleshCost, temperCost } from '../world/altar';
+import { fleshCost } from '../world/altar';
+import { upgradeCost } from '../world/upgrade';
 import { affords, fmt, glassTip, type Cost } from '../world/printer';
 
 /** v2r5 newcomer (the door said "temper" with 0 copper): a price you cannot pay yet says how to get there */
@@ -120,9 +121,10 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
       const hit = dps / Math.max(0.01, dpsOf(ref));
       const weak = hit < 0.7;
       // v2-balance3 (v2r3 fight): the keeper is balanced for a tempered weapon you carry plain: say so
-      const plain = p.installed.find((i) => i.on && L.rolls?.[i.mod] && i.roll?.tag !== 'attuned' && i.roll?.tag !== 'tempered');
+      // v3 econ: one track: an upgrade (II) stands in for the old attune and temper
+      const plain = p.installed.find((i) => i.on && L.rolls?.[i.mod] && i.roll?.tag !== 'attuned' && i.roll?.tag !== 'tempered' && moduleLevel(i) < 2 && upgradeCost(i));
       const untempered = !!plain && hit < 0.85;
-      if (untempered) why.push(plain.roll ? `temper your ${def(plain).name} at an altar first${price(g, temperCost(plain))}` : `attune your ${def(plain).name} at an altar first${price(g, attuneCost(plain))}`);
+      if (untempered) why.push(`upgrade your ${def(plain).name} at a printer or altar first${price(g, upgradeCost(plain)!)}`);
       else if (weak) why.push('your weapons are weak for it: find or print a stronger one, or a second');
       // what it can take: readiness is damage times toughness, so the toughness falls out of the two
       // v2r4 ux: armour you already carry is named ("armour first" with a frost coat in the bag)

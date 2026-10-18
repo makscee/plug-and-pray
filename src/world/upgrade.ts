@@ -2,7 +2,8 @@
 // bone, copper and glass (more each level) and raises an owned module one level, I → II → III. A duplicate find
 // does the same for free (src/core/verbs.ts addItem).
 import { say } from '../core/game';
-import { label, levelKey, maxLevel, moduleLevel, ROMAN, type Modish } from '../core/mods';
+import { def, label, maxLevel, moduleLevel, param, ROMAN, type Modish } from '../core/mods';
+import { levelDiff } from '../ui/cardText';
 import { bagMods, flat, levelUp, verb } from '../core/verbs';
 import type { Game, Line } from '../core/types';
 import { altarNear } from './altar';
@@ -13,15 +14,27 @@ export const UPGRADE_COST: Record<number, Cost> = { 2: { bone: 3, copper: 1, gla
 /** what the next level costs, or null at the top */
 export const upgradeCost = (m: Modish): Cost | null => (moduleLevel(m) >= maxLevel(m) ? null : UPGRADE_COST[moduleLevel(m) + 1]);
 
-/** everything you own that can still rise: installed first */
-export const upgradable = (g: Game): Modish[] => [...g.player.installed, ...bagMods(g)].filter((m) => upgradeCost(m));
+/** v3 econ: weapons first, then eyes, then the rest */
+const RANK: Record<string, number> = { weapon: 0, camera: 1 };
+const rank = (m: Modish) => RANK[def(m).family] ?? 2;
+/** your main weapon first: the most damage a second */
+const dps = (m: Modish) => param<number>(m, 'damage', 0) / Math.max(0.05, param<number>(m, 'cooldown', 1));
+/** everything you own that can still rise: installed first, weapons then eyes first */
+export const upgradable = (g: Game): Modish[] =>
+  [...[...g.player.installed].sort((a, b) => rank(a) - rank(b) || dps(b) - dps(a)), ...bagMods(g)].filter((m) => upgradeCost(m));
+/** "→ II: 1.1 → 1.4 dmg/s (+35%)": the real step, in the card's numbers */
+export const upgradeText = (m: Modish): string => {
+  const to = moduleLevel(m) + 1;
+  const d = levelDiff(m, to);
+  return `→ ${ROMAN[to]}${d.text ? `: ${d.text}` : ''}${d.pct ? ` (+${d.pct}%)` : ''}`;
+};
 const atMachine = (g: Game): boolean => !!printerNear(g) || !!altarNear(g);
 
 /** the buttons a printer or altar lists: one per module that can rise (the first few) */
 export function upgradeLines(g: Game, n = 4): Line[] {
   return upgradable(g)
     .slice(0, n)
-    .map((m): Line => [{ text: `upgrade ${label(m)}`, cmd: `upgrade ${label(m)}` }, `  → ${ROMAN[moduleLevel(m) + 1]} (${levelKey(m)} +35%): ${fmt(upgradeCost(m)!)}`]);
+    .map((m): Line => [{ text: `upgrade ${label(m)}`, cmd: `upgrade ${label(m)}` }, `  ${upgradeText(m)} · ${fmt(upgradeCost(m)!)}`]);
 }
 
 verb('upgrade', {

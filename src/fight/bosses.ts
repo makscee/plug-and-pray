@@ -7,10 +7,10 @@
 // drops a fine+ module (a unique on floors 1 and 3). `stageBoss` sets up a test fight (?boss=, the sim).
 import { dist, enemy, hurt, hurtHooks, killHooks, say, spawn, spawnEnemy, tickHooks } from '../core/game';
 import { Cell, clear, ensure, open, setCell } from '../core/grid';
-import { label, MODS, slotsUsed } from '../core/mods';
+import { label, maxLevel, moduleLevel, MODS, param, slotsUsed } from '../core/mods';
 import { VERBS } from '../core/verbs';
 import { hash, rng } from '../core/rng';
-import type { Entity, Game, Item, Roll } from '../core/types';
+import type { Entity, Game, Inst, Item, Roll } from '../core/types';
 import { fire, low, shots, type ShotData } from './shots';
 import { bossKind } from './bolts';
 import { WARM } from '../mods/sense';
@@ -966,7 +966,13 @@ export function bossDrops(g: Game, floor: number): Item[] {
   const owned = new Set([...g.player.installed.map((i) => i.mod), ...g.player.inv.flatMap((i) => (i.kind === 'mod' ? [i.mod] : []))]);
   const pool = DROP_POOL[floor].filter((m) => MODS[m]);
   const out: Item[] = [];
-  if (pool.length) {
+  // v3 econ (Maks: "module upgrading"): half the time the rare is a copy of your weapon or eye instead: taken, it
+  // raises yours a level (src/core/verbs.ts addItem)
+  // (your main weapon: the most damage a second; else your eye)
+  const dps = (i: Inst) => (MODS[i.mod].family === 'weapon' ? 1000 : 0) + param<number>(i, 'damage', 0) / Math.max(0.05, param<number>(i, 'cooldown', 1));
+  const up = r.chance(0.5) ? [...g.player.installed].filter((i) => i.on && ['weapon', 'camera'].includes(MODS[i.mod]?.family)).sort((a, b) => dps(b) - dps(a))[0] : undefined;
+  if (up && moduleLevel(up) < maxLevel(up)) out.push({ kind: 'mod', mod: up.mod, rarity: 'rare' }); // (a rare copy: yours turns rare too)
+  else if (pool.length) {
     const fresh = pool.filter((m) => !owned.has(m));
     out.push({ kind: 'mod', mod: r.pick(fresh.length ? fresh : pool), rarity: 'rare' }); // v2 balance: every keeper pays a rare
   }
@@ -990,7 +996,8 @@ killHooks.push((g, e) => {
   stunned.delete(g);
   const items = bossDrops(g, def.floor);
   items.forEach((item, k) => spawn(g, { kind: 'item', x: e.x + (k ? 0.4 : -0.2), y: e.y + 0.3, item }));
-  say(g, `✦ ${name} is down.${items.length ? ` it leaves ${items.map((i) => (i.kind === 'mod' ? label(i) : '')).join(' and ')}.` : ''}`);
+  const what = (i: Item) => (i.kind !== 'mod' ? '' : g.player.installed.some((o) => o.mod === i.mod) ? `▲ an upgrade for your ${MODS[i.mod].name}` : label(i));
+  say(g, `✦ ${name} is down.${items.length ? ` it leaves ${items.map(what).join(' and ')}.` : ''}`);
   // its ember heart (v2 balance, r1 pace: the next floor's kit had no power to run on): +KEEPER_POWER core power
   if (def.floor < BOSSES.length - 1) {
     const p = g.player;

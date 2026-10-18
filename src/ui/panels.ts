@@ -8,7 +8,8 @@
 import { dist, itemName, reach } from '../core/game';
 import { Cell, cell, veinOf } from '../core/grid';
 import { def, label, maxLevel, moduleLevel, ownSocket, param, powerMax, powerUsed, ROMAN, size, slotsUsed, working } from '../core/mods';
-import { inPlace, instRef, lastLegs, VERBS } from '../core/verbs';
+import { BAG, bagMods, inPlace, instRef, lastLegs, owned, VERBS } from '../core/verbs';
+import { upgradable, upgradeCost, upgradeText } from '../world/upgrade';
 import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { attach } from './card';
@@ -142,7 +143,9 @@ export class Panels {
     const [mc, md] = this.modules(g);
     this.grid('modules', mc, md, this.head(g), '', this.setups(g));
     const [ic, id] = this.inv(g);
-    this.grid('inv', ic, id, '', ic.length ? '' : 'you carry nothing.');
+    // v3 econ (v3r2: the bag limit was never shown): the bag's modules against its room
+    const bag = bagMods(g).length;
+    this.grid('inv', ic, id, `<div class="res-row"><span${bag > BAG ? ' class="bag-over"' : ''}>bag ${bag}/${BAG}</span>${pips(bag, BAG)}</div>`, ic.length ? '' : 'you carry nothing.');
     this.list('near', this.near(g));
     this.stack();
   }
@@ -252,7 +255,8 @@ export class Panels {
       const it = e.item!;
       rows.push({
         icon: it,
-        name: it.kind === 'mod' ? label(it) : itemName(it),
+        // v3 econ: a copy of one you own raises yours
+        name: it.kind === 'mod' ? label(it) + (owned(g, it.mod) ? ' ▲ upgrade' : '') : itemName(it),
         card: it.kind === 'mod' ? it : undefined,
         rar: it.kind === 'mod' ? rarOf(it) : undefined,
         buttons: [...(it.kind === 'mod' ? [{ label: '?', cmd: `info ${label(it)}` }] : []), { label: 'take', cmd: `take ${itemName(it)}` }],
@@ -260,6 +264,16 @@ export class Panels {
     }
     if (g.ents.some((e) => e.kind === 'printer' && !e.data?.shop && dist(e, p) < 1.6))
       rows.push({ icon: { thing: 'printer' }, name: 'printer', buttons: [{ label: 'print slot', cmd: 'print slot' }, { label: 'print module', cmd: 'print module' }] });
+    // v3 econ (v3r2: the nearby panel showed attune, never upgrade): one upgrade track, weapons first, at a printer or altar
+    const ups = () => {
+      for (const m of upgradable(g).slice(0, 3)) {
+        const c = upgradeCost(m)!;
+        const note = `${upgradeText(m)} · ${fmt(c)}`;
+        rows.push({ icon: { kind: 'mod', ...m } as Item, name: '', card: { kind: 'mod', ...m } as Item & { kind: 'mod' }, buttons: [affords(g, c) ? { label: `upgrade ${label(m)}`, cmd: `upgrade ${label(m)}`, note } : { label: `upgrade ${label(m)}`, note: `${note}: short` }] });
+      }
+    };
+    const atPrinter = g.ents.some((e) => e.kind === 'printer' && !e.data?.shop && dist(e, p) < 1.6);
+    if (atPrinter) ups();
     const shop = shopNear(g);
     if (shop) {
       rows.push({ icon: { thing: 'shop' }, name: 'reliquary', buttons: [{ label: 'reroll', cmd: 'reroll', note: `reroll: ${fmt(PRICES.reroll)}` }] });
@@ -276,8 +290,9 @@ export class Panels {
     const altar = altarNear(g);
     if (altar) {
       rows.push({ icon: { thing: 'altar' }, name: 'altar', buttons: [] });
+      if (!atPrinter) ups();
       for (const [cmd, price] of altarOffers(g, altar))
-        rows.push({ name: '', buttons: [affords(g, price) ? { label: cmd, cmd, note: GIVES[cmd] ? `give ${fmt(price)} → ${GIVES[cmd]}` : fmt(price) } : { label: cmd, note: `${GIVES[cmd] ? `give ${fmt(price)} → ${GIVES[cmd]}` : fmt(price)}: short` }] });
+        if (!/^(attune|temper) /.test(cmd)) rows.push({ name: '', buttons: [affords(g, price) ? { label: cmd, cmd, note: GIVES[cmd] ? `give ${fmt(price)} → ${GIVES[cmd]}` : fmt(price) } : { label: cmd, note: `${GIVES[cmd] ? `give ${fmt(price)} → ${GIVES[cmd]}` : fmt(price)}: short` }] });
     }
     // v2 floors: the stairs down, open or sealed
     const st = atStairs(g);
@@ -508,7 +523,8 @@ export class Panels {
       }
       if (c.badge) {
         const s = document.createElement('span');
-        s.className = 'badge';
+        // v3 econ: a level (I..III) reads big, II and up in the accent colour
+        s.className = /^I+$/.test(c.badge) && c.mod ? `badge lvl lvl-${c.badge.length}` : 'badge';
         s.textContent = c.badge;
         b.append(s);
       }
