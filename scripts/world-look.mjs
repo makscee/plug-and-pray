@@ -7,7 +7,7 @@ const srv = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPo
 await new Promise((r) => setTimeout(r, 2500));
 const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errs = [];
-for (const s of ['map', 'printer', 'deep', 'engine']) {
+for (const s of ['map', 'printer', 'deep']) {
   const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
   p.on('pageerror', (e) => errs.push(`${s}: ${e}`));
   await p.goto(`http://localhost:${port}/?seed=1&scene=world-${s}`);

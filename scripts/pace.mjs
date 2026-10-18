@@ -11,8 +11,8 @@
 // as JSON. Any sampling rate works (0.1–1 s of game time); the sim samples every 0.5 s.
 //
 // What counts as new (first time in a run). Major: a foe type met (noticed within 8 cells; the hidden hum
-// within 2.5), an elite, a zone (z2 adds dark + cold, z3 heat), a module family, a mechanic (altar,
-// printer, reliquary shop, memory card, card reader, mimic, shard, generator on, setups), a set piece (src/world/events.ts:
+// within 2.5), an elite, a zone (a floor, v2: z2 adds dark + cold, z3 heat, z4 the heart), a module family, a mechanic (altar,
+// printer, reliquary shop, memory card, card reader, mimic, keeper down, descend, generator on, setups), a set piece (src/world/events.ts:
 // the first of each kind per zone) and a kind of
 // decision (KINDS below: loadout, buy, recycle, print slot/module, offer power/flesh/mend, attune, read card,
 // aim, drain, dig, retreat, setup). Minor: a new module id. Also: the share of minutes with no major novelty
@@ -99,7 +99,9 @@ export function analyse(samples, M) {
     for (const id of [...s.inv, ...s.inst]) { add(s.t, 'family', fam(id)); add(s.t, 'module', id, false); }
     if (s.cards > prev.cards) add(s.t, 'mechanic', 'memory card');
     if (s.inst.includes('card-reader')) add(s.t, 'mechanic', 'card reader');
-    if (s.read.some((c) => c.startsWith('shard'))) add(s.t, 'mechanic', 'shard');
+    // v2 floors: a keeper down (the way down opens), a floor gone down to
+    if (s.lines.some((l) => l.startsWith('THE WAY DOWN IS OPEN'))) add(s.t, 'mechanic', 'keeper down');
+    if (s.lines.some((l) => l.startsWith('you go down'))) add(s.t, 'mechanic', 'descend');
     for (const id of s.on) if (fam(id) === 'power' && (M.MODS[id]?.params?.power ?? 0) > 0) add(s.t, 'mechanic', 'generator');
     for (const l of s.lines) {
       const m = /^> (\w+)(?: (\w+))?/.exec(l);
@@ -192,7 +194,7 @@ function summary(name, as) {
   console.log(`  empty walking: median ${Math.round(med(as.map((a) => a.emptyS)))} s (${Math.round(100 * med(as.map((a) => a.emptyS / a.length)))}% of the run), longest stretch median ${Math.round(med(as.map((a) => a.emptyMax)))} s, worst ${Math.round(Math.max(...as.map((a) => a.emptyMax)))} s`);
   console.log(`  resting (still, mending, nothing near): median ${Math.round(med(as.map((a) => a.restS)))} s (${Math.round(100 * med(as.map((a) => a.restS / a.length)))}% of the run)`);
   console.log(`  danger moments (hp < 30%): median ${med(as.map((a) => a.danger))}, total ${as.reduce((x, a) => x + a.danger, 0)}`);
-  for (const z of [0, 1, 2, 3]) {
+  for (const z of [0, 1, 2, 3, 4]) {
     const st = as.map((a) => a.steps.find((s) => s.zone === z)).filter(Boolean);
     if (!st.length) continue;
     console.log(`  zone ${z}: reached ${st.length}/${n}, entered median ${mm(med(st.map((s) => s.at)))}, stay median ${med(st.map((s) => s.minutes))?.toFixed(1)} min, hp lost/min first 2 min ${med(st.map((s) => s.early))?.toFixed(2) ?? '-'}, overall ${med(st.map((s) => s.all))?.toFixed(2) ?? '-'}`);

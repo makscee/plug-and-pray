@@ -40,11 +40,12 @@ frameHooks.push((g) => {
   const fight = fightLine(g);
   // Maks 10-18: no weapon on with foes near is a red tag that stays until you arm
   const bare = !armed(g) && foesNear(g, 8);
-  const key = `${text} ${su}/${p.slots} ${pu}/${pm} ${fight} ${bare}`;
+  const key = `${text} ${su}/${p.slots} ${pu}/${pm} ${fight} ${bare} ${g.floor}`;
   if (b.dataset.text !== key) {
     b.dataset.text = key;
     // hp, then the two resources every choice spends: slots and power
-    b.innerHTML = `<span class="hud-k">hp</span> <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
+    // v2 floors: which floor, out of a fight
+    b.innerHTML = (fight ? '' : `<span class="hud-k">floor</span> ${(g.floor ?? 0) + 1}/5<span class="sep">·</span>`) + `<span class="hud-k">hp</span> <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
       (bare ? '<span class="sep">·</span><span class="hud-tag">NO WEAPON</span>' : '') +
       // in a fight slots and power give way to the fight line (r2: it ran off the edge at 1280 px)
       (fight ? '' : `<span class="sep">·</span><span class="hud-k">slots</span> ${su}/${p.slots} ${pips(su, p.slots)}<span class="sep">·</span><span class="hud-k">power</span> ${pu}/${pm} ${pips(pu, pm)}`) +

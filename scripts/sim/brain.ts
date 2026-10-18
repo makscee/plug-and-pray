@@ -243,6 +243,9 @@ export function play(seed: number, o: Opts): Run {
   const zoneHere = () => zones.zoneAt(P.x, P.y);
   /** seconds a careful player spends on a floor before it takes on the keeper anyway */
   const PATIENCE = 420;
+  /** and at least this long: a person looks round a floor (its cache, its loot, a printer) before its keeper */
+  const MIN_STAY = 150;
+  const RUSH_STAY = 75;
   let floorSince = 0;
   let floorWas = 0;
   const send = (cmd: string) => exec(g, cmd);
@@ -430,7 +433,7 @@ export function play(seed: number, o: Opts): Run {
     // v2 floors: the stairs open and under you: down
     if (floors.bossDown(g) && floors.atStairs(g)) return 'descend';
     // the keeper's room ahead and not yet woken: mend to full first
-    if (!floors.bossWoke(g) && hpFrac < 0.95 && canMend && bossReady() && dist(P, { x: floors.bossAt(g.seed, g.floor)[0], y: floors.bossAt(g.seed, g.floor)[1] }) < 14) {
+    if (!floors.bossWoke(g) && hpFrac < 0.95 && canMend && !foes.length && g.t - P.hurtAt > 2 && bossReady() && dist(P, { x: floors.bossAt(g.seed, g.floor)[0], y: floors.bossAt(g.seed, g.floor)[1] }) < 14) {
       why = 'mend before the keeper';
       return 2;
     }
@@ -495,6 +498,12 @@ export function play(seed: number, o: Opts): Run {
   }
 
   const labelOf = (i: { mod: string; roll?: any }) => (i.roll ? i.roll.tag + ' ' : '') + MODS[i.mod].name;
+  /** an installed module's exact words for on/off: "rivet sling 1" when a "cracked rivet sling" would match too */
+  const refOf = (i: { mod: string; roll?: any }) => {
+    const l = labelOf(i);
+    const same = P.installed.filter((o) => labelOf(o) === l);
+    return P.installed.some((o) => labelOf(o) !== l && labelOf(o).includes(l)) || same.length > 1 ? `${l} ${same.indexOf(i as any) + 1}` : l;
+  };
 
   // ---- setups: what each saved setup holds (module ids, sorted), and the last `setup` tried
   let battleUntil = -1;
@@ -524,11 +533,11 @@ export function play(seed: number, o: Opts): Run {
     }
     const isPow = (i: { mod: string }) => MODS[i.mod].family === 'power';
     const off = on.find((i) => !want.has(i) && !isPow(i));
-    if (off) return 'off ' + labelOf(off);
+    if (off) return 'off ' + refOf(off);
     const pw = D.find((i) => !i.on && isPow(i));
-    if (pw) return 'on ' + labelOf(pw);
+    if (pw) return 'on ' + refOf(pw);
     const next = D.find((i) => !i.on && MODS[i.mod].power + powerUsed(g) <= powerMax(g));
-    if (next) return 'on ' + labelOf(next);
+    if (next) return 'on ' + refOf(next);
     return null;
   }
 
@@ -564,7 +573,8 @@ export function play(seed: number, o: Opts): Run {
     return known ? { x, y, what: 'boss' } : null;
   }
   /** a careful player takes on a keeper once ready for the floor below it, or once it has been on this floor a while */
-  const bossReady = () => o.style === 'rusher' || ready(Math.min(g.floor + 1, floors.LAST)) || g.t - floorSince > PATIENCE;
+  // (a rusher too takes a minute for the floor's cache and what lies near before its keeper)
+  const bossReady = () => (o.style === 'rusher' ? g.t - floorSince > RUSH_STAY : ready(Math.min(g.floor + 1, floors.LAST)) && g.t - floorSince > MIN_STAY) || g.t - floorSince > PATIENCE;
   function targetZone(): number {
     const v = nextTarget();
     return v?.what === 'stairs' ? Math.min(g.floor + 1, floors.LAST) : zoneHere();
@@ -630,7 +640,8 @@ export function play(seed: number, o: Opts): Run {
     const items = g.ents.filter((e) => e.kind === 'item' && !banned.has(e) && dist(e, P) < near0 && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()));
     const machines = g.ents.filter((e) => (e.kind === 'printer' || e.data?.altar) && !banned.has(e) && dist(e, P) < (go ? 12 : 30) && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()) && machineOffers(e).some((x) => x.ok));
     // keep going for what it chose a moment ago (two near things must not pull it back and forth)
-    if (cur && g.t < cur.until && !banned.has(cur.ref) && g.ents.includes(cur.ref as Entity) && (items.includes(cur.ref as Entity) || machines.includes(cur.ref as Entity)))
+    // (v2: kept while it stays within twice the radius: a machine just past 12 cells flipped it to and from the keeper)
+    if (cur && g.t < cur.until && !banned.has(cur.ref) && g.ents.includes(cur.ref as Entity) && dist(cur.ref as Entity, P) < 2 * (go ? 12 : 30))
       return { x: (cur.ref as Entity).x, y: (cur.ref as Entity).y, ref: cur.ref, zone: roam };
     const near = [...items, ...machines].sort((a, b) => dist(a, P) - dist(b, P))[0];
     if (near) cur = { ref: near, until: g.t + 20 };

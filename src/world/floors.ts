@@ -40,7 +40,7 @@ export const FLOORS: Floor[] = [
   { id: 0, name: 'the cradle', look: { tint: 'c8a070', fog: '100c0a', dark: 0 }, enter: 'the cradle. warm, close, almost kind.', gimmick: 'the walls here are thin: a weapon breaks a one-cell wall with floor behind it. break.', foe: { hp: 1, damage: 1 }, tier: 0, need: 0, stairs: 'rope' },
   { id: 1, name: 'the choir nave', look: { tint: 'd0b890', fog: '141018', dark: 0.15 }, enter: 'the choir nave. many small voices, all of them hungry.', gimmick: 'the nave echoes: more walls ring hollow here. a sonar eye or listen finds what hides.', foe: { hp: 1.2, damage: 1.15 }, tier: 1, need: 9, stairs: 'spiral' },
   { id: 2, name: 'the ossuary', look: { tint: '9aa8b0', fog: '080a10', dark: 0.4 }, enter: 'the ossuary. the marrow is cold: without a lamp you will not mend.', gimmick: 'dark and cold: no mending without a light, and your light sets how far you see.', foe: { hp: 1.7, damage: 1.45 }, tier: 2, need: 40, stairs: 'chute' },
-  { id: 3, name: 'the furnace', look: { tint: 'ff7a40', fog: '200804', dark: 0.25 }, enter: 'the furnace. the god\'s heat sears here: keep it off or burn.', gimmick: 'the heat sears you every second unless something keeps it off. a rime hood does.', foe: { hp: 2, damage: 1.6 }, tier: 2, need: 70, stairs: 'lift' },
+  { id: 3, name: 'the furnace', look: { tint: 'ff7a40', fog: '200804', dark: 0.25 }, enter: 'the furnace. the god\'s heat sears here: keep it off or burn.', gimmick: 'the heat sears you every second unless something keeps it off. a rime hood does.', foe: { hp: 1.85, damage: 1.5 }, tier: 2, need: 70, stairs: 'lift' },
   { id: 4, name: 'the heart', look: { tint: 'ff5060', fog: '200408', dark: 0.2 }, enter: 'the heart. it beats around you, slow and enormous.', gimmick: 'the god\'s heart. its keeper waits ahead. end it, and the god thaws.', foe: { hp: 2.2, damage: 1.7 }, tier: 2, need: 95, stairs: null },
 ];
 export const LAST = FLOORS.length - 1;
@@ -58,7 +58,7 @@ export const STAIRS: Record<Stairs, { name: string; look: string }> = {
 export const KIT: Record<number, string[]> = {
   0: [],
   1: ['nail-psalm', 'wayfinder-moth', 'lodestone'],
-  2: ['ember-iris', 'censer', 'bone-listener'],
+  2: ['ember-iris', 'censer', 'bone-listener', 'bone-lance'],
   3: ['rime-hood', 'heat-lance'],
   4: [],
 };
@@ -160,7 +160,7 @@ export const stairsOf = (g: Game, f = floorOf(g)): Entity | undefined => g.ents.
 // ---- bosses: src/fight/bosses.ts sets `bossHooks.spawn`; until it does, the old elites stand in
 
 /** the stand-ins: an elite and its hp multiplier on top of the floor's foe scale */
-const STAND_IN: [string, number][] = [['warden', 0.8], ['warden', 1.2], ['abbot', 1], ['saint', 1], ['saint', 1.8]];
+const STAND_IN: [string, number][] = [['warden', 0.6], ['warden', 1.1], ['abbot', 0.8], ['saint', 1], ['saint', 0.9]];
 function standIn(g: Game, f: number, x: number, y: number): Entity {
   const [type, k] = STAND_IN[f];
   const e = spawnEnemy(g, type, x, y);

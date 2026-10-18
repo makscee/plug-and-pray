@@ -42,7 +42,8 @@ export function table(far: number): [string, number, number][] {
   // r1 pace: a touch lighter than it was, so the furnace (below) is the hardest zone
   if (z === 2) return [['mite', 0.55, 3], ['walker', 0.5, 1], ['seraph', 0.3, 1], ['hum', 0.3, 1], ['mimic', 0.15, 1]];
   // r1 pace: the furnace is the hardest zone: hum packs and more mimics on top of its lamps and walkers
-  return [['mite', 0.65, 4], ['mite', 0.3, 3], ['walker', 0.55, 1], ['pyre', 0.4, 1], ['hum', 0.25, 2], ['mimic', 0.3, 1]];
+  // v2 floors: the whole furnace floor is crossed now (it was a stretch to the engine): a little lighter
+  return [['mite', 0.6, 3], ['mite', 0.3, 3], ['walker', 0.5, 1], ['pyre', 0.4, 1], ['hum', 0.2, 2], ['mimic', 0.2, 1]];
 }
 
 /** a foe made for its zone: hp scaled here, its damage by `FOE.damage` in the hurt hook */
