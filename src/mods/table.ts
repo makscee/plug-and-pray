@@ -109,5 +109,5 @@ mods([
   // v2-view (Maks 10-18 ~10:50): true fps comes with the reins, not an eye. Taken (tab), the mouse looks, a click
   // shoots, wasd walks the way you look; tab again gives the cursor back. Their own keys: big (the mark: 1, 2), speed (cells/s)
   { id: 'saints-reins', name: "saint's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 1, speed: 2.6 }, text: 'gut and gold thread, and a socket of their own. tab: the mouse turns you, a click shoots.' },
-  { id: 'martyrs-reins', name: "martyr's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 2, speed: 2.9 }, text: 'the reins it died holding. quicker hands: shift dashes, every hit is marked.' },
+  { id: 'martyrs-reins', name: "martyr's reins", family: 'mind', power: 1, warm: 1, tier: 3, params: { what: 'reins', big: 2, speed: 2.9, rate: 0.25, fov: 20 }, text: 'the reins it died holding. held: fire 25% faster, see 20° wider, dash through blows.' }, // v2r2 fight: mk2 was only a dash
 ]);

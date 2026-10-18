@@ -207,6 +207,10 @@ function bestLoadout(g: Game, zone: number, wantReader: boolean, lift: { power?:
       return { ...a, rank: fam === 'gait' ? a.w : fam === 'camera' ? a.w - 15 * pw + 1000 : a.w / Math.max(1, pw) };
     })
     .sort((a, b) => b.rank - a.rank);
+  // a second copy of a weapon only cools it 25% quicker (src/mods/weapon.ts COPY): worth a third as much
+  const seenW = new Set<string>();
+  for (const a of rest) if (MODS[a.mod].family === 'weapon') seenW.has(a.mod) ? (a.rank *= 0.33) : seenW.add(a.mod);
+  rest.sort((a, b) => b.rank - a.rank);
   // the first weapon comes before everything but legs: an unarmed body dies to the first mites
   const firstWeapon = rest.find((a) => MODS[a.mod].family === 'weapon');
   if (firstWeapon) rest.splice(rest.indexOf(firstWeapon), 1), rest.splice(rest.findIndex((a) => MODS[a.mod].family !== 'gait') < 0 ? rest.length : rest.findIndex((a) => MODS[a.mod].family !== 'gait'), 0, firstWeapon);

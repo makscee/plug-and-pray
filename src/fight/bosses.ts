@@ -268,8 +268,8 @@ const burst = (o: { n: number; speed: number; windup: number; rest: number; gap?
   warn: o.warn ?? 'it swells: a ring of bullets comes out all round. find the gap.',
   windup: o.windup,
   rest: o.rest,
-  // (v2 r1 fight: point-blank rings could not be dodged) only with you two cells off or more
-  when: (_g, _e, r) => r >= 2,
+  // (v2 r1 fight: point-blank rings could not be dodged) only with you 2.5 cells off or more (v2r2: 2 was still lethal)
+  when: (_g, _e, r) => r >= 2.5,
   land(g, e) {
     ring(g, e, o.n, o.speed, 0, o.gap ?? 0);
     data(e).shots = (o.times ?? 1) - 1;
@@ -295,7 +295,8 @@ const spiral = (o: { arms: number; secs: number; every: number; spin: number; sp
   warn: o.warn ?? `it spins: ${o.arms} arms of bullets turn round it. move with the gaps.`,
   windup: o.windup,
   rest: o.rest,
-  when: (_g, _e, r) => r >= 2,
+  // never point-blank (v2r2 fight: hugging a spinning boss was suicide)
+  when: (_g, _e, r) => r >= 2.5,
   land(g, e) {
     const d = data(e);
     d.until = g.t + o.secs;
@@ -481,16 +482,16 @@ function boss(d: BossDef): void {
 
 // floor 0, the cradle: melee and kiting
 boss({
-  id: 'boss-warden', floor: 0, name: 'the great warden', hp: 70, damage: 2.4, speed: 1.6, walk: 'close', r: 0.55, at: [0.5],
+  id: 'boss-warden', floor: 0, name: 'the great warden', hp: 100, damage: 2.6, speed: 1.6, walk: 'close', r: 0.55, at: [0.5],
   hint: 'it charges down the line it sees you on, and bites up close. step aside from the charge, then hit it while it reels.',
   turn: ['the great warden roars. it charges twice now.'],
   phases: [
-    [charge({ windup: 1.1, cells: 5, speed: 9, rest: 1.2, stun: 1.8 }), slam({ r: 1.6, windup: 1, rest: 1.4, move: 'lifts its jaws', warn: 'it lifts its jaws: it bites all round. step back.' })],
-    [charge({ windup: 1, cells: 6, speed: 10, rest: 0.4, stun: 1.5 }), charge({ windup: 0.8, cells: 6, speed: 10, rest: 1, stun: 1.6, move: 'charges again' }), slam({ r: 1.8, windup: 1, rest: 1.2, move: 'lifts its jaws' })],
+    [charge({ windup: 1.1, cells: 5, speed: 9, rest: 1.2, stun: 1.8 }), slam({ r: 1.6, windup: 1.2, rest: 2, move: 'lifts its jaws', warn: 'it lifts its jaws: it bites all round. step back.' })],
+    [charge({ windup: 1, cells: 6, speed: 10, rest: 0.4, stun: 1.5 }), charge({ windup: 0.8, cells: 6, speed: 10, rest: 1, stun: 1.6, move: 'charges again' }), slam({ r: 1.8, windup: 1.1, rest: 1.7, move: 'lifts its jaws' })],
   ],
 });
 boss({
-  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 55, damage: 1.4, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
+  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 80, damage: 2.1, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
   hint: 'she calls mites and stomps. thin the mites, keep off her stomp, bite her between.',
   turn: ['the mite queen shrieks. the brood comes faster.'],
   phases: [
@@ -499,18 +500,19 @@ boss({
   ],
 });
 boss({
-  id: 'boss-bell', floor: 0, name: 'the bell', hp: 65, damage: 2, speed: 0.5, walk: 'drift', r: 0.6, at: [0.5],
+  id: 'boss-bell', floor: 0, name: 'the bell', hp: 92, damage: 2.5, speed: 0.5, walk: 'drift', r: 0.6, at: [0.5],
   hint: 'its toll stuns whoever stands in the ring round it. stand a step from it (inside the ring, outside the clapper) or well off.',
   turn: ['the bell cracks. now its toll echoes: the inner ring, then the outer.'],
   phases: [
-    [toll({ r0: 1.4, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), slam({ r: 0.9, windup: 0.9, rest: 0.7, move: 'swings its clapper', warn: 'the clapper swings: it hits within 0.9 cells. a step back (not into the ring), then in again.' }), toll({ r0: 1.4, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), peal({ r: 1.1, windup: 1.3, rest: 0.7, move: 'drops a bell on you', warn: 'a small bell falls where you stand: step off the ring.' })],
-    [toll({ r0: 1.5, r1: 4, windup: 1.1, rest: 0.8, stun: 1.4, second: [0, 1.6] }), slam({ r: 1, windup: 0.9, rest: 0.7, move: 'swings its clapper' }), toll({ r0: 0, r1: 1.6, windup: 1, rest: 0.8, stun: 1.4, second: [1.5, 4] }), peal({ r: 1.1, windup: 1.2, rest: 0.7, n: 2, move: 'drops bells on you' })],
+    // v2r2 fight: one 1-cell step clears a dropped bell (r 0.9), and the 8 cells round it are inside the toll (1.6)
+    [toll({ r0: 1.6, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), slam({ r: 0.9, windup: 0.9, rest: 0.7, move: 'swings its clapper', warn: 'the clapper swings: it hits within 0.9 cells. a step back (not into the ring), then in again.' }), toll({ r0: 1.6, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), peal({ r: 0.9, windup: 1.3, rest: 0.7, move: 'drops a bell on you', warn: 'a small bell falls where you stand: one step off the ring.' })],
+    [toll({ r0: 1.6, r1: 4, windup: 1.1, rest: 0.8, stun: 1.4, second: [0, 1.7] }), slam({ r: 1, windup: 0.9, rest: 0.7, move: 'swings its clapper' }), toll({ r0: 0, r1: 1.7, windup: 1, rest: 0.8, stun: 1.4, second: [1.6, 4] }), peal({ r: 0.9, windup: 1.2, rest: 0.7, n: 2, move: 'drops bells on you' })],
   ],
 });
 
 // floor 1, the choir: ranged, and they dodge your shots
 boss({
-  id: 'boss-choir', floor: 1, name: 'the seraph choir', hp: 136, damage: 3.8, speed: 1.4, walk: 'keep', keep: 4.5, dodge: true, r: 0.6, at: [0.5],
+  id: 'boss-choir', floor: 1, name: 'the seraph choir', hp: 100, damage: 3.8, speed: 1.4, walk: 'keep', keep: 3.5, dodge: true, r: 0.6, at: [0.5],
   hint: 'it keeps its distance and slips your shots. it burns down its lines and fans its light at you.',
   turn: ['the choir sings louder. lamps join it.'],
   phases: [
@@ -519,7 +521,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 2.2, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 3.4, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it plays chords of slow notes at you, and moves between its pipes. its pedal note shakes the floor round it.',
   turn: ['the organ pulls out every stop. mimics drop from its pipes.'],
   phases: [
@@ -528,18 +530,18 @@ boss({
   ],
 });
 boss({
-  id: 'boss-ringer', floor: 1, name: 'the bell-ringer', hp: 136, damage: 4.3, speed: 1.6, walk: 'keep', keep: 4, dodge: true, r: 0.5, at: [0.5],
+  id: 'boss-ringer', floor: 1, name: 'the bell-ringer', hp: 102, damage: 4.3, speed: 1.6, walk: 'keep', keep: 4, dodge: true, r: 0.5, at: [0.5],
   hint: 'it keeps away and rings the floor where you stand. keep moving; it slips your shots, so shoot as it lands.',
   turn: ['the bell-ringer rings faster: three peals follow you.'],
   phases: [
-    [peal({ r: 1.1, windup: 1.3, rest: 1, move: 'rings the floor under you' }), volley({ n: 1, spread: 0, speed: 5, windup: 0.6, rest: 1, times: 3, every: 0.35, move: 'throws handbells', warn: 'it throws handbells at you: three, quick. sidestep.' })],
-    [peal({ r: 1.1, windup: 1.4, rest: 0.8, n: 3, move: 'rings three peals' }), volley({ n: 3, spread: 0.5, speed: 5, windup: 0.6, rest: 1, times: 2, every: 0.4, move: 'throws handbells' }), peal({ r: 1.2, windup: 1.3, rest: 0.8, move: 'rings the floor under you' })],
+    [peal({ r: 0.9, windup: 1.3, rest: 1, move: 'rings the floor under you' }), volley({ n: 1, spread: 0, speed: 5, windup: 0.6, rest: 1, times: 3, every: 0.35, move: 'throws handbells', warn: 'it throws handbells at you: three, quick. sidestep.' })],
+    [peal({ r: 0.9, windup: 1.4, rest: 0.8, n: 3, move: 'rings three peals' }), volley({ n: 3, spread: 0.5, speed: 5, windup: 0.6, rest: 1, times: 2, every: 0.4, move: 'throws handbells' }), peal({ r: 1, windup: 1.3, rest: 0.8, move: 'rings the floor under you' })],
   ],
 });
 
 // floor 2, the ossuary: FPS, bullet patterns
 boss({
-  id: 'boss-abbot', floor: 2, name: 'the high abbot', hp: 180, damage: 2.6, speed: 0.7, walk: 'close', armour: 0.8, r: 0.6, at: [0.5],
+  id: 'boss-abbot', floor: 2, name: 'the high abbot', hp: 180, damage: 3, speed: 0.7, walk: 'close', armour: 0.8, r: 0.6, at: [0.5],
   hint: 'bone shrugs off small hits. it sweeps round itself and throws fans of bone; later, a spiral.',
   turn: ['the high abbot lifts its crozier. bones begin to wheel round it.'],
   phases: [
@@ -548,7 +550,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-hydra', floor: 2, name: 'the ossuary hydra', hp: 250, damage: 2, speed: 0.5, walk: 'drift', r: 0.7, at: [0.5],
+  id: 'boss-hydra', floor: 2, name: 'the ossuary hydra', hp: 250, damage: 2.6, speed: 0.5, walk: 'drift', r: 0.7, at: [0.5],
   hint: 'three heads spit in turn, then all at once. it grows a head at half.',
   turn: ['the ossuary hydra grows a fourth head.'],
   phases: [
@@ -568,7 +570,7 @@ boss({
 
 // floor 3, the furnace: improved FPS, heavier patterns
 boss({
-  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 340, damage: 4.8, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 460, damage: 4.2, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it pours out turning arms of fire and crosses of light. later the floor under you catches.',
   turn: ['the burning saint flares. fire runs to where you stand.'],
   phases: [
@@ -577,7 +579,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-hammer', floor: 3, name: 'the hammer twin', hp: 160, damage: 4, speed: 1.3, walk: 'close', armour: 0.6, r: 0.6, at: [0.5], mate: 'boss-bellows',
+  id: 'boss-hammer', floor: 3, name: 'the hammer twin', hp: 210, damage: 3.5, speed: 1.3, walk: 'close', armour: 0.6, r: 0.6, at: [0.5], mate: 'boss-bellows',
   hint: 'two of them: the hammer charges and slams, the bellows blows fire from afar. kill one and the other rages.',
   turn: ['the hammer twin glows white. it rages.'],
   phases: [
@@ -586,7 +588,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-bellows', floor: 3, name: 'the bellows twin', hp: 140, damage: 3.6, speed: 1.1, walk: 'keep', keep: 5, r: 0.6, at: [0.5], mate: 'boss-hammer',
+  id: 'boss-bellows', floor: 3, name: 'the bellows twin', hp: 190, damage: 3.2, speed: 1.1, walk: 'keep', keep: 5, r: 0.6, at: [0.5], mate: 'boss-hammer',
   hint: 'two of them: the hammer charges and slams, the bellows blows fire from afar. kill one and the other rages.',
   turn: ['the bellows twin wheezes. its fire comes in streams.'],
   phases: [
@@ -595,7 +597,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-worm', floor: 3, name: 'the slag worm', hp: 240, damage: 3.2, speed: 0.8, walk: 'drift', r: 0.7, at: [0.5],
+  id: 'boss-worm', floor: 3, name: 'the slag worm', hp: 330, damage: 3.2, speed: 0.8, walk: 'drift', r: 0.7, at: [0.5],
   hint: 'it digs in and comes up under you in a ring of slag. hit it while it is up; it spits triplets.',
   turn: ['the slag worm boils. where it comes up, slag stays.'],
   phases: [
@@ -606,12 +608,12 @@ boss({
 
 // floor 4: the heart, every run the same; each phase is a floor's way of fighting
 boss({
-  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 380, damage: 4.6, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
+  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 500, damage: 4.1, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
   hint: 'the heart of the engine. it fights the way every floor did: brood and toll, then lines and peals, then spirals and fire.',
   turn: ['the heart beats faster. light runs down its lines; the floor rings under you.', 'the heart burns white. fire pours out in arms, and the floor catches.'],
   phases: [
     [brood({ type: 'mite', n: 3, cap: 5, windup: 0.9, rest: 1, move: 'beats out mites' }), toll({ r0: 1.6, r1: 4, windup: 1.2, rest: 1.2, stun: 1.2 }), volley({ n: 5, spread: 0.9, speed: 4, windup: 0.8, rest: 1, move: 'pumps a volley' })],
-    [cross({ windup: 1, rest: 0.9, speed: 4.6, both: true }), peal({ r: 1.2, windup: 1.2, rest: 0.8, n: 2, move: 'rings the floor under you' }), volley({ n: 5, spread: 0.9, speed: 4.4, windup: 0.7, rest: 1, times: 2, every: 0.6, move: 'pumps a volley' })],
+    [cross({ windup: 1, rest: 0.9, speed: 4.6, both: true }), peal({ r: 1, windup: 1.2, rest: 0.8, n: 2, move: 'rings the floor under you' }), volley({ n: 5, spread: 0.9, speed: 4.4, windup: 0.7, rest: 1, times: 2, every: 0.6, move: 'pumps a volley' })],
     [spiral({ arms: 3, secs: 3.5, every: 0.17, spin: 1.5, speed: 4, windup: 0.9, rest: 1 }), sear({ r: 1.3, windup: 0.9, rest: 0.8, secs: 6 }), burst({ n: 14, speed: 3.6, windup: 0.9, rest: 1, gap: 3, times: 2, every: 0.6 }), brood({ type: 'mite', n: 3, cap: 4, windup: 0.8, rest: 0.8, move: 'beats out mites' })],
   ],
 });
@@ -936,9 +938,10 @@ export const LOADOUTS: { mods: string[]; flesh: number; slots: number; core: num
   { mods: ['pinhole-eye', 'stepper-relay', 'spark-finger', 'censer-flail', 'lead-lung'], flesh: 0, slots: 6, core: 6 }, // v2 balance: what the run sim really has at the cradle's keeper
   { mods: ['vidicon-tube', 'stepper-relay', 'nail-psalm', 'spark-finger', 'rivet-sling', 'plumb-line', 'lead-lung'], flesh: 8, slots: 8, core: 9 }, // v2 balance: the run sim's kit at the nave's keeper
   // floors 3-5 are fought through the FPS scope (stageBoss goes big with it)
-  { mods: ['pilgrim-scope', 'gyro-heart', 'bone-lance', 'nail-psalm', 'halo', 'frost-coat', 'map-spool'], flesh: 6, slots: 7, core: 13 },
-  { mods: ['martyr-scope', 'gyro-heart', 'heat-lance', 'ember-spit', 'halo', 'ossuary-plate', 'rime-hood', 'map-spool'], flesh: 8, slots: 8, core: 18 },
-  { mods: ['martyr-scope', 'gyro-heart', 'heat-lance', 'ember-spit', 'reliquary-saw', 'halo', 'ossuary-plate', 'rime-hood'], flesh: 10, slots: 8, core: 20 },
+  // (v2r2 fight: with the reins in the kit, as every run has them by then)
+  { mods: ['pilgrim-scope', 'saints-reins', 'gyro-heart', 'bone-lance', 'nail-psalm', 'halo', 'frost-coat', 'map-spool'], flesh: 6, slots: 8, core: 14 },
+  { mods: ['martyr-scope', 'martyrs-reins', 'gyro-heart', 'heat-lance', 'ember-spit', 'halo', 'ossuary-plate', 'rime-hood', 'map-spool'], flesh: 8, slots: 9, core: 19 },
+  { mods: ['martyr-scope', 'martyrs-reins', 'gyro-heart', 'heat-lance', 'ember-spit', 'reliquary-saw', 'halo', 'ossuary-plate', 'rime-hood'], flesh: 10, slots: 9, core: 21 },
 ];
 
 /** clear a square of floor round (x, y): room for a fight */

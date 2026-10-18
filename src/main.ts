@@ -2,6 +2,7 @@ import './style.css';
 import './mods';
 import './sight';
 import './fight/ui';
+import './fight/telegraph';
 import './ui/floors';
 import './ui/cache';
 import { newGame, say, tick } from './core/game';

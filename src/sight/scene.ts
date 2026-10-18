@@ -186,11 +186,16 @@ const shotGeo = new THREE.IcosahedronGeometry(0.1, 0);
 const ORB: Look = { geo: shotGeo, color: 0xffe0a0, glow: 0xffd070, y: 0.4, heat: 1 };
 const NAIL: Look = { geo: shotGeo, color: 0xd0e0ff, glow: 0xa0c0ff, y: 0.35, heat: 0.6 };
 const MARK: Look = { geo: new THREE.OctahedronGeometry(0.07), color: 0xff3020, glow: 0xff2010, y: 0.04, heat: 0.9 };
+// a line's edges (a band, not dashes) and the gaps between a star's lines (src/fight/telegraph.ts)
+const EDGE: Look = { geo: new THREE.OctahedronGeometry(0.09), color: 0xff3020, glow: 0xff2010, y: 0.04, heat: 0.9 };
+const GAP: Look = { geo: new THREE.TetrahedronGeometry(0.13), color: 0x90ffb0, glow: 0x40ff80, y: 0.1, spin: 2, heat: 0.2 };
 
 function lookOf(e: Entity): Look | null {
   if (e.data?.shot && e.data.kind) return null; // v2 shots with a kind: drawn glowing by placeHooks (src/sight/fps.ts)
   if (e.data?.shot) return e.data.foe ? ORB : NAIL; // the fight slice's projectiles
   if (e.data?.mark) return MARK; // a boss's wind-up: where it will hit (src/fight/bosses.ts)
+  if (e.data?.edge) return EDGE;
+  if (e.data?.gap) return GAP;
   if (e.enemy) return null; // enemies are sprites (spriteOf)
   if (e.kind === 'printer') return { geo: printerGeo, color: 0x5a4a40, glow: 0x803010, y: 0.45, heat: 0.4 };
   // an altar: a low stained block with a red glow (it had no shape, so no eye ever saw one)
