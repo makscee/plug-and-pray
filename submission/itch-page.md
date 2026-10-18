@@ -1,11 +1,13 @@
 # thaw
 
-You are an old machine waking blind inside a dead god's body. You start with a console and nothing else.
+You are an old machine waking blind inside a dead god's body. At first you have only a map: you click it and walk, and a radar sweeps for heartbeats.
 
-Everything you become is a module you find, print and install: eyes, scanners, lamps, gaits, weapons, power cells. Each one is a window on your screen and changes what you see, how you move or how you fight. Follow the memory cards of the machines who came before you, find the three shards of scripture, and carry the Thaw Engine to the god's heart.
+Everything you become is a module you find and install: eyes, radars, legs, lamps, weapons, power cells. The first eye you find turns the screen into a coarse grey view; better eyes sharpen it into colour, and extra eyes layer what they see on top. Drag modules between your slots and your bag; every slot and every point of power is a choice.
 
-- Type commands, or click the orange words: every button types a command. `help` lists them.
-- Die and you wake again on a new world. Runs are short.
+Four floors down to the god's heart, each with its own trick and its own keeper. Fight the first two in melee, kiting swarms. On floor 3 you find saint's reins: take the mouse and fight in first person, shooting and dodging bullet patterns. The heart is waiting at the bottom.
+
+- Click the map, the orange words and the buttons, or type commands: every button types one. `help` lists them, `where` tells you where to go.
+- Die and you wake again on a new world. A run takes 25–35 minutes.
 - Desktop browser, sound on. Best at 1280x720 or bigger.
 
 Made solo in 48 hours for the Ludum Dare 60 Compo, theme "Old Tech".

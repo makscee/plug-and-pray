@@ -1,17 +1,22 @@
 # thaw
 
-You are an old machine waking blind inside a dead god's body: an endless machinery of ribbed chambers, bone-iron and veins that still glow.
+You are an old machine waking blind inside a dead god's body: ribbed chambers, bone-iron and veins that still glow.
 
-You start with a console and nothing else. You can only crawl and listen. Everything you become is a **module** you find, print and install into a slot on your motherboard, and every module is a window on your screen: a pinhole eye that sees 24 pixels once a second, a vidicon tube, a saint's lens, a heat choir that hears warm things through walls, a map spool, a nail psalm that shoots. Three slots, four power, so every slot pulls three ways: eyes, weapons, power.
+You start with a map and nothing to see with. You click the map and walk; a radar sweeps it for heartbeats. Everything you become is a **module** you find, pick and install: eyes, radars, legs, lamps, weapons, power cells. The first eye turns the whole screen into a coarse grey view, better eyes sharpen it into colour, and extra eyes layer their sight on top (one shows heat, one shows scripture on the walls). Slots and power are tight, so every module you carry is a choice. Rare and unique modules turn up a few times a run.
 
-Memory cards left by the machines who came down before you point the way. Three of them are scripture. Together they lead to the **Thaw Engine**.
+## Four floors
+
+Each floor down looks different, plays a little differently and ends at a **keeper** behind a door that tells you whether you look ready.
+
+- **The cradle** and **the choir nave**: melee. Kite swarms, step out of slams, hit between.
+- **The ossuary**: you find **saint's reins**. Take the mouse and fight in first person: shoot, strafe and dodge bullet patterns. Tab gives the cursor back for your modules.
+- **The furnace**: better reins, a dash, and the god's heart below.
 
 ## How to play
 
-- Type commands into the console, or click the orange words: every button types a command. `help` lists them.
-- `take`, `install <module>`, `on` / `off`, `crawl n`, later `go e 3`, arrow keys or WASD once you find the gaits for them.
-- Modules warm up before they work: plan your setup before the corner.
-- Die and you wake again on a new world. Runs are short.
+- Click the map to walk, click the orange words and buttons, drag modules to install them. Every button types a console command; `help` lists them and `where` says where to go next.
+- Arrow keys or WASD walk; M shows the big map.
+- Die and you wake again on a new world. A run takes 25–35 minutes.
 
 Desktop browser, sound on.
 
