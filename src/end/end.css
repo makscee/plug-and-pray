@@ -37,3 +37,9 @@
 .thaw-end ~ .hpbar, body[data-state='thaw'] .hpbar { opacity: 0; }
 /* r4: said at once, so the melt reads as the ending */
 .thaw-drinks { position: absolute; left: 0; right: 0; top: 88%; margin: 0; text-align: center; font-size: 28px; color: #fff4dc; text-shadow: 0 0 12px #e07a3a; }
+/* v2r5 newcomer: the HUD (hp, goal, the reins' keys and bars, the screen's tag) fades behind the ending, never faintly through it */
+body:has(.thaw-end) .hpbar, body:has(.thaw-end) .goal, body:has(.thaw-end) #backdrop .bd-tag,
+body:has(.thaw-end) #bigview .big-keys, body:has(.thaw-end) #bigview .big-hud, body:has(.thaw-end) #bigview .big-boss,
+body:has(.thaw-end) #bigview .big-warn, body:has(.thaw-end) #bigview .big-lock, body:has(.thaw-end) #bigview .big-over {
+  opacity: 0; transition: opacity 1.2s; pointer-events: none;
+}

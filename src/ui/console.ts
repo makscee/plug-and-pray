@@ -28,6 +28,8 @@ export class Console {
     this.g = g;
     this.win = windows.open('console', 'console', windows.consoleAt());
     this.win.el.classList.add('win-console');
+    // v2r5 newcomer: after wake-again at 720 its button row hung off the bottom: any change in its size homes it
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => windows.homeConsole()).observe(this.win.el);
     this.out = document.createElement('div');
     this.out.className = 'out';
     const row = document.createElement('label');

@@ -57,7 +57,7 @@ describe('fight', () => {
     run(g, 0.1);
     expect(shots(g)).toHaveLength(1);
     run(g, 2);
-    expect(g.player.hp).toBe(8.5);
+    expect(g.player.hp).toBeCloseTo(9.1); // v2r5 newcomer: a cradle lamp hits ×0.6
     const h = armed();
     spawnEnemy(h, 'seraph', 5.5, 8.5);
     run(h, 0.1);

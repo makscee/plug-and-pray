@@ -23,6 +23,7 @@ import { say } from '../core/game';
 import './views';
 import { clean } from '../tune/start';
 import { bigOn, dash, fpsFire, fpsMove, fpsTurn, lunge, reins } from './fps';
+import { aimed, volley } from '../fight/aim';
 
 const ARROWS: Record<string, string> = { ArrowUp: 'n', ArrowRight: 'e', ArrowDown: 's', ArrowLeft: 'w' };
 const WASD: Record<string, string> = { w: 'n', a: 'w', s: 's', d: 'e' };
@@ -121,6 +122,13 @@ addEventListener(
         e.stopPropagation();
         return;
       }
+      // v2r5 newcomer: on an empty line Space shoots too, as the arrows walk
+      if (e.key === ' ' && g && !g.ended && !(e.target as HTMLInputElement).value && aimed(g).length) {
+        if (!e.repeat || volley(g).length) shootFree(g);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       if (e.key === 'Escape') {
         (e.target as HTMLElement).blur();
         e.preventDefault();
@@ -136,6 +144,12 @@ addEventListener(
     if (!g || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
     if (fpsKey(g, e, k)) {
+      e.preventDefault();
+      return;
+    }
+    if ((k === ' ' || k === 'f') && !g.ended && aimed(g).length) {
+      // v2r5 newcomer: an aimed weapon fires from the keys without the reins too; held, it fires as it warms
+      if (!e.repeat || volley(g).length) shootFree(g);
       e.preventDefault();
       return;
     }
@@ -241,11 +255,35 @@ frameHooks.push((g) => {
   if (fwd || side || g.player.move) gyroMove(g, fwd, side);
 });
 
+/** v2r5 newcomer (the floor-2 ringer was a wall: shoot had no key without the reins): `shoot` from a key or a
+ *  click on the view, with no reins to take */
+function shootFree(g: Game): void {
+  thaw().send('shoot');
+  const con = thaw()?.screen?.con;
+  if (con) con.follow = true;
+}
+
 // the reins: a press on the view takes them (and the mouse), then fires (left) or lunges (right)
 addEventListener('mousedown', (e) => {
   const g = thaw()?.g;
   const view = reinsView();
-  if (!g || g.ended || !view || !reins(g)) return;
+  if (!g || g.ended) return;
+  if (!view || !reins(g)) {
+    // no reins: a left press on the eye's view (not a window, not the map) shoots an aimed weapon
+    const t = e.target as HTMLElement;
+    // v2r5 newcomer: a click on the black round the screen-filling map did nothing; it says why
+    if (e.button === 0 && document.body.dataset.view === 'map' && (t?.id === 'backdrop' || t?.classList?.contains('bd-map')) && document.querySelector('#backdrop .bd-map canvas.map')) {
+      const why = 'off the map: nothing known out there. click on the map itself.';
+      if (g.log[g.log.length - 1]?.[0] !== why) say(g, why);
+      return;
+    }
+    if (e.button !== 0 || document.body.dataset.view !== 'view' || !aimed(g).length) return;
+    if (!t?.closest?.('#backdrop') || t.closest('.bd-map')) return;
+    e.preventDefault();
+    (document.activeElement as HTMLElement | null)?.blur();
+    shootFree(g);
+    return;
+  }
   const onView = view.contains(e.target as Node) || !!document.getElementById('backdrop')?.contains(e.target as Node);
   if (!onView) return;
   e.preventDefault();

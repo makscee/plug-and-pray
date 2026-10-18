@@ -1,6 +1,6 @@
 // The fight slice: the enemy roster and their behaviours, shots in flight, aimed weapons, hp and
 // the body modules, drops and the console's account of a fight. src/fight/ui.ts is the screen side.
-import { chase, ENEMIES, enemy, hurt, LEASH, REACH, say, tickHooks } from '../core/game';
+import { chase, ENEMIES, enemy, grazed, hurt, LEASH, REACH, say, tickHooks } from '../core/game';
 import { clear, open } from '../core/grid';
 import { hash } from '../core/rng';
 import type { Entity, Game, Line } from '../core/types';
@@ -41,7 +41,9 @@ function seraph(g: Game, e: Entity): void {
     say(g, 'a seraph lamp turns its light on you.');
   }
   const speed = ORB[e.enemy!.type] ?? 2.2;
-  fire(g, { x: e.x, y: e.y, vx: vx * speed, vy: vy * speed, dmg: d.damage, range: d.sense + 2, src: e, foe: true });
+  // v2r5 newcomer: the cradle's lamps chipped 4-6 hp off a first-timer before the first eye: ×0.6 there
+  const dmg = e.enemy!.type === 'seraph' && !(g.floor ?? 0) ? d.damage * 0.6 : d.damage;
+  fire(g, { x: e.x, y: e.y, vx: vx * speed, vy: vy * speed, dmg, range: d.sense + 2, src: e, foe: true });
 }
 
 /** a melee blow that winds up first, so you can step away: the walker's arm, the abbot's sweep.
@@ -292,6 +294,7 @@ const halted = new WeakMap<Game, number>();
 tickHooks.push((g) => {
   const p = g.player;
   if (g.ended || p.hurtAt !== g.t || p.path.length < 2) return;
+  if (grazed(g)) return; // a lamp's orb above half hp: walk on (src/core/game.ts)
   const [tx, ty] = p.path[p.path.length - 1];
   const [dx, dy] = [tx - p.x, ty - p.y];
   const back = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'w' : 'e') : dy > 0 ? 'n' : 's';

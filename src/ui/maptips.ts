@@ -5,7 +5,7 @@
 // v2: clicks only on a map that takes them (the surveyor's and up); the hover tells only what is known
 // (unseen, seen, seen through a wall, marked), and the illuminated atlas shows a note instead of a title.
 
-import { cells, ENEMIES, itemName, say, tickHooks } from '../core/game';
+import { cells, ENEMIES, grazed, itemName, say, tickHooks } from '../core/game';
 import { exec, VERBS, way } from '../core/verbs';
 import { cradleShop, eyeHinted, firstLeg, HINTED } from '../tune/hints';
 import { cell, Cell, veinOf } from '../core/grid';
@@ -254,7 +254,12 @@ mapHooks.click.push((g, x, y) => {
   if (Math.floor(p.x) === x && Math.floor(p.y) === y) return;
   const send = (window as unknown as { thaw: { send(c: string): void } }).thaw.send;
   const leg = firstLeg(g, x + 0.5, y + 0.5);
-  if (!leg) return say(g, 'no open way there that you know of.');
+  // v2r5 newcomer: say why (40 s of clicks on unknown black did nothing a first-timer could read)
+  if (!leg) {
+    const why = know(g, x, y) === 'unseen' ? 'no known way there: that spot is unseen. click a cell you have seen, nearer.' : 'no open way there that you know of: a wall or the unknown is in the way. click nearer.';
+    const last = g.log[g.log.length - 1];
+    return void (last?.[0] !== why && say(g, why));
+  }
   const goes = walks(g);
   if (goes) {
     // v2r4 ux: one line a walk, not an echo a leg (2-4 `> go` lines pushed the useful text out)
@@ -277,7 +282,7 @@ tickHooks.push((g) => {
   const t = trips.get(g);
   if (!t) return;
   const p = g.player;
-  const hit = p.hp < t.hp;
+  const hit = p.hp < t.hp && !grazed(g);
   t.hp = p.hp;
   if (p.path.length && !hit) return;
   const here = `${Math.floor(p.x)},${Math.floor(p.y)}`;

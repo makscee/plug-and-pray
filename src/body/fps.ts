@@ -25,6 +25,8 @@ export function reins(g: Game): Inst | undefined {
 }
 /** the old name (the sims): the reins */
 export const fpsEye = reins;
+/** a scope on (the pilgrim's, the martyr's): the eye the reins' big view reads well through */
+export const sharpEye = (g: Game): boolean => active(g, 'camera').some((i) => param<number>(i, 'wide', 0) > 0);
 /** its mark: 0 none, 1 mk1, 2 mk2 */
 export const mark = (g: Game): number => (fpsEye(g) ? param<number>(fpsEye(g)!, 'big', 0) : 0);
 
@@ -284,6 +286,11 @@ verb('big', {
     s.move = null;
     let t = taught.get(g);
     if (!t) taught.set(g, (t = new Set()));
+    // v2r5 newcomer: through the vidicon or a lattice eye the big view is murk; a scope makes it readable
+    if (s.big && !t.has('sharp') && !sharpEye(g)) {
+      t.add('sharp');
+      say(g, 'the reins want a sharp eye: the pilgrim scope. through this eye the big view is murk.');
+    }
     const k = s.big ? 'on' : 'off';
     if (t.has(k)) return;
     t.add(k);

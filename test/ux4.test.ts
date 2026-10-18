@@ -23,7 +23,7 @@ describe('v2r4 ux', () => {
     const c = cacheNear(g)!;
     const k = findOffer(c, "saint's reins");
     expect(k).toBeGreaterThanOrEqual(0);
-    expect(fitOf(g, c.offer[k])).toBe('goes straight in');
+    expect(fitOf(g, c.offer[k])).toMatch(/^goes straight in/); // (v2r5: and asks for a sharp eye without a scope)
     const slots = g.player.slots;
     exec(g, `pick ${k + 1}`);
     expect(g.player.installed.some((i) => i.mod === 'saints-reins')).toBe(true);
