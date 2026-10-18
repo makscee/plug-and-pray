@@ -13,7 +13,7 @@ const run = (g: Game, s: number) => {
 };
 /** in the start chamber (5..11 open), modules on and warm, the big view up */
 function scoped(...mods: string[]): Game {
-  const g = newGame(1);
+  const g = newGame(2); // a seed whose landing is the plain square (src/world/gen.ts LANDINGS)
   g.ents = [];
   g.player.slots = 8;
   g.player.core = 12;

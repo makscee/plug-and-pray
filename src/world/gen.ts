@@ -10,6 +10,7 @@ import { hash, rng, type Rng } from '../core/rng';
 import type { Chunk } from '../core/types';
 import { zoneOf } from './zones';
 import { farOf, floorOfChunk, inside, isArrival, LAST, roomLocal, stairsChunk } from './floors';
+import { patternWalls, pieceAt, PIECE_ROOM, shapeOf } from './pieces';
 
 const door = (seed: number, axis: number, cx: number, cy: number) => 2 + (hash(seed, axis, cx, cy) % (CHUNK - 4));
 
@@ -20,13 +21,16 @@ export type Room = [number, number, number, number, Shape];
 /** the chambers of a chunk, the first one the biggest; the start chunk is one plain chamber */
 export function rooms(seed: number, cx: number, cy: number): Room[] {
   if (!inside(cx, cy)) return [];
-  if (isArrival(cx, cy)) return [[5, 5, 11, 11, 'box']];
   const f = floorOfChunk(cx);
+  if (isArrival(cx, cy)) return [landing(seed, f)];
   const [sx, sy] = stairsChunk(seed, f);
   if (cx === sx && cy === sy) {
     const [x0, y0, x1, y1] = roomLocal(f);
     return [[x0, y0, x1, y1, f === LAST ? 'oval' : 'box']];
   }
+  // v2 variety: a set piece is one patterned chamber (src/world/pieces.ts)
+  const piece = pieceAt(seed, cx, cy);
+  if (piece) return [[...PIECE_ROOM, shapeOf(piece)]];
   const r = rng(hash(seed, 7, cx, cy));
   const far = farOf(cx, cy);
   const want = 1 + (far >= 2 ? 1 : 0) + (far >= 4 ? r.int(0, 1) : 0) + (far >= 6 ? 1 : 0);
@@ -46,6 +50,21 @@ export function rooms(seed: number, cx: number, cy: number): Room[] {
   }
   return out;
 }
+
+/** v2 variety: the chamber you land in turns with the seed (the start too): a square, a long hall either way, a round
+ *  room, a cross or a ribbed vault. Every one keeps the middle (where you land), the cache south of it
+ *  (src/world/cache.ts SPOT) and the cell between open */
+export const LANDINGS: Room[] = [
+  [5, 5, 11, 11, 'box'],
+  [3, 6, 13, 10, 'box'],
+  [6, 3, 10, 13, 'box'],
+  [4, 4, 12, 12, 'oval'],
+  [3, 3, 13, 13, 'cross'],
+  [4, 4, 12, 12, 'ribs'],
+];
+/** where you wake keeps to the shapes that hold the old square (the first minute is taught there): square, round, wide square */
+export const WAKINGS: Room[] = [LANDINGS[0], LANDINGS[3], [4, 4, 12, 12, 'box']];
+export const landing = (seed: number, f: number): Room => (f === LAST ? LANDINGS[0] : f === 0 ? WAKINGS[hash(seed, 151, f) % WAKINGS.length] : LANDINGS[hash(seed, 151, f) % LANDINGS.length]);
 
 /** the first chamber (kept for callers that want one) */
 export function room(seed: number, cx: number, cy: number): [number, number, number, number] {
@@ -96,6 +115,8 @@ export function generate(seed: number, cx: number, cy: number): Chunk {
   const f = floorOfChunk(cx);
   const boss = stairsChunk(seed, f)[0] === cx && stairsChunk(seed, f)[1] === cy;
   for (const rm of rs) carveRoom(set, rm);
+  const piece = pieceAt(seed, cx, cy);
+  if (piece) for (const [x, y] of patternWalls(piece)) set(x, y, Cell.wall);
   const bends = far < 1 ? 0 : far < 3 ? 1 : 2;
   // chambers in a chain
   for (let k = 1; k < rs.length; k++) carveConduit(set, r, middle(rs[k]), middle(rs[k - 1]), bends);

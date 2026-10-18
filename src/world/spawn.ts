@@ -11,8 +11,8 @@ import { RES, type Chunk, type Game, type Item } from '../core/types';
 import { floors, rooms } from './gen';
 import { nextLog } from './vectors';
 import { ZONES, zoneFar } from './zones';
-import { farOf, floorOfChunk, isArrival, KIT, stairsChunk, STRIDE } from './floors';
-import { KIT as START_KIT } from '../tune/start';
+import { farOf, floorOfChunk, isArrival, stairsChunk, STRIDE } from './floors';
+import { placeCache } from './cache';
 
 /** the furnace's own kit: tier 2, but it rolls only there, so the last zone still brings modules you have not seen */
 export const FURNACE_KIT = ['heat-lance', 'reliquary-saw', 'heart-shard', 'saints-lens'];
@@ -95,11 +95,10 @@ export function cellIn(r: Rng, c: Chunk, seed: number): [number, number] {
 /** where the reliquary by the start stands, a cell centre (the secrets beside it need it before it spawns) */
 export const shopAt = (seed: number, c: Chunk): [number, number] => cellIn(rng(hash(seed, 57, c.cx, c.cy)), c, seed);
 
-/** the arrival cache of a floor: its kit (src/world/floors.ts KIT) and a little to spend, in the chamber you land in */
+/** the arrival cache of a floor: its kit as a choice (src/world/cache.ts) and a little to spend, in the chamber you land in */
 function cache(g: Game, c: Chunk, f: number): void {
-  const kit = (KIT[f] ?? []).filter((m) => MODS[m] && !(f === 0 && START_KIT.includes(m)));
+  placeCache(g, c.cx, c.cy, f);
   const r = rng(hash(g.seed, 12, f));
-  kit.forEach((mod, k) => spawn(g, { kind: 'item', x: c.cx * CHUNK + 6.5 + (k % 5), y: c.cy * CHUNK + 10.5 - Math.floor(k / 5), item: { kind: 'mod', mod } }));
   if (f > 0 && f < ZONES.length - 1) spawn(g, { kind: 'item', x: c.cx * CHUNK + 10.5, y: c.cy * CHUNK + 6.5, item: { kind: 'res', res: r.pick(['bone', 'glass', 'copper'] as const), n: 3 + f } });
 }
 

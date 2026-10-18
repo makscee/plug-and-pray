@@ -3,6 +3,7 @@ import './mods';
 import './sight';
 import './fight/ui';
 import './ui/floors';
+import './ui/cache';
 import { newGame, say, tick } from './core/game';
 import { Screen } from './ui';
 import './ui/bigmap';

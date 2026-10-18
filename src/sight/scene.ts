@@ -322,6 +322,8 @@ export function frameOf(g: Game, e: Entity): number {
   if (typeof d.hitAt === 'number' && (g.t - d.hitAt < 0.15 || (d.hitAt > flashSince && g.t - d.hitAt < FLASH_HOLD))) return 3;
   // winding up (a mite rearing, a walker's arm, an elite's move): the attack frame, held (src/fight/index.ts)
   if (typeof d.windup === 'number' && g.t < d.windup) return 2;
+  // v2 variety: a choir foe flinching aside from your shot (src/fight/dodge.ts)
+  if (typeof d.flinch === 'number' && g.t < d.flinch) return 2;
   const s = g.t - struckAt(e);
   if (s >= 0 && s < 0.35) return 2;
   return Math.floor(g.t * 3 + e.id * 0.37) % 2;
@@ -411,8 +413,7 @@ function place(g: Game, mode: Mode, hidden = false, filter = '', xray = false): 
     }
     if (e.data?.stairs) {
       // v2 floors: the stairs down, built from parts (stairs.ts)
-      const pick = ([color, glow, heat]: Paint) => (mode === 'depth' ? depthMat : mode === 'heat' && heat < 0.3 ? null : matOf({ geo: itemGeo, color, glow, y: 0, heat }, mode));
-      ents.add(stairsObject(e, g.t, pick, mode));
+      ents.add(stairsObject(e, g.t, paint(mode), mode));
       continue;
     }
     let l = lookOf(e);
@@ -433,6 +434,10 @@ function place(g: Game, mode: Mode, hidden = false, filter = '', xray = false): 
   addPuffs(g, mode);
   for (const f of placeHooks) f(g, ents, mode);
 }
+
+/** a part's material in this eye's mode, as the stairs use (stairs.ts Paint); null hides it (cold on a heat eye).
+ *  v2 variety: the set-piece props and the kit cache build from it (src/sight/variety.ts) */
+export const paint = (mode: Mode) => ([color, glow, heat]: Paint): THREE.Material | null => (mode === 'depth' ? depthMat : mode === 'heat' && heat < 0.3 ? null : matOf({ geo: itemGeo, color, glow, y: 0, heat }, mode));
 
 /** more things to draw around you each shot (v2: glowing bolts, src/sight/fps.ts): (game, group, mode) */
 export const placeHooks: ((g: Game, group: THREE.Group, mode: Mode) => void)[] = [];

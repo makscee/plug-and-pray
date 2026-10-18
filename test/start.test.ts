@@ -22,7 +22,7 @@ describe('accessible start (10-18)', () => {
   });
 
   it('unstuck: out of a wall at once, else home after 3 s', () => {
-    const g = newGame(1);
+    const g = newGame(2); // the plain square landing (src/world/gen.ts LANDINGS)
     startKit(g);
     Object.assign(g.player, { x: 1.5, y: 1.5 });
     expect(open(g, 1.5, 1.5)).toBe(false);
