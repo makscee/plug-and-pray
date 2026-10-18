@@ -16,7 +16,7 @@
 .goal { position: fixed; top: 36px; left: 50%; transform: translateX(-50%); z-index: 8990; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; line-height: 18px; color: var(--t-body, var(--fg)); background: rgba(10, 8, 7, 0.88); padding: 1px 10px; border-radius: 3px; pointer-events: none; }
 .goal[hidden] { display: none; }
 /* the keeper's door: a card in the middle, under the goal line; over the big map (v2r3 ux: a walk from M hid it) */
-.door-card { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 9250; width: min(420px, calc(100vw - 32px)); padding: 6px 12px 8px; background: #0c0908f2; border: 1px solid #a03020; box-shadow: 0 8px 30px #000c; text-align: center; }
+.door-card { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 9250; width: min(420px, calc(100vw - 32px)); padding: 6px 12px 8px; background: #0c0908; border: 1px solid #a03020; box-shadow: 0 8px 30px #000c; text-align: center; }
 .door-card[hidden] { display: none; }
 .door-card p { margin: 2px 0; }
 .door-card .door-k { font-size: 16px; color: var(--dim); letter-spacing: 1px; }
