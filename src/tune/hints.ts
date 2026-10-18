@@ -369,8 +369,8 @@ function wayDown(g: Game): Line {
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(sx - p.x, -(sy - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8];
   // v2r1 ux: on floor 2 "a memory card points to it" gave no direction and no card: name a card lying on
   // this floor, and give a first leg the rough way
-  const card = g.ents.filter((e) => e.kind === 'item' && e.item?.kind === 'card' && floorAt(e.x) === f).sort((a, b) => dist(a, p) - dist(b, p))[0];
-  if (card && dist(card, p) < 60) return toCell(g, card.x, card.y, `stairs unseen (${word}, past the keeper); a card that points there lies`);
+  // v5 (Maks: "pretty straightforward"): the keeper sits two chunks straight out, so walk to its room, no card first
+  if (door) return toCell(g, door.x, door.y, `the keeper's room (${word}); ${name} lies past it`, 'where');
   return toCell(g, sx, sy, `stairs unseen; roughly here, past the keeper`, 'where');
 }
 
