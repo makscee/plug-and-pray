@@ -604,7 +604,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-worm', floor: 3, name: 'the slag worm', hp: 440, damage: 3, speed: 0.8, walk: 'drift', r: 0.7, at: [0.5],
+  id: 'boss-worm', floor: 3, name: 'the slag worm', hp: 400, damage: 3, speed: 0.8, walk: 'drift', r: 0.7, at: [0.5],
   hint: 'it digs in and comes up under you in a ring of slag. hit it while it is up; it spits triplets.',
   turn: ['the slag worm boils. where it comes up, slag stays.'],
   phases: [
