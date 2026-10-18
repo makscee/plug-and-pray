@@ -7,8 +7,8 @@ import { light } from '../sight/lamp';
 import type { Game, Inst } from '../core/types';
 
 /** hp per second with no body module, once you have gone QUIET seconds without damage */
-export const REGEN = 0.2; // tuning #1328: was 0.1; a hurt new player waited over a minute
-export const QUIET = 4;
+export const REGEN = 0.5; // r1 econ: was 0.2 after 4 s; now no mending in a fight (6 s quiet), then a short rest
+export const QUIET = 6;
 
 const body = (g: Game): Inst[] => active(g, 'body');
 const sum = (g: Game, key: string) => body(g).reduce((s, i) => s + param<number>(i, key, 0), 0);
