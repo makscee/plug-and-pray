@@ -377,6 +377,20 @@ function weight(g: Game, i: { mod: string }): number {
 export const lightest = (g: Game): Inst | undefined =>
   g.player.installed.filter((i) => def(i).family !== 'power' && def(i).family !== 'camera' && weight(g, i) < 9).sort((a, b) => weight(g, a) - weight(g, b) || +a.on - +b.on)[0];
 
+/** v2r5 run: an installed module whose taking out by hand makes room for `it` (carried): it frees the slot and
+ *  the power `it` lacks ("take out thread bell for it" freed no power). One of its own kind first, then the
+ *  lightest; never the last legs, the map, the last weapon, an eye or a generator. undefined: none does */
+export function freeing(g: Game, it: { mod: string }): Inst | undefined {
+  const p = g.player;
+  const slot = slotsUsed(g) + size(it) - p.slots - ownSocket(g, it);
+  const short = def(it).power - (powerMax(g) - powerUsed(g));
+  if (slot <= 0 && short <= 0) return undefined;
+  const kind = (o: { mod: string }) => `${def(o).family}/${param<string>(o, 'what', '')}`;
+  return p.installed
+    .filter((i) => !['power', 'camera'].includes(def(i).family) && (weight(g, i) < 9 || (kind(i) === kind(it) && !lastSwarm(g, i, it))) && (slot <= 0 || size(i) >= slot) && (short <= 0 || (i.on && def(i).power >= short)))
+    .sort((a, b) => +(kind(b) === kind(it)) - +(kind(a) === kind(it)) || weight(g, a) - weight(g, b) || worth(a) - worth(b))[0];
+}
+
 const RANK: Record<string, number> = { common: 0, fine: 1, rare: 2, unique: 3 };
 /** how good a module is within its family: rarity first, then tier (an eye: then its res) */
 const worth = (m: Modish): number => RANK[rarityOf(m)] * 1000 + def(m).tier * 100 + (def(m).family === 'camera' ? Math.min(99, param<number>(m, 'res', 0) / 4) : 0);
@@ -414,10 +428,18 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
     const on = p.installed.filter((i) => i.on && light(i)).sort((a, b) => weight(g, a) - weight(g, b) || def(b).power - def(a).power);
     // the weakest of its own family goes first (playtest r3: an eye took the map and kept the pinhole); an
     // eye only ever takes out a weaker eye (v2r2 fun: a fine dawn eye took out the rare vidicon)
-    const fam = p.installed.filter((i) => def(i).family === def(it).family && def(i).family !== 'power' && weaker(i, it)).sort((a, b) => +a.on - +b.on || worth(a) - worth(b));
+    // v2r5 run: a stronger generator takes out a weaker one (the heart-shard took out the frost coat, not the
+    // ember cell): it frees a slot and still gives more power than it took
+    const gen = (i: Inst) => def(i).family === 'power' && def(it).family === 'power' && param<number>(i, 'power', 0) <= param<number>(it, 'power', 0);
+    const fam = p.installed.filter((i) => def(i).family === def(it).family && (def(i).family !== 'power' || gen(i)) && weaker(i, it)).sort((a, b) => +a.on - +b.on || worth(a) - worth(b));
+    // v2r5 run: then a second copy of something you wear (an eye took out the rare suture moth, not the
+    // duplicate choir bell), its least worth copy first, never a better one over a common copy
+    const dups = p.installed
+      .filter((i) => def(i).family !== 'power' && p.installed.some((o) => o !== i && o.mod === i.mod && worth(o) >= worth(i)) && (!i.on || light(i) || weapon(i)))
+      .sort((a, b) => +a.on - +b.on || worth(a) - worth(b));
     // one that frees enough, in that order; else the first few until they do (v2: modules that take two).
     // Never the last legs, the map or a better eye (v2r2 fun)
-    const order = [...new Set([...fam, ...off, ...on])].filter((i) => !kept(g, i, it));
+    const order = [...new Set([...fam, ...dups, ...off, ...on])].filter((i) => !kept(g, i, it));
     // an eye no better than the ones you wear asks first: it would take a slot from something else
     if (def(it).family === 'camera' && !fam.length && p.installed.some((i) => def(i).family === 'camera')) return `your eyes see better than ${def(it).name}: take something out by hand to wear it too.`;
     remove = order.find((i) => size(i) >= need);

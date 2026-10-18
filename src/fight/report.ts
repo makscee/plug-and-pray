@@ -19,7 +19,7 @@ const KILL: Record<string, string> = {
 /** how long blows are gathered before they are told */
 export const GATHER = 1.2;
 
-interface Tally { start: number; hit: Map<string, number>; took: Map<string, number>; missed?: number }
+interface Tally { start: number; hit: Map<string, number>; took: Map<string, number>; missed?: number; stone?: number; name?: string }
 const tallies = new WeakMap<Game, Tally>();
 
 const short = (type: string) => (ENEMIES[type]?.name ?? 'it').replace(/^(a|an|the) /, '');
@@ -38,7 +38,10 @@ export function flush(g: Game): void {
   if (!t || (!t.hit.size && !t.took.size && !t.missed)) return;
   const parts = [...[...t.hit].map(([k, n]) => `you hit ${k}${times(n)}`), ...[...t.took].map(([k, n]) => `${k} hits you${times(n)}`)];
   // Maks 10-18: a shot that strikes nothing says so, so a miss never passes for a hit
-  if (t.missed) parts.push(`you miss${times(t.missed)}`);
+  // v2r5 run: a wall or a pillar in the line says so, and the way out
+  const air = (t.missed ?? 0) - (t.stone ?? 0);
+  if (t.stone) parts.push(`your ${t.name ?? 'shot'} strikes stone${times(t.stone)}: step out of the wall's line`);
+  if (air > 0) parts.push(`you miss${times(air)}`);
   if (t.took.size) parts.push(`hp ${hpText(g.player.hp)}/${g.player.maxHp}`);
   tallies.delete(g);
   say(g, parts.join(' · ') + '.');
@@ -56,6 +59,8 @@ tickHooks.push((g) => {
     } else if (ev.type === 'miss') {
       const t = tally(g);
       t.missed = (t.missed ?? 0) + 1;
+      const d = ev.data as { stone?: boolean; name?: string } | undefined;
+      if (d?.stone) (t.stone = (t.stone ?? 0) + 1), (t.name = d.name ?? t.name);
     }
   }
   // v2r4 run: the line's hp lagged the real one (a bolt hook later in the tick hit after it was told): the

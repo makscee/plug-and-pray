@@ -1,7 +1,9 @@
 // The fight slice: the enemy roster and their behaviours, shots in flight, aimed weapons, hp and
 // the body modules, drops and the console's account of a fight. src/fight/ui.ts is the screen side.
 import { chase, ENEMIES, enemy, hurt, LEASH, REACH, say, tickHooks } from '../core/game';
-import { clear, open } from '../core/grid';
+import { clear, DIRS, open } from '../core/grid';
+import { way } from '../core/verbs';
+import { floorOf, inRoom } from '../world/floors';
 import { hash } from '../core/rng';
 import type { Entity, Game, Line } from '../core/types';
 import { fire } from './shots';
@@ -286,6 +288,34 @@ tickHooks.push((g) => {
   }
 });
 
+/** the cells you walked through lately, per game, and the last one outside this floor's keeper room */
+const trails = new WeakMap<Game, { cells: [number, number][]; out: [number, number] | null }>();
+tickHooks.push((g) => {
+  const p = g.player;
+  const c: [number, number] = [Math.floor(p.x), Math.floor(p.y)];
+  let t = trails.get(g);
+  if (!t) trails.set(g, (t = { cells: [], out: null }));
+  const last = t.cells[t.cells.length - 1];
+  if (last && last[0] === c[0] && last[1] === c[1]) return;
+  t.cells.push(c);
+  if (t.cells.length > 24) t.cells.shift();
+  if (!inRoom(g.seed, floorOf(g), p.x, p.y)) t.out = c;
+});
+/** the first straight leg back the way you came: toward a cell a few steps back on your trail, or out of the
+ *  keeper's room you stand in; null when there is no open leg */
+export function backLeg(g: Game): [string, number] | null {
+  const p = g.player;
+  const t = trails.get(g);
+  if (!t) return null;
+  const here = [Math.floor(p.x), Math.floor(p.y)];
+  const room = inRoom(g.seed, floorOf(g), p.x, p.y);
+  const to = room ? t.out : [...t.cells].reverse().find(([x, y]) => Math.abs(x - here[0]) + Math.abs(y - here[1]) >= 3) ?? t.cells[0];
+  if (!to || (to[0] === here[0] && to[1] === here[1])) return null;
+  const [d, n] = way.long(g, to[0] + 0.5, to[1] + 0.5);
+  const [ex, ey] = DIRS[d] ?? [0, 0];
+  return open(g, here[0] + ex + 0.5, here[1] + ey + 0.5) ? [d, n] : null;
+}
+
 /** struck while walking: you stop where you are (r2: `go n 9` walked on through a swarm, ×6 bites at a time),
  *  with the way back as a button */
 const halted = new WeakMap<Game, number>();
@@ -294,12 +324,15 @@ tickHooks.push((g) => {
   if (g.ended || p.hurtAt !== g.t || p.path.length < 2) return;
   const [tx, ty] = p.path[p.path.length - 1];
   const [dx, dy] = [tx - p.x, ty - p.y];
-  const back = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'w' : 'e') : dy > 0 ? 'n' : 's';
+  const away = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'w' : 'e') : dy > 0 ? 'n' : 's';
   p.path = [[Math.floor(p.x) + 0.5, Math.floor(p.y) + 0.5]];
   if (g.t - (halted.get(g) ?? -99) < 3) return;
   halted.set(g, g.t);
   const by = g.ents.find((e) => e.enemy && Math.hypot(e.x - p.x, e.y - p.y) <= REACH + 0.3)?.enemy?.type;
-  const line: Line = [`${by === 'mite' ? 'bitten' : 'struck'}. you stop. `, { text: `go ${back} 3`, cmd: `go ${back} 3` }, ' back the way you came'];
+  // v2r5 run: "go e 3" pointed into a wall: the leg walks back along the cells you came by (out of a keeper's
+  // room: to where you stood before you went in), over open floor
+  const [back, n] = backLeg(g) ?? [away, 3];
+  const line: Line = [`${by === 'mite' ? 'bitten' : 'struck'}. you stop. `, { text: `go ${back} ${n}`, cmd: `go ${back} ${n}` }, ' back the way you came'];
   say(g, line);
 });
 

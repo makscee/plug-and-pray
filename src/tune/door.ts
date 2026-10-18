@@ -7,13 +7,16 @@ import { cell, Cell, DIRS, open } from '../core/grid';
 import { doorIn, walkPace } from '../mods/gait';
 import { endTrip, route } from '../mods/pilot';
 import { dist, say, tickHooks } from '../core/game';
-import { active, def, MODS, param } from '../core/mods';
+import { instRef, VERBS, way } from '../core/verbs';
+import { active, def, label, MODS, param } from '../core/mods';
+import { freeing, makeRoom } from '../body';
 import type { Game, Line } from '../core/types';
 import { BOSS, LOADOUTS, variantOf, type BossDef } from '../fight/bosses';
 import { bossAt, bossDown, bossRoom, bossWoke, floorOf, inRoom, LAST, stairsChunk } from '../world/floors';
 import { readiness } from '../world/zones';
 import { dpsOf } from '../world/zonemath';
 import { keeperDoor } from './hints';
+import { sealedEye } from '../world/secrets';
 
 export interface Door {
   /** the cell you stand on, a cell outside the room (a cell centre) */
@@ -83,6 +86,8 @@ export interface Check {
   ready: boolean;
   /** what is missing, plain words */
   why: string[];
+  /** a button that fixes one of them (swap in the armour you carry) */
+  link?: { text: string; cmd: string };
 }
 
 /** you against the keeper: ready when your readiness reaches most of what it is balanced for, a weapon is
@@ -92,6 +97,7 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
   const p = g.player;
   const dps = dpsNow(g);
   const why: string[] = [];
+  let link: { text: string; cmd: string } | undefined;
   const armed = p.installed.some((i) => i.on && def(i).family === 'weapon');
   if (!armed) why.push('no weapon is on');
   else {
@@ -113,11 +119,18 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
       const off = p.installed.find((i) => !i.on && coat(i));
       const bag = p.inv.find((i) => i.kind === 'mod' && coat(i));
       const fix = off ? `turn on your ${def(off).name}` : bag && bag.kind === 'mod' ? `install the ${def(bag).name} you carry` : 'an altar (+hp) or armour first';
+      // v2r5 run: "install the frost coat you carry" while `swap in` refused: a link that makes the room
+      if (!off && bag && bag.kind === 'mod' && !link) {
+        const room = makeRoom(g, bag, false, true);
+        const out = typeof room === 'string' ? freeing(g, bag) : undefined;
+        if (typeof room !== 'string') link = { text: `swap in ${def(bag).name}`, cmd: `swap in ${label(bag)}` };
+        else if (out) link = { text: `swap ${def(out).name} for ${def(bag).name}`, cmd: `remove ${instRef(g, out)}; install ${label(bag)}` };
+      }
       if (!(weak || untempered) || ratio / Math.max(0.01, hit) < 0.8) why.push(`you could not take its blows long: ${fix}`);
     }
   }
   if (p.hp < p.maxHp * 0.7) why.push(`mend first (${Math.ceil(p.hp)}/${p.maxHp} hp)`);
-  return { name: k.name, hp: k.hp, damage: k.damage, hint: k.def.hint, dps, ready: !why.length, why };
+  return { name: k.name, hp: k.hp, damage: k.damage, hint: k.def.hint, dps, ready: !why.length, why, ...(link && why.length ? { link } : {}) };
 }
 
 const secs = (s: number) => (s >= 90 ? `about ${Math.round(s / 60)} min` : `about ${Math.max(1, Math.round(s))} s`);
@@ -130,7 +143,7 @@ export function keeperLine(g: Game, f = floorOf(g)): Line[] {
   const head = `the keeper: ${c.name}, ${c.hp} hp, hits up to ${c.damage.toFixed(1)}. you deal ${c.dps.toFixed(1)}/s${kill}.`;
   const verdict: Line = c.ready
     ? ['ready. ', { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in', cmd: 'go in' }] : [])]
-    : [`you are not ready: ${c.why.join('; ')}. `, { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in anyway', cmd: 'go in' }] : [])];
+    : [`you are not ready: ${c.why.join('; ')}. `, ...(c.link ? [c.link, '  '] : []), { text: 'save setup battle', cmd: 'save setup battle' }, ...(d ? ['  ', { text: 'go in anyway', cmd: 'go in' }] : [])];
   return [[head], verdict];
 }
 
@@ -168,6 +181,14 @@ const gateOf = (g: Game) => {
 };
 /** the door is shut to walks: its keeper sleeps and you did not say `go in` */
 export const shut = (g: Game, f = floorOf(g)): boolean => f !== LAST && !bossDown(g, f) && !bossWoke(g, f) && gateOf(g).inOn !== f;
+
+// v2r5 run: `where` and walks routed through the shut room and stopped at its door for good: while it is shut,
+// its cells are walls to every way that does not end inside it
+way.block = (g, tx, ty) => {
+  const f = floorOf(g);
+  if (!shut(g, f) || inRoom(g.seed, f, tx + 0.5, ty + 0.5) || inRoom(g.seed, f, g.player.x, g.player.y)) return null;
+  return (x, y) => inRoom(g.seed, f, x + 0.5, y + 0.5);
+};
 
 tickHooks.unshift((g) => {
   if (g.ended) return;
@@ -207,7 +228,14 @@ doorIn.at = (g) => !!doorNear(g);
 doorIn.run = (g) => {
   const f = floorOf(g);
   const d = doorNear(g);
-  if (!d) return void say(g, bossWoke(g, f) || bossDown(g, f) ? 'the door stands open already.' : "go in where? you are not at a keeper's door.");
+  if (!d) {
+    // v2r5 run: `go in` typed at the first eye's cracked wall: the verb there is break
+    const brk = VERBS.break;
+    const eye = sealedEye(g);
+    const nearEye = !!eye && Math.hypot(eye.x + eye.fx + 0.5 - g.player.x, eye.y + eye.fy + 0.5 - g.player.y) <= 5;
+    if (brk && (!brk.when || brk.when(g) || nearEye)) return brk.run(g, []);
+    return void say(g, bossWoke(g, f) || bossDown(g, f) ? 'the door stands open already.' : "go in where? you are not at a keeper's door.");
+  }
   gateOf(g).inOn = f;
   const p = g.player;
   const [dx, dy] = DIRS[d.dir];

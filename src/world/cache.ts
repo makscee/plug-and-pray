@@ -12,7 +12,7 @@ import { def, label, MODS, param, rarityKey } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import { addItem, instRef, verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Item, Line } from '../core/types';
-import { lastSwarm, lightest, makeRoom } from '../body';
+import { freeing, lastSwarm, makeRoom } from '../body';
 import { floorOf, KIT } from './floors';
 import { RARITY_ODDS, ranged } from './spawn';
 
@@ -153,9 +153,8 @@ export function pick(g: Game, k: number): string | null {
   const added = g.player.installed.find((i) => !before.has(i));
   // v2r2 fun: nothing gave way (legs, the map, a better eye stay): it waits, and a button makes room by hand
   // v2r3 ux: the obvious swap first, one of its own kind (the survey spool for the map spool, not the bell)
-  const kind = (o: { mod: string }) => `${def(o).family}/${param<string>(o, 'what', '')}`;
-  const same = g.player.installed.find((o) => !['camera', 'power'].includes(def(o).family) && kind(o) === kind(it) && !lastSwarm(g, o, it));
-  const out = added ? undefined : same ?? lightest(g);
+  // v2r5 run: only one that frees what it lacks, slot or power (the 0-power thread bell was offered for the moth)
+  const out = added ? undefined : freeing(g, it);
   const ask: Line = out ? [' ', { text: `take out ${label(out)} for it`, cmd: `remove ${instRef(g, out)}; install ${name}` }] : [];
   say(g, [`you take ${name} from the cache${cost ? ` for ${cost} bone` : ''}. `, added ? '' : `it waits in your bag${typeof room === 'string' ? `: ${room.replace(/\.$/, '')}` : ''}.`, ...ask], `  ${def(it).text}`);
   if (!c.offer.length) c.done = true;

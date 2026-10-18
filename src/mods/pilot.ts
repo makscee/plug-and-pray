@@ -11,7 +11,7 @@ import { origin } from '../world/floors';
 import { cells, dist, ENEMIES, say, spawn, tickHooks } from '../core/game';
 import { active, families, family, param, working } from '../core/mods';
 import { hash, rng } from '../core/rng';
-import { exec, verb } from '../core/verbs';
+import { exec, verb, way } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
 import { view, VIEWS } from '../ui/views';
 import { mapHooks } from '../world/mind';
@@ -32,6 +32,8 @@ export function route(g: Game, sx: number, sy: number, tx: number, ty: number, p
   const danger = avoid ? foes(g).filter((e) => dist(e, { x: sx, y: sy }) < plan) : [];
   const cost = (x: number, y: number) => 1 + (danger.some((e) => Math.hypot(e.x - x - 0.5, e.y - y - 0.5) < 2.5) ? 6 : 0);
   const h = (x: number, y: number) => Math.abs(x - tx) + Math.abs(y - ty);
+  // v2r5 run: never through a sleeping keeper's room (src/tune/door.ts)
+  const no = way.block(g, tx, ty);
   const from = new Map<string, string>();
   const gs = new Map<string, number>([[k(sx, sy), 0]]);
   const openSet: [number, number, number][] = [[sx, sy, h(sx, sy)]];
@@ -50,7 +52,7 @@ export function route(g: Game, sx: number, sy: number, tx: number, ty: number, p
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx;
       const ny = y + dy;
-      if (!(anyFloor ? open(g, nx + 0.5, ny + 0.5) : known(g, nx, ny))) continue;
+      if (!(anyFloor ? open(g, nx + 0.5, ny + 0.5) : known(g, nx, ny)) || no?.(nx, ny)) continue;
       const ng = gx + cost(nx, ny);
       if (ng >= (gs.get(k(nx, ny)) ?? Infinity)) continue;
       gs.set(k(nx, ny), ng);
