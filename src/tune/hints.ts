@@ -87,9 +87,11 @@ function toward(g: Game, mod: string, sound: string): Line | null {
 
 /** "<sound>, 21 cells se. first: [go s 5]": the leg is the start of a real way there (playtest r3: the
  * straight word and the leg read as a disagreement, and an axis leg walked into a dead end) */
-function toCell(g: Game, x: number, y: number, sound: string): Line {
+function toCell(g: Game, x: number, y: number, sound: string, act = 'take'): Line {
   const p = g.player;
   const [dx, dy] = [x - p.x, y - p.y];
+  // r4: on it or beside it, the leg ping-ponged (go n 1, go s 1); say what to do here instead
+  if (Math.abs(Math.floor(x) - Math.floor(p.x)) + Math.abs(Math.floor(y) - Math.floor(p.y)) <= 1) return [`${sound}: here. `, { text: act, cmd: act }];
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
   const [ax, n] = way.long(g, x, y);
   const cmd = active(g, 'gait').some((i) => param(i, 'go', false)) ? `go ${ax} ${n}` : `crawl ${ax}`;
@@ -110,7 +112,7 @@ const hintLines = (g: Game) => {
   return [
     toward(g, 'dawn-eye', 'the dawn eye glints, waiting for a socket'),
     toward(g, 'card-reader', 'a card reader ticks, waiting for a card'),
-    shop ? toCell(g, shop.x, shop.y, 'glass doors chime: a reliquary keeps an eye for hidden things') : null,
+    shop ? toCell(g, shop.x, shop.y, 'glass doors chime: a reliquary keeps an eye for hidden things', 'buy') : null,
   ].filter((l): l is Line => !!l);
 };
 
@@ -161,13 +163,17 @@ function after(g: Game): Line[] {
           ? ['a memory card waits; your card reader is off: ', { text: 'on card reader', cmd: 'on card reader' }]
           : ['a memory card waits for a card reader.'],
     );
+  // r4 final: no card reader at all and shards unread: say where one comes from
+  const hasReader = [...p.inv, ...p.installed].some((i) => 'mod' in i && i.mod === 'card-reader');
+  if (!hasReader && g.cards.filter((c) => c.startsWith('shard-')).length < 3 && !g.ents.some((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === 'card-reader'))
+    out.push(['no card reader: ', { text: 'print mind', cmd: 'print mind' }, ' at a printer.']);
   const v = nearestOpen(g);
   if (v) out.push(toCell(g, v.x, v.y, `the ${v.what}`));
   // a loose module of a kind you don't wear yet (a pinhole swapped out for the dawn eye is no reason)
   const loose = p.inv.some((i) => i.kind === 'mod' && !p.installed.some((o) => def(o).family === def(i).family));
   if (loose && p.installed.length >= p.slots) {
     const pr = g.ents.filter((e) => e.kind === 'printer' && !e.data?.shop).sort((a, b) => dist(a, p) - dist(b, p))[0];
-    out.push(pr ? toCell(g, pr.x, pr.y, 'slots are full; a printer sells slots') : ['slots are full; a printer sells slots.']);
+    out.push(pr ? toCell(g, pr.x, pr.y, 'slots are full; a printer sells slots', 'print') : ['slots are full; a printer sells slots.']);
   }
   return out;
 }

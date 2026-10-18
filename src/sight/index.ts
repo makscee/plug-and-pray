@@ -366,6 +366,7 @@ verb('conjure', {
   when: () => /[?&]still/.test(globalThis.location?.search ?? ''),
   run(g, args) {
     const id = args.join('-');
+    if (!id) return say(g, 'conjure what? conjure <module id>, e.g. conjure card-reader');
     if (!MODS[id]) return say(g, `no module ${id}.`);
     addItem(g, { kind: 'mod', mod: id });
     say(g, `conjured ${MODS[id].name}.`);

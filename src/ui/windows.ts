@@ -92,7 +92,7 @@ export function open(id: string, title: string, at?: [number, number]): Win {
     el.dataset.fresh = '1';
     queueMicrotask(place);
     setTimeout(place, 300);
-    setTimeout(() => (place(), delete el.dataset.fresh), 1200);
+    setTimeout(() => (place(), delete el.dataset.fresh, mapBack()), 1200);
   }
   const w = { id, el, title: t, body, foot, dot };
   wins.set(id, w);
@@ -318,7 +318,9 @@ function layout(all: boolean): void {
   }
   // by rank (eyes that are on, the map, modules with buttons, text, off), then biggest first
   const area = (w: HTMLElement) => w.offsetWidth * w.offsetHeight;
-  ws.sort((a, b) => rank(a) - rank(b) || area(b) - area(a));
+  // r4: the map before a second eye (rank 0.5): he asked to always see it, and tidy docked it at 1280x720
+  const order = (w: HTMLElement) => (rank(w) === 0.5 ? 1.5 : rank(w));
+  ws.sort((a, b) => order(a) - order(b) || area(b) - area(a));
   for (const w of ws) {
     delete w.dataset.tidy;
     const spot = free(w);
@@ -348,6 +350,12 @@ function homeConsole(): void {
 export function tidy(): void {
   homeConsole();
   layout(true);
+  mapBack();
+}
+
+/** r4: the map docked by the game (a burst of installs) comes back out, docking text-only windows in its way */
+function mapBack(): void {
+  for (const w of modWins()) if (rank(w) === 1 && w.classList.contains('min') && !w.dataset.hand && !w.dataset.moved) promote(w);
 }
 
 // a smaller window (devtools, un-maximising): the console back on screen first, then every module

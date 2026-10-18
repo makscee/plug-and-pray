@@ -71,7 +71,15 @@ function hover(c: HTMLCanvasElement): void {
   where.textContent = 'where';
   where.title = 'where the hints point, again';
   where.addEventListener('click', () => (window as unknown as { thaw: { send(c: string): void } }).thaw.send('where'));
-  legend.append(zoom, ' · ', where);
+  // r4: `vectors` sits on this line once there are any, so the map never grows a button row
+  const vec = document.createElement('button');
+  vec.textContent = 'vectors';
+  vec.className = 'map-vectors';
+  vec.addEventListener('click', () => (window as unknown as { thaw: { send(c: string): void } }).thaw.send('vectors'));
+  const sep = document.createElement('span');
+  sep.textContent = ' · ';
+  legend.append(zoom, ' · ', where, sep, vec);
+  vec.hidden = sep.hidden = true;
   c.after(legend);
 }
 
@@ -96,6 +104,8 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
   const c = ctx.canvas;
   if (!at.has(c)) hover(c);
   at.set(c, { g, ox, oy, px });
+  const vec = c.parentElement?.querySelector<HTMLElement>('.map-vectors');
+  if (vec && vec.hidden === !!g.vectors.length) vec.hidden = (vec.previousElementSibling as HTMLElement).hidden = !g.vectors.length;
   const [w, h] = [c.width, c.height];
   for (const t of targets(g)) {
     let x = (t.x - ox) * px;

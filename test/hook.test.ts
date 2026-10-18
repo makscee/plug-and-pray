@@ -48,12 +48,17 @@ describe('r2 hook', () => {
     expect(text(g)).toMatch(/the next shard lies in the furnace/);
   });
 
-  it('recycle asks once before it grinds the only card reader while a card is unread', () => {
+  it('r4: the last card reader neither recycles nor drops while shards are unread; it may once all three are read', () => {
     const g = newGame(1);
     g.player.inv.push({ kind: 'mod', mod: 'card-reader' }, { kind: 'card', card: 'log-ferry' });
     exec(g, 'recycle card reader');
     expect(text(g)).toMatch(/only card reader/);
+    exec(g, 'recycle card reader');
+    exec(g, 'drop card reader');
     expect(g.player.inv.some((i) => i.kind === 'mod' && i.mod === 'card-reader')).toBe(true);
+    g.cards.push('shard-1', 'shard-2', 'shard-3');
+    // with a card still unread it asks once first (r2)
+    exec(g, 'recycle card reader');
     exec(g, 'recycle card reader');
     expect(g.player.inv.some((i) => i.kind === 'mod' && i.mod === 'card-reader')).toBe(false);
   });

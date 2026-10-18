@@ -249,7 +249,7 @@ enemy('hum', { name: 'the hum', hp: 4, speed: 1.1, damage: 1, cooldown: 2, sense
 enemy('mimic', { name: 'a mimic', hp: 3, speed: 1.4, damage: 1.5, cooldown: 1.6, sense: 8 });
 // zones (balance pass): the furnace's lamp, and one elite per zone guarding its shard (src/world/vectors.ts)
 enemy('pyre', { name: 'a pyre seraph', hp: 3, speed: 0, damage: 1.5, cooldown: 2.4, sense: 9, ai: seraph });
-enemy('warden', { name: 'the choir warden', hp: 11, speed: 1.7, damage: 1.5, cooldown: 1.3, sense: 7, ai: warden }); // r2 loop: hp ×1.4 (was 8, 13, 20): long enough for its telegraphs to matter
+enemy('warden', { name: 'the choir warden', hp: 10, speed: 1.7, damage: 1.5, cooldown: 1.3, sense: 7, ai: warden }); // r4 final: 10 (seed 42 lost by 1-2 hp). r2 loop: hp ×1.4 (was 8, 13, 20): long enough for its telegraphs to matter
 enemy('abbot', { name: 'the bone abbot', hp: 18, speed: 0.8, damage: 4, cooldown: 2.2, sense: 8, ai: abbot, armour: 1.2 });
 enemy('saint', { name: 'the furnace saint', hp: 28, speed: 0, damage: 3.5, cooldown: 1.8, sense: 10, ai: saint });
 /** the elite that guards each zone's shard (zone 3's also guards the engine) */

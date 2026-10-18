@@ -83,8 +83,11 @@ addEventListener(
   'keydown',
   (e) => {
     const g = thaw()?.g;
-    if (g?.ended && (e.key === 'Enter' || (!typing(e.target) && e.key.toLowerCase() === 'r'))) {
-      if (!typing(e.target) || !(e.target as HTMLInputElement).value.trim()) {
+    // r4: r and space wake too, even with the console focused (the card says so); never type them in
+    if (g?.ended && (e.key === 'Enter' || e.key === ' ' || e.key.toLowerCase() === 'r')) {
+      const box = typing(e.target) ? (e.target as HTMLInputElement) : null;
+      if (!box || e.key !== 'Enter' || !box.value.trim()) {
+        if (box) { box.value = ''; box.blur(); }
         wakeAgain();
         e.preventDefault();
         e.stopPropagation();

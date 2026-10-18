@@ -5,7 +5,7 @@
 // Playtest r2 pace: and when an elite turns to you within TURN cells, a line with how hard it hits and
 // how much it takes, and whether you have a weapon on; the HUD flashes it (src/fight/ui.ts, `turned`).
 import { dist, ENEMIES, say, tickHooks } from '../core/game';
-import { active } from '../core/mods';
+import { active, param } from '../core/mods';
 import type { Entity, Game, Line } from '../core/types';
 import { setupsOf } from '../body';
 
@@ -38,7 +38,10 @@ function turns(g: Game, e: Entity): void {
   const hp = Math.ceil(e.enemy!.hp);
   const armed = active(g, 'weapon').length > 0;
   const text = `${kind.name} turns to you. it hits ${hits}, it has ${hp} hp`;
-  const line: Line = [`⚠ ${text}.${armed ? ' ' : ' you have no weapon on! '}`];
+  // r4 final: damage per second of what is on, × 8 s, short of its hp: say so before the fight
+  const dps = active(g, 'weapon').reduce((s, i) => s + param<number>(i, 'damage', 0) / Math.max(0.1, param<number>(i, 'cooldown', 1)), 0);
+  const weak = armed && dps * 8 < hp;
+  const line: Line = [`⚠ ${text}.${!armed ? ' you have no weapon on! ' : weak ? ' your weapon may be too weak. ' : ' '}`];
   line.push(setupsOf(g).battle ? { text: 'setup battle', cmd: 'setup battle' } : { text: 'unstuck', cmd: 'unstuck' });
   say(g, line);
   turned.set(g, { text: armed ? text : `${text} · no weapon on`, at: g.t });

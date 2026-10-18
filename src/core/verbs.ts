@@ -29,8 +29,25 @@ export function exec(g: Game, line: string): void {
   const [v, ...args] = words;
   const d = VERBS[v];
   if (!d) return say(g, `${v}: unknown. try `, [{ text: 'help', cmd: 'help' }]);
-  if (d.when && !d.when(g)) return say(g, d.whenFail?.(g) ?? `${v}: nothing installed can do that.`);
+  if (d.when && !d.when(g)) return say(g, warming(g, d) ?? d.whenFail?.(g) ?? `${v}: nothing installed can do that.`);
   d.run(g, args);
+}
+
+/** r4: a verb that would work once a warming module is warm says so ("stepper relay is warming up (1 s)") */
+function warming(g: Game, d: VerbDef): string | null {
+  const warm = g.player.installed.filter((i) => i.on && g.t < i.readyAt);
+  if (!warm.length) return null;
+  const was = warm.map((i) => i.readyAt);
+  for (const i of warm) i.readyAt = g.t;
+  let ok = false;
+  try {
+    ok = d.when!(g);
+  } finally {
+    warm.forEach((i, k) => (i.readyAt = was[k]));
+  }
+  if (!ok) return null;
+  const i = warm.sort((a, b) => a.readyAt - b.readyAt)[0];
+  return `${label(i)} is warming up (${Math.max(1, Math.ceil(i.readyAt - g.t))} s).`;
 }
 
 /** "2 cells se" and a [go there] button (stepper legs: across, then along) from you to the cell (x, y);
@@ -51,11 +68,13 @@ export function goThere(g: Game, x: number, y: number, short = false): [string, 
   return [`${n} cell${n === 1 ? '' : 's'} ${word || 'here'}`, { text: 'go there', cmd: legs.join('; ') }];
 }
 
+/** r4: "bone listener" finds "bone-listener" */
+const flat = (s: string) => s.replace(/-/g, ' ');
 /** an inventory item whose name contains the words, e.g. "pinhole", "pinhole eye" */
 export function findItem(g: Game, args: string[]): number {
-  const q = args.join(' ');
+  const q = flat(args.join(' '));
   if (!q) return -1;
-  return g.player.inv.findIndex((it) => itemName(it).includes(q));
+  return g.player.inv.findIndex((it) => flat(itemName(it)).includes(q));
 }
 export function findInst(g: Game, args: string[], prefer?: (i: Inst) => boolean): Inst | undefined {
   // two of the same: `off spark finger 2` is the second (what a window's dot and the panel type)
@@ -66,7 +85,7 @@ export function findInst(g: Game, args: string[], prefer?: (i: Inst) => boolean)
     const same = g.player.installed.filter((i) => label(i) === q);
     if (same[nth - 1]) return same[nth - 1];
   }
-  const all = g.player.installed.filter((i) => label(i).includes(q));
+  const all = g.player.installed.filter((i) => flat(label(i)).includes(flat(q)));
   return (prefer && all.find(prefer)) || all[0];
 }
 /** the words that name this one installed module: its label, and its place among same-named ones */
@@ -78,7 +97,8 @@ export function instRef(g: Game, inst: Inst): string {
 /** the button for an inventory item: what a click on it does */
 function itemButton(it: Item): Line {
   const n = itemName(it);
-  if (it.kind === 'mod') return [{ text: n, cmd: `install ${def(it).name}` }, `  ${def(it).family}`];
+  // r4 final: the power it uses, on the same line (take, inv)
+  if (it.kind === 'mod') return [{ text: n, cmd: `install ${def(it).name}` }, `  ${def(it).family}${def(it).family === 'power' || !def(it).power ? '' : ` · ${def(it).power}p`}`];
   if (it.kind === 'card') return [{ text: n, cmd: `read card` }];
   return [n];
 }

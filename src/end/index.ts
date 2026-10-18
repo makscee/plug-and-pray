@@ -25,7 +25,8 @@ function begin(): End {
   document.querySelector('.thaw-end')?.remove();
   const el = document.createElement('div');
   el.className = 'thaw-end';
-  el.innerHTML = '<div class="thaw-light"></div><div class="thaw-heart"></div>';
+  // r4: a word at once, so the melt reads as the ending and not a hang
+  el.innerHTML = '<div class="thaw-light"></div><div class="thaw-heart"></div><p class="thaw-drinks">the engine drinks…</p>';
   document.body.append(el);
   // the console melts last: it is the oldest part of you
   const wins = [...document.querySelectorAll<HTMLElement>('#desk .win')].sort(
@@ -76,6 +77,7 @@ function showCard(g: Game, e: End): void {
   rows.push(total);
   tally.append(head, ...rows);
   c.append(tally, p, b);
+  e.el.querySelector('.thaw-drinks')?.remove();
   e.el.append(c);
   e.card = c;
   e.rows = rows;
