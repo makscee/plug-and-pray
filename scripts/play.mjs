@@ -17,14 +17,19 @@ const STEPS = [
   // console (Maks's playtest): the actions bar lists what you can do now; go and unstuck from the start
   [0, '[...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd.startsWith("go ")) && [...document.querySelectorAll(".acts button")].some(b => b.dataset.cmd === "unstuck")'],
   // panels (Maks's second playtest): install and remove by click in the modules / inventory windows, take by click in nearby; slots in the HUD
-  [0.1, '!!document.querySelector(".panel-inv [data-cmd=\'install halo\']")'],
+  // the inventory is a grid of icons: click one, its detail pane carries the buttons (Maks's fourth playtest)
+  [0.1, '(document.querySelector(".panel-inv .cell[data-mod=\'halo\'] img.icon").closest("button").click(), true)'],
+  [0.05, '!!document.querySelector(".panel-inv [data-cmd=\'install halo\']") && document.querySelector(".panel-inv .detail").innerText.includes("lights 3 cells")'],
   [0, '(document.querySelector(".panel-inv [data-cmd=\'install halo\']").click(), g.player.installed.some(i => i.mod === "halo"))'],
-  [0.1, 'document.querySelector(".panel-modules").innerText.includes("halo") && document.querySelector(".hpbar").innerText.includes("slots 5/6")'],
+  [0.1, 'document.querySelector(".panel-modules .cell[data-mod=\'halo\']") !== null && document.querySelectorAll(".panel-modules .cell").length === 6 && document.querySelector(".hpbar").innerText.includes("slots 5/6")'],
+  [0, '(document.querySelector(".panel-modules .cell[data-mod=\'halo\']").dispatchEvent(new MouseEvent("dblclick", { bubbles: true })), !g.player.installed.find(i => i.mod === "halo").on)'],
+  [0.1, '(document.querySelector(".panel-modules .cell[data-mod=\'halo\']").click(), document.querySelector(".panel-modules .cell.st-off[data-mod=\'halo\']") !== null)'],
+  [0.05, '!!document.querySelector(".panel-modules [data-cmd=\'remove halo\']")'],
   [0, '(document.querySelector(".panel-modules [data-cmd=\'remove halo\']").click(), !g.player.installed.some(i => i.mod === "halo"))'],
   [0, '(g.ents.push({ id: g.nextId++, kind: "item", x: g.player.x, y: g.player.y, item: { kind: "res", res: "glass", n: 2 } }), true)'],
   [0.1, '!!document.querySelector(".panel-near [data-cmd=\'take 2 glass\']")'],
   [0, '(document.querySelector(".panel-near [data-cmd=\'take 2 glass\']").click(), g.player.inv.some(i => i.res === "glass"))'],
-  [0.1, 'document.querySelector(".panel-near").innerText.includes("nothing here") && document.querySelector(".panel-inv").innerText.includes("glass")'],
+  [0.1, 'document.querySelector(".panel-near").innerText.includes("nothing here") && document.querySelector(".panel-inv .cell[data-key^=\'glass\'] .badge")?.textContent === "2"'],
   [0, '(g.player.inv = g.player.inv.filter(i => i.mod !== "halo" && i.res !== "glass"), true)'],
   ['go e 3'], [2, 'g.player.x >= 11.5 && g.player.path.length === 0'],
   ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 4/6"))'],
@@ -94,7 +99,8 @@ const STEPS = [
   ['buy 1', 'g.ents.find(e => e.id === 9998).data.offers[0] === null && g.player.inv.filter(i => i.kind === "mod").length === 4'],
   ['reroll', 'g.ents.find(e => e.id === 9998).data.offers.every(Boolean)'],
   ['recycle stepper', '!g.player.inv.some(i => i.mod === "stepper-relay") && JSON.stringify(g.log).includes("you grind stepper relay down")'],
-  [0.2, 'document.querySelector(".panel-inv [data-cmd^=\'recycle\']") !== null'],
+  [0.2, '(document.querySelector(".panel-inv .cell[data-mod]").click(), true)'],
+  [0.05, 'document.querySelector(".panel-inv [data-cmd^=\'recycle\']") !== null'],
   // eyes and map on a long walk (Maks's third playtest: an eye went dark or froze, the map stayed dark):
   // walk out ~3 chunks; every eye stays lit and keeps changing, and the map spool unrolls as you go
   [0, `(document.querySelectorAll(".dead, .thaw-end").forEach(e => e.remove()), thaw.restart(1), true)`],

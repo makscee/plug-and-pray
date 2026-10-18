@@ -7,6 +7,7 @@ import { Console } from './console';
 import { Panels } from './panels';
 import { VIEWS, type View } from './views';
 import * as windows from './windows';
+import './sheet';
 
 /** per-frame hooks the slices add (the end sequence, hit flashes, sound) */
 export const frameHooks: ((g: Game, dt: number) => void)[] = [];
