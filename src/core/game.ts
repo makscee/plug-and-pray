@@ -102,6 +102,8 @@ export function strike(g: Game, e: Entity, n: number): void {
   // armoured foes (walkers, the abbot) shrug off part of every hit: big single hits beat fast small ones
   const armour = (e.enemy.data.armour as number) ?? 0;
   if (armour > 0) n = Math.max(n * 0.2, n - armour);
+  // an elite that just missed a big move is open: it takes more (src/fight/index.ts OPEN)
+  if (g.t < ((e.enemy.data.open as number) ?? 0)) n *= 1.5;
   e.enemy.hp -= n;
   g.events.push({ type: 'hit', at: [e.x, e.y], data: e.id });
   if (e.enemy.hp <= 0) {
@@ -202,7 +204,8 @@ function movePlayer(g: Game, dt: number): void {
     const dx = tx - p.x;
     const dy = ty - p.y;
     const r = Math.hypot(dx, dy);
-    if (r > 0.01) p.dir = Math.atan2(dx, -dy);
+    // the eye can hold your facing on a foe while you step (src/fight/eye.ts: backpedal)
+    if (r > 0.01 && !(g.t < (p.faceLock ?? 0))) p.dir = Math.atan2(dx, -dy);
     if (r <= speed * dt) {
       p.x = tx;
       p.y = ty;

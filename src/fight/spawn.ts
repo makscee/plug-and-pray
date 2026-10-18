@@ -46,8 +46,10 @@ export function table(far: number): [string, number, number][] {
 /** a foe made for its zone: hp scaled here, its damage by `FOE.damage` in the hurt hook */
 export function foe(g: Game, type: string, x: number, y: number): Entity {
   const e = spawnEnemy(g, type, x, y);
-  const z = ZONES[zoneAt(x, y)].foe;
-  e.enemy!.hp = Math.round(e.enemy!.hp * z.hp * 10) / 10;
+  const zone = zoneAt(x, y);
+  const z = ZONES[zone].foe;
+  // the nave's mites keep 1 hp: the starter spark kills one a blow (r2: 1.2 hp took two, a swarm killed you)
+  if (!(type === 'mite' && zone <= 1)) e.enemy!.hp = Math.round(e.enemy!.hp * z.hp * 10) / 10;
   e.enemy!.data.mult = z.damage;
   return e;
 }

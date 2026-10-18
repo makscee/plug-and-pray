@@ -14,6 +14,10 @@ export const SNAP = 3;
 export const MANUAL = 1.5;
 /** seconds the eye holds on the threat while you keep walking */
 export const HOLD = 1.2;
+/** after a held walk ends, the eye keeps on the threat this long */
+export const HOLD_AFTER = 0.5;
+/** a foe this close when you take a one-cell step: you step back facing it */
+export const BACKPEDAL = 2.5;
 /** a foe this far off your facing already shows: no need to turn */
 const CONE = (25 * Math.PI) / 180;
 
@@ -68,10 +72,21 @@ tickHooks.push((g) => {
   if (g.ended || gyro(g)) return;
   const s = eye(g);
   const free = g.t - s.manual >= MANUAL;
-  // while you walk, the gait turns you with each step: keep the eye on the threat a moment longer
-  if (free && g.t < s.hold && p.path.length) {
-    const e = g.ents.find((x) => x.id === s.on && x.enemy);
-    if (e) p.dir = toward(g, e);
+  // a short step with a foe on you is a backpedal: the eye (and your weapons) stay on it (r2: `go e 1`
+  // turned you east, away from the walker behind)
+  if (free && p.path.length === 1) {
+    const foe = g.ents
+      .filter((e) => e.enemy?.data.noticed && !ENEMIES[e.enemy.type]?.hidden && dist(e, p) <= BACKPEDAL)
+      .sort((a, b) => dist(a, p) - dist(b, p))[0];
+    if (foe) Object.assign(s, { on: foe.id, hold: Math.max(s.hold, g.t + 0.5) });
+  }
+  // while you walk, the gait turns you with each step: keep the eye on the threat for the whole walk
+  // and HOLD_AFTER s past it, while it stays close
+  const held = free && g.t < s.hold && g.ents.find((x) => x.id === s.on && x.enemy);
+  if (held && dist(held, p) <= 4) {
+    p.dir = toward(g, held);
+    p.faceLock = g.t + 0.1;
+    if (p.path.length) s.hold = Math.max(s.hold, g.t + HOLD_AFTER);
   }
   // struck: turn to what struck you (a hit taken while you turned yourself is let go)
   if (s.hitAt > s.seenHit && (!free || g.t - s.hitAt > 0.5)) s.seenHit = s.hitAt;

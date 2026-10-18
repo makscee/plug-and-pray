@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import '../src/mods';
-import { newGame, spawn, spawnEnemy, tick } from '../src/core/game';
+import { newGame, spawn, spawnEnemy, strike as strikeIt, tick } from '../src/core/game';
 import { exec } from '../src/core/verbs';
 import { CHUNK, chunk } from '../src/core/grid';
 import { shots } from '../src/fight/shots';
 import { table } from '../src/fight/spawn';
 import type { Game } from '../src/core/types';
-import { deathInfo, lesson } from '../src/fight/death';
+import { deathInfo, lesson, volleys } from '../src/fight/death';
+import { foe } from '../src/fight/spawn';
+import { fighting } from '../src/fight/body';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
 const run = (g: Game, s: number) => {
@@ -87,7 +89,7 @@ describe('fight', () => {
     const h = armed('mirror-ward');
     const m = spawnEnemy(h, 'mite', 9.5, 8.5);
     m.enemy!.hp = 5;
-    run(h, 0.6); // a mite rears for 0.4 s before it bites
+    run(h, 1.1); // a mite rears 0.3–1 s before its first bite
     expect(h.player.hp).toBe(10);
     expect(m.enemy!.hp).toBe(4.5);
     run(h, 2.4);
@@ -228,7 +230,7 @@ describe('fight r1: seeing the fight', () => {
     run(g, 0.2);
     expect(m.enemy!.data.windup).toBeGreaterThan(g.t);
     expect(g.player.hp).toBe(10);
-    run(g, 0.4);
+    run(g, 0.5);
     expect(g.player.hp).toBe(9.5);
     g.player.hp = 0.2;
     const w = spawnEnemy(g, 'warden', 7.5, 8.5);
@@ -248,5 +250,82 @@ describe('fight r1: seeing the fight', () => {
     run(g, 0.1);
     expect(text(g)).toContain('you take: scripture shard');
     expect(text(g)).toContain('SCRIPTURE SHARD 1 of 3');
+  });
+
+  it('a swarm bites in a stream, not in volleys', () => {
+    const g = armed();
+    const ms = [0, 1, 2, 3, 4, 5].map((k) => spawnEnemy(g, 'mite', 9.5 + (k % 2) * 0.1, 8.5));
+    for (const m of ms) m.enemy!.data.noticed = true;
+    g.player.hp = 100;
+    g.player.maxHp = 100;
+    const times: number[] = [];
+    for (let k = 0; k < 6 * 30; k++) {
+      const hp = g.player.hp;
+      tick(g, 1 / 30);
+      if (g.player.hp < hp) times.push(g.t);
+    }
+    // bites spread over many ticks: no tick takes all six
+    expect(new Set(times.map((t) => t.toFixed(3))).size).toBeGreaterThan(8);
+  });
+
+  it('a nave mite keeps 1 hp; an ossuary one scales', () => {
+    const g = armed();
+    expect(foe(g, 'mite', 60.5, 0.5).enemy!.hp).toBe(1); // ~3.75 chunks out: the nave
+    expect(foe(g, 'mite', 80.5, 0.5).enemy!.hp).toBeGreaterThan(1);
+  });
+
+  it('a hit stops your walk, with the way back', () => {
+    const g = armed('stepper-relay');
+    // pacing east and west past a mite: a long walk
+    for (let k = 0; k < 4; k++) g.player.path.push([10.5, 8.5], [6.5, 8.5]);
+    const m = spawnEnemy(g, 'mite', 8.5, 9.5);
+    m.enemy!.data.noticed = true;
+    m.enemy!.hp = 99;
+    for (let k = 0; k < 8 * 30 && g.player.hp === 10; k++) tick(g, 1 / 30);
+    expect(g.player.hp).toBeLessThan(10);
+    expect(g.player.path.length).toBeLessThanOrEqual(1);
+    expect(text(g)).toMatch(/bitten\. you stop\. go [ew] 3 back the way you came/);
+  });
+
+  it('a dodged sweep leaves the abbot open: it takes more', () => {
+    const g = armed('stepper-relay');
+    const a = spawnEnemy(g, 'abbot', 8.5, 8.5);
+    Object.assign(a.enemy!.data, { noticed: true, blows: 2 });
+    g.player.x = 9.5;
+    run(g, 0.1);
+    expect(a.enemy!.data.wide).toBe(true);
+    g.player.x = 5.5; // three cells off
+    run(g, 1.3);
+    expect(text(g)).toContain('it is open');
+    const hp = a.enemy!.hp;
+    strikeIt(g, a, 3);
+    expect(hp - a.enemy!.hp).toBeCloseTo((3 - 1.2) * 1.5);
+  });
+
+  it('no mending with a foe on you', () => {
+    const g = armed();
+    g.player.hp = 5;
+    const m = spawnEnemy(g, 'seraph', 11.5, 10.5);
+    m.enemy!.data.noticed = true;
+    expect(fighting(g)).toBe(true);
+    g.ents = [];
+    expect(fighting(g)).toBe(false);
+  });
+
+  it('the death card groups a volley', () => {
+    const v = volleys([0, 0, 0.05, 0.05, 2].map((t) => ({ type: 'mite', name: 'a choir mite', n: 0.5, t, seen: true })));
+    expect(v.map((x) => x.count)).toEqual([4, 1]);
+    expect(v[0].n).toBe(2);
+  });
+
+  it('in a corridor the warden backs off before it dashes', () => {
+    const g = armed('stepper-relay');
+    g.player.y = 4.5; // the chamber's north arm
+    const w = spawnEnemy(g, 'warden', 8.5, 2.5);
+    w.enemy!.data.noticed = true;
+    run(g, 0.1);
+    expect(text(g)).toContain('backs off');
+    run(g, 0.6);
+    expect(w.y).toBeLessThan(1.5);
   });
 });
