@@ -5,7 +5,7 @@
 // The shards each give a third of the Engine's vector. Installing the Engine ends the run: 'thaw'.
 
 import { CHUNK, chunkHook, open } from '../core/grid';
-import { dist, say, spawn, spawnEnemy, tickHooks } from '../core/game';
+import { cells, dist, say, spawn, spawnEnemy, tickHooks } from '../core/game';
 import { ELITE, GUARD_HINT } from '../fight';
 import { ZONES, zoneAt, zoneOf } from './zones';
 import { active, def, param } from '../core/mods';
@@ -85,7 +85,7 @@ export function bearing(g: Game, x: number, y: number): string {
   const p = g.player;
   const deg = Math.round(((Math.atan2(x - p.x, -(y - p.y)) * 180) / Math.PI + 360) % 360);
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(deg / 45) % 8];
-  return `${Math.round(dist(p, { x, y }))} cells, bearing ${deg} (${word})`;
+  return `${cells(Math.round(dist(p, { x, y })))}, bearing ${deg} (${word})`;
 }
 
 const chunkOf = (x: number, y: number): [number, number] => [Math.floor(x / CHUNK), Math.floor(y / CHUNK)];
@@ -187,8 +187,10 @@ function vectorFor(g: Game, card: string): Vector {
 export const reading = (g: Game): boolean => active(g, 'mind').some((i) => param<string>(i, 'what', '') === 'reader');
 /** r2 decide: a reader carried, not installed, still reads, for a bone a card (it was remove, install, read, swap back) */
 export const READ_BY_HAND: Partial<Record<Res, number>> = { bone: 1 };
-const carriesReader = (g: Game) => g.player.inv.some((i) => i.kind === 'mod' && def(i).family === 'mind' && param<string>(i, 'what', '') === 'reader');
-const bones = (g: Game) => g.player.inv.reduce((n, i) => n + (i.kind === 'res' && i.res === 'bone' ? i.n : 0), 0);
+export const carriesReader = (g: Game) => g.player.inv.some((i) => i.kind === 'mod' && def(i).family === 'mind' && param<string>(i, 'what', '') === 'reader');
+export const bones = (g: Game) => g.player.inv.reduce((n, i) => n + (i.kind === 'res' && i.res === 'bone' ? i.n : 0), 0);
+/** r5: a read that will work now (`read`'s when lets a carried reader in, bone or not) */
+export const canRead = (g: Game): boolean => reading(g) || (carriesReader(g) && bones(g) >= READ_BY_HAND.bone!);
 
 verb('read', {
   help: 'read a memory card: read card (needs the card reader: installed it reads free, carried it wants a bone)',
@@ -200,7 +202,7 @@ verb('read', {
     const it = g.player.inv[k];
     if (it.kind !== 'card') return;
     if (!reading(g)) {
-      if (bones(g) < READ_BY_HAND.bone!) return say(g, 'held in the hand, the reader wants a bone to read by. install it to read free.');
+      if (bones(g) < READ_BY_HAND.bone!) return say(g, `held in the hand, the reader wants a bone to read by, and you carry none. installed, it reads free.`);
       const b = g.player.inv.find((i) => i.kind === 'res' && i.res === 'bone');
       if (b && b.kind === 'res') b.n -= READ_BY_HAND.bone!;
       g.player.inv = g.player.inv.filter((i) => i.kind !== 'res' || i.n > 0);

@@ -4,9 +4,10 @@
 // Playtest r1: those buttons, listen's and a `go` into a wall all follow the pilot's pathfinder over
 // open floor, so a button walks the first straight leg of a real way there, never into a wall.
 
-import { active, def, param } from '../core/mods';
-import { dist, say, tickHooks } from '../core/game';
-import { nearestOpen } from '../world/vectors';
+import { active, def, label, param } from '../core/mods';
+import { cells, dist, say, tickHooks } from '../core/game';
+import { canRead, carriesReader, nearestOpen } from '../world/vectors';
+import { lightest, makeRoom } from '../body';
 import { DIRS, open } from '../core/grid';
 import { VERBS, verb, way } from '../core/verbs';
 import { route } from '../mods/pilot';
@@ -95,7 +96,7 @@ function toCell(g: Game, x: number, y: number, sound: string, act = 'take'): Lin
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
   const [ax, n] = way.long(g, x, y);
   const cmd = active(g, 'gait').some((i) => param(i, 'go', false)) ? `go ${ax} ${n}` : `crawl ${ax}`;
-  return [`${sound}, ${Math.round(Math.hypot(dx, dy))} cells ${word}. first: `, { text: cmd, cmd }];
+  return [`${sound}, ${cells(Math.round(Math.hypot(dx, dy)))} ${word}. first: `, { text: cmd, cmd }];
 }
 
 /** what the wake hint points at (the map marks them too, while they lie there) */
@@ -126,8 +127,10 @@ if (take)
       take.run(g, args);
       const now = g.player.inv.filter((i) => i.kind === 'card' || (i.kind === 'mod' && i.mod === 'card-reader')).length;
       const read = VERBS.read;
-      if (now > had && g.player.inv.some((i) => i.kind === 'card') && read && (!read.when || read.when(g)))
+      if (now > had && g.player.inv.some((i) => i.kind === 'card') && read && canRead(g))
         say(g, ['a card to read, it points somewhere: ', { text: '[read card]', cmd: 'read card' }]);
+      else if (now > had && g.player.inv.some((i) => i.kind === 'card') && carriesReader(g))
+        say(g, [`a card to read; the carried reader wants a bone. `, ...readFix(g)]);
     },
   };
 
@@ -157,9 +160,11 @@ function after(g: Game): Line[] {
   const out: Line[] = [];
   if (p.inv.some((i) => i.kind === 'card'))
     out.push(
-      VERBS.read && (!VERBS.read.when || VERBS.read.when(g))
+      canRead(g)
         ? ['a memory card waits to be read: ', { text: 'read card', cmd: 'read card' }]
-        : p.installed.some((i) => i.mod === 'card-reader' && !i.on)
+        : carriesReader(g)
+          ? [`a memory card waits; the carried reader wants a bone. `, ...readFix(g)]
+          : p.installed.some((i) => i.mod === 'card-reader' && !i.on)
           ? ['a memory card waits; your card reader is off: ', { text: 'on card reader', cmd: 'on card reader' }]
           : ['a memory card waits for a card reader.'],
     );
@@ -178,3 +183,30 @@ function after(g: Game): Line[] {
   return out;
 }
 
+
+/** r5: a carried reader with no bone looped (read card: wants a bone; where: read card). The ways out,
+ * as buttons: swap the reader in by the swap rule, else take out the lightest by hand; and the nearest bone */
+export function readFix(g: Game): Line {
+  const p = g.player;
+  const out: Line = [];
+  const room = makeRoom(g, { mod: 'card-reader' }, false);
+  const out1 = typeof room === 'string' && p.installed.length >= p.slots ? lightest(g) : undefined;
+  if (typeof room !== 'string') out.push({ text: 'swap in card reader', cmd: 'swap in card reader' }, ', then read free. ');
+  else if (out1) out.push({ text: `take out ${label(out1)}, install the reader`, cmd: `remove ${label(out1)}; install card reader` }, ', then read free. ');
+  const b = g.ents.filter((e) => e.kind === 'item' && e.item?.kind === 'res' && e.item.res === 'bone').sort((a, c) => dist(a, p) - dist(c, p))[0];
+  if (b) out.push(...toCell(g, b.x, b.y, out.length ? 'or bone lies' : 'bone lies', 'take'));
+  else if (!out.length) out.push('bone lies in piles and rubble; a printer recycles a module for it.');
+  return out;
+}
+
+// r5: the refusal says what is missing and the way out, not only why
+const read = VERBS.read;
+if (read)
+  VERBS.read = {
+    ...read,
+    run(g, args) {
+      const n = g.log.length;
+      read.run(g, args);
+      if (g.log.slice(n).some((l) => l.some((s) => (typeof s === 'string' ? s : s.text).includes('bone to read by')))) say(g, readFix(g));
+    },
+  };

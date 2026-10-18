@@ -7,7 +7,7 @@
 // auto: which kinds, range: cells) and lists them with a go button. `mark name` adds your spot.
 
 import { CHUNK, cell, chunkHook, open, veinOf } from '../core/grid';
-import { dist, ENEMIES, say, spawn, tickHooks } from '../core/game';
+import { cells, dist, ENEMIES, say, spawn, tickHooks } from '../core/game';
 import { active, families, family, param, working } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import { exec, verb } from '../core/verbs';
@@ -226,7 +226,7 @@ function where(g: Game, m: { x: number; y: number }): string {
   const r = dist(m, p);
   if (r < 1.6) return 'here';
   const ang = ((Math.atan2(m.x - p.x, -(m.y - p.y)) * 180) / Math.PI + 360) % 360;
-  return `${Math.round(r)} cells ${WORDS[Math.round(ang / 45) % 8]}`;
+  return `${cells(Math.round(r))} ${WORDS[Math.round(ang / 45) % 8]}`;
 }
 /** the button for a point: the pilot's goto, else the stepper's first leg toward it */
 function goCmd(g: Game, m: { x: number; y: number }): string {

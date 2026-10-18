@@ -278,6 +278,21 @@ for (const name of ['on', 'install']) {
       if (room && typeof room !== 'string' && inst) {
         const text = `turn off ${room.off.map((i) => label(i)).join(' and ')} and turn on ${label(inst)}`;
         say(g, ['or swap: ', { text, cmd: `swap in ${instRef(g, inst)}` }]);
+      } else if (inst && !inst.on) {
+        // r5: the swap rule found nothing (the pinhole is 0⚡︎, the map and the last weapon stay): name what
+        // is short and offer the switch-offs that cover it, the map last, the last weapon never
+        const short = def(inst).power - (powerMax(g) - powerUsed(g));
+        const can = g.player.installed
+          .filter((i) => i.on && i !== inst && def(i).power > 0 && def(i).family !== 'power' && !(weight(g, i) >= 9 && param<string>(i, 'what', '') !== 'map'))
+          .sort((a, b) => weight(g, a) - weight(g, b) || def(b).power - def(a).power);
+        const off: Inst[] = [];
+        let left = short;
+        for (const i of can) if (left > 0) off.push(i), (left -= def(i).power);
+        const gen = hinted.has(g) ? ' a generator (the ember cell) gives +2.' : '';
+        if (left <= 0 && off.length) {
+          const text = `turn off ${off.map((i) => label(i)).join(' and ')} and turn on ${label(inst)}`;
+          say(g, [`short ${short}⚡︎: `, { text, cmd: [...off.map((i) => `off ${instRef(g, i)}`), `on ${instRef(g, inst)}`].join('; ') }, '. your weapon stays on.' + gen]);
+        } else say(g, `short ${short}⚡︎, and only your weapon could give it.` + gen);
       }
       if (hinted.has(g)) return;
       hinted.add(g);
@@ -326,6 +341,10 @@ function weight(g: Game, i: { mod: string }): number {
   if (weapon(i) && (i as Inst).on && !g.player.installed.some((o) => o !== i && o.on && weapon(o))) return 9;
   return WEIGHT[def(i).family] ?? 9;
 }
+
+/** r5: the installed module that gives way first when you take one out by hand (none: all weigh 9) */
+export const lightest = (g: Game): Inst | undefined =>
+  g.player.installed.filter((i) => def(i).family !== 'power' && def(i).family !== 'camera' && weight(g, i) < 9).sort((a, b) => weight(g, a) - weight(g, b) || +a.on - +b.on)[0];
 
 export interface Room {
   /** taken out for a slot */
