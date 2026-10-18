@@ -63,12 +63,14 @@ export const STAIRS: Record<Stairs, { name: string; look: string }> = {
 };
 
 /** the module ids a floor's arrival cache offers (src/world/cache.ts: five of them, take two): that floor's new kit.
- *  The first is the floor's headline and always on offer (on 3 and 4 the FPS slot: v2-view puts its control module there);
+ *  The first is the floor's headline and always on offer (on 3 and 4 the FPS slot: v2-view puts its control module there;
+ *  on 1 and 2 the second stays on offer too: the frost coat for the cradle's bites, the dawn eye for the nave's sight);
  *  the rest turn with the seed. The cradle's offer holds no eye (its first eye is a find) */
 export const KIT: Record<number, string[]> = {
-  0: ['choir-bell', 'frost-coat', 'hollow-tap', 'lead-lung', 'thorn-mantle'],
-  1: ['nail-psalm', 'dawn-eye', 'survey-spool', 'vein-fork', 'plumb-line'],
-  2: ['saints-reins', 'pilgrim-scope', 'illuminated-atlas', 'pulse-choir', 'bone-glass', 'ember-iris', 'censer', 'bone-lance'],
+  // v2r3 fun: eight on floors 1 and 2, so the offer turns with the seed (five gave every run the same card)
+  0: ['choir-bell', 'frost-coat', 'hollow-tap', 'lead-lung', 'thorn-mantle', 'suture-moth', 'mirror-ward', 'censer'],
+  1: ['nail-psalm', 'dawn-eye', 'survey-spool', 'vein-fork', 'plumb-line', 'bone-lance', 'rivet-sling', 'leech-needle'],
+  2: ['saints-reins', 'pilgrim-scope', 'illuminated-atlas', 'pulse-choir', 'bone-glass', 'ember-iris', 'censer', 'bone-lance', 'ember-spit'],
   3: ['martyrs-reins', 'martyr-scope', 'rime-hood', 'glass-diorama', 'heat-lance', 'heart-shard'],
   4: [],
 };

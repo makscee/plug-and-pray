@@ -35,7 +35,10 @@ verb('step', {
   when: (g) => !!gaitWith(g, 'keys'),
   run(g, [d]) {
     if (!d || !DIRS[d[0]]) return say(g, 'step where? n e s w');
-    if (!servoStep(g, d[0]) && !g.player.path.length) say(g, 'a wall.');
+    // v2r3 fun: a typed step takes over a walk still under way (after `go in` it stayed refused)
+    const p = g.player;
+    if (p.path.length > 1) p.path = p.path.slice(0, 1);
+    if (!servoStep(g, d[0]) && !p.path.length) say(g, 'a wall.');
   },
 });
 
@@ -414,6 +417,11 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
     if (!remove) for (const i of order) if (freed < need) (remove ? more.push(i) : (remove = i)), (freed += size(i));
     if (!remove || freed < need) return `no slot gives way for ${def(it).name}: all ${p.slots} hold what weighs more.`;
   }
+  // v2r3 fun: new legs short of power replace the legs you walk on (swap in the penitent's heels refused:
+  // the stepper was the last legs, so nothing could give way)
+  if (!remove && !installed && legs(it) && !param(it, 'pilot', false) && def(it).power > powerMax(g) - powerUsed(g)) {
+    remove = p.installed.filter((i) => i.on && legs(i) && !param(i, 'pilot', false)).sort((a, b) => worth(a) - worth(b))[0];
+  }
   const out = remove ? [remove, ...more] : [];
   let short = def(it).power - (powerMax(g) - powerUsed(g)) - out.reduce((s, r) => s + (r.on ? def(r).power : 0), 0);
   const off: Inst[] = [];
@@ -423,14 +431,23 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
     const cam = def(it).family === 'camera';
     const eye = (i: Inst) => cam && def(i).family === 'camera';
     const map = (i: Inst) => last && param<string>(i, 'what', '') === 'map';
-    const w = (i: Inst) => (eye(i) ? 0 : map(i) ? 8 : weight(g, i));
-    const can = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && (light(i) || eye(i) || map(i)));
+    // v2r3 fun: weapons go last, after the map when an eye will be on (an eye's swap turned both weapons off
+    // with mites near), and never the last weapon left on
+    const seeing = cam || p.installed.some((i) => i.on && def(i).family === 'camera' && !out.includes(i));
+    const w = (i: Inst) => (eye(i) ? 0 : map(i) ? (seeing ? 4.5 : 8) : weapon(i) ? 6 : weight(g, i));
+    const armed = () => p.installed.filter((i) => i.on && weapon(i) && !out.includes(i) && !off.includes(i)).length;
+    const spare = (i: Inst) => !weapon(i) || armed() > 1;
+    const all = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && (light(i) || eye(i) || map(i)));
+    // a weapon only when the rest cannot cover it
+    const rest = all.filter((i) => !weapon(i));
+    const can = rest.reduce((n, i) => n + def(i).power, 0) >= short ? rest : all;
     // one that frees enough, the lightest and cheapest; else the lightest, biggest first, until it fits
-    const one = can.filter((i) => def(i).power >= short).sort((a, b) => w(a) - w(b) || def(a).power - def(b).power)[0];
+    const one = can.filter((i) => def(i).power >= short && spare(i)).sort((a, b) => w(a) - w(b) || def(a).power - def(b).power)[0];
     if (one) off.push(one), (short = 0);
     else
       for (const i of can.sort((a, b) => w(a) - w(b) || def(b).power - def(a).power)) {
         if (short <= 0) break;
+        if (!spare(i)) continue;
         off.push(i);
         short -= def(i).power;
       }

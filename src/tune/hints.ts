@@ -13,6 +13,7 @@ import { DIRS, open } from '../core/grid';
 import { VERBS, verb, way } from '../core/verbs';
 import { route } from '../mods/pilot';
 import { walks } from '../mods/gait';
+import { foundEye } from '../world/printer';
 import type { Entity, Game, Line } from '../core/types';
 
 const told = new WeakSet<Game>();
@@ -147,7 +148,8 @@ const hintLines = (g: Game) => {
     toward(g, 'pinhole-eye', 'an eye glints, waiting for a socket: your first sight'),
     // v2r1 ux: "ticks, waiting for a card" read as a machine you needed a card for; it is a pickup, with the card
     toward(g, 'card-reader', 'a card reader and a memory card lie together (take both, then read the card)'),
-    shop ? toCell(g, shop.x, shop.y, 'glass doors chime: a reliquary keeps an eye for hidden things', 'buy') : null,
+    // v2r3 fun: only once your first eye is found (its eye stays behind glass till then, src/world/printer.ts)
+    shop && foundEye(g) ? toCell(g, shop.x, shop.y, 'glass doors chime: a reliquary keeps an eye for hidden things', 'buy') : null,
   ].filter((l): l is Line => !!l);
 };
 

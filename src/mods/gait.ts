@@ -18,9 +18,14 @@ family('gait', {
 
 const can = (key: string) => (g: Game) => active(g, 'gait').some((i) => param(i, key, false));
 /** v2r2 fun: legs that walk a path, `go` and map clicks: the stepper, and the gyro heart too (it only took WASD) */
-export const walks = (g: Game): boolean => active(g, 'gait').some((i) => param(i, 'go', false) || param(i, 'free', false));
-/** the pace of a walked path: the stepper's, else the gyro heart's own speed */
+// v2r3 fun: the servo gait and its uniques (the penitent's heels) walk paths too, at their own pace (`go`,
+// map clicks and `where` said "nothing installed can do that", or crawled one cell)
+export const walks = (g: Game): boolean => active(g, 'gait').some((i) => param(i, 'go', false) || param(i, 'free', false) || param(i, 'keys', false));
+/** the pace of a walked path: the stepper's, else the servo's or the gyro heart's own speed */
 export const walkPace = (g: Game): number => {
+  // (the faster of the stepper and a servo: the heels walk 4 cells/s beside the stepper's 2.5)
+  const servo = active(g, 'gait').filter((i) => param(i, 'keys', false)).map((i) => param<number>(i, 'pace', 4));
+  if (servo.length) return Math.max(can('go')(g) ? 2.5 : 0, ...servo);
   if (can('go')(g)) return 2.5;
   const gyro = active(g, 'gait').find((i) => param(i, 'free', false));
   return gyro ? param<number>(gyro, 'speed', 2.5) : 0.5;

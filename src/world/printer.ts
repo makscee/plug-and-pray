@@ -5,12 +5,12 @@
 // PRICES below, so balance can tune them in one place.
 
 import { dist, say, tickHooks } from '../core/game';
-import { def, label } from '../core/mods';
+import { def, label, MODS, param, rarityOf, type Modish } from '../core/mods';
 import { does } from '../mods/describe';
 import { hash, rng } from '../core/rng';
 import { addItem, findInst, findItem, goThere, verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Item, Line, Res } from '../core/types';
-import { lootMod } from './spawn';
+import { lootMod, ranged } from './spawn';
 import { dealUnique } from '../mods/uniques';
 import { cradleEye } from './secrets';
 import { ZONES, zoneFar } from './zones';
@@ -84,6 +84,20 @@ function menu(g: Game, e: Entity): Line[] {
   return [slot, [{ text: 'print module', cmd: 'print module' }, `  a module: ${fmt(modCost(far))}`], aimed];
 }
 
+/** damage a second per power (a 0p one counts as 1p) */
+const perPower = (m: Modish): number => param<number>(m, 'damage', 0) / Math.max(0.1, param<number>(m, 'cooldown', 1)) / Math.max(1, def(m).power);
+const RANKS: Record<string, number> = { common: 0, fine: 1, rare: 2, unique: 3 };
+/** v2r3 fun: a print strictly weaker than one you hold of its kind: a weapon of the same reach that deals less per
+ *  power, or an eye of the same look, a lower tier and no finer */
+export function outdone(g: Game, it: Modish): boolean {
+  const d = def(it);
+  const held: Modish[] = [...g.player.installed, ...g.player.inv.filter((o): o is Extract<Item, { kind: 'mod' }> => o.kind === 'mod')];
+  if (d.family === 'weapon') return held.some((h) => def(h).family === 'weapon' && ranged(def(h)) === ranged(d) && perPower(h) > perPower(it));
+  const filter = (m: Modish) => param<string>(m, 'filter', 'color');
+  if (d.family === 'camera') return held.some((h) => def(h).family === 'camera' && filter(h) === filter(it) && def(h).tier > d.tier && RANKS[rarityOf(h)] >= RANKS[rarityOf(it)]);
+  return false;
+}
+
 verb('print', {
   help: 'at a printer: print slot, print module, or one kind for 2 copper more: print weapon, eye, body, lamp, scanner, legs, mind, tool',
   run(g, [what]) {
@@ -113,7 +127,8 @@ verb('print', {
       const own = (m: string) => g.player.inv.some((o) => o.kind === 'mod' && o.mod === m) || g.player.installed.some((o) => o.mod === m);
       let it: Item = lootMod(r, far, fam, !g.floor);
       // (a few tries at its own reach, then a little deeper: the cradle's only melee weapon is the spark finger)
-      for (let k = 0; k < 16 && it.kind === 'mod' && own(it.mod); k++) it = lootMod(r, far + Math.max(0, k - 7), fam, !g.floor);
+      // v2r3 fun: nor one weaker than what you hold of its kind (a 2p censer flail for the 1p choir bell)
+      for (let k = 0; k < 16 && it.kind === 'mod' && (own(it.mod) || outdone(g, it)); k++) it = lootMod(r, far + Math.max(0, k - 7), fam, !g.floor);
       addItem(g, it);
       g.events.push({ type: 'print', at: [e.x, e.y] });
       if (it.kind === 'mod') say(g, ['the printer spits out: ', { text: label(it), cmd: `install ${label(it)}` }]);
@@ -193,10 +208,19 @@ export function offers(g: Game, e: Entity): (Item | null)[] {
   return d.offers as (Item | null)[];
 }
 
+/** v2r3 fun: you have found an eye (worn, carried or once installed). Till then a reliquary keeps its eyes
+ *  behind shut glass: the cradle's layer eye cost the copper you wake with, and the map-only start lasted 20 s */
+export const foundEye = (g: Game): boolean =>
+  g.player.installed.some((i) => def(i).family === 'camera') ||
+  g.player.inv.some((i) => i.kind === 'mod' && def(i).family === 'camera') ||
+  g.stats.mods.some((m) => MODS[m]?.family === 'camera');
+export const shutEye = (g: Game, it: Item | null): boolean => !!it && it.kind === 'mod' && def(it).family === 'camera' && !foundEye(g);
+const SHUT = 'its glass stays shut until your own first eye is found';
+
 function shopMenu(g: Game, e: Entity): Line[] {
   const lines: Line[] = offers(g, e).map((it, k) =>
     it && it.kind === 'mod'
-      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}${def(it).family === 'power' || !def(it).power ? '' : ` (${def(it).power}p)`}: ${fmt(priceAt(e, k, it))}. ${does(it)}`]
+      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}${def(it).family === 'power' || !def(it).power ? '' : ` (${def(it).power}p)`}: ${shutEye(g, it) ? SHUT : fmt(priceAt(e, k, it))}. ${does(it)}`]
       : [`  ${k + 1}: an empty niche.`],
   );
   lines.push([{ text: 'reroll', cmd: 'reroll' }, `  new relics: ${fmt(PRICES.reroll)}`]);
@@ -215,6 +239,7 @@ verb('buy', {
     const k = /^\d+$/.test(q) ? Number(q) - 1 : named;
     const it = list[k];
     if (!it) return say(g, 'the reliquary shows:', ...shopMenu(g, e));
+    if (shutEye(g, it)) return say(g, `the eye's glass stays shut. your own first eye lies out on this floor: find it, and the reliquary opens to you.`);
     const c = priceAt(e, k, it);
     if (!affords(g, c)) return say(g, `the reliquary wants ${fmt(c)}.`);
     pay(g, c);
