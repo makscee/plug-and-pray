@@ -1,36 +1,21 @@
 # Plug and Pray
 
-You are an old machine waking blind inside a dead god's body: ribbed chambers, bone-iron and veins that still glow.
+You wake blind, plugged into something vast and long dead.
 
-You start with a map and nothing to see with. You click the map and walk; a radar sweeps it for heartbeats. Everything you become is a **module** you find, pick and install: eyes, radars, legs, lamps, weapons, power cells. Each floor's kit waits in a reliquary where you land: open it and choose 2. The first eye puts you in **first person**: a coarse grey view you walk and look around in. Better eyes sharpen it into colour, and extra eyes layer their sight on top (one shows heat, one shows scripture on the walls). Modules are rare finds: one you already own upgrades instead (I, II, III), and printers and altars upgrade them for scrap. Slots, power and a small bag are tight, so every module you keep is a choice; double-click one to swap it in.
-
-Every foe has its own mark on the map. Pick one to see what it does, how hard it hits, what it drops, whether it is worth the fight and which of your weapons to use.
-
-## Four floors
-
-Each floor down looks different, plays a little differently and ends at a **keeper** behind a door that tells you whether you look ready.
-
-- **The cradle** and **the choir nave**: melee. Kite swarms, step out of slams, hit between.
-- **The ossuary**: you find **saint's reins**: first-person shots land harder. Strafe and dodge bullet patterns.
-- **The furnace**: better reins, a dash, and the god's heart below.
+Whatever you find, plug it in. Then pray it helps.
 
 ## How to play
 
-- Click the map to walk, click the orange words and buttons, drag modules to install them. Every button types a console command; `help` lists them and `where` says where to go next.
-- With an eye: WASD walks, the mouse, trackpad or ←/→ (Q/E) looks, hold Space or click to shoot. Tab gives the cursor back for your modules; M shows the big map. A trackpad is enough: no mouse needed.
-- Die and you wake again on a new world. A floor takes 5–10 minutes.
+- Click the map to walk (arrow keys work too).
+- Orange words and buttons are commands. Lost? Type or click `where`. `help` lists everything.
+- Double-click a module to plug it in or take it out. Hover it to read what it does.
+- Once you can see: WASD to walk, mouse or trackpad to look (←/→ or Q/E too), click or Space to shoot. Tab gives the cursor back.
+- If you fall, you wake again somewhere new.
 
-Desktop browser, sound on.
+Desktop browser, sound on. A trackpad is enough.
 
-## Links
+Made solo in 48 hours for the Ludum Dare 60 Compo, theme "Old Tech".
 
-- **HTML5 (web):** <the itch.io page URL>
-- **Source Code:** https://github.com/makscee/plug-and-pray
+Play in the browser: https://makscee.itch.io/plug-and-pray (also https://makscee.github.io/plug-and-pray/). Source: https://github.com/makscee/plug-and-pray
 
-The same build also plays on GitHub Pages: https://makscee.github.io/plug-and-pray/
-
-## Opt-outs
-
-Graphics and Audio: AI tools did most of the work on the 3D look and the synthesized sound, so we leave those two categories out.
-
-Made solo for the Ludum Dare 60 Compo, theme "Old Tech". Vite, TypeScript, Three.js, Web Audio. MIT.
+Opt-outs: Graphics and Audio, because AI tools did most of the work on the 3D look and the sound.

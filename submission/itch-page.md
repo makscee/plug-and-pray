@@ -1,19 +1,21 @@
 # Plug and Pray
 
-You are an old machine waking blind inside a dead god's body. At first you have only a map: you click it and walk, and a radar sweeps for heartbeats.
+You wake blind, plugged into something vast and long dead.
 
-Everything you become is a module you find and install: eyes, radars, legs, lamps, weapons, power cells. Each floor's kit waits in a reliquary where you land: open it and choose 2. The first eye you find puts you in first person, a coarse grey view you walk and look around in; upgraded and better eyes sharpen it into amber, then colour, and extra eyes layer what they see on top. Modules are rare finds, not loot piles: a find you already own upgrades it (I, II, III), and printers and altars upgrade them for scrap. Slots, power and a small bag make every module a choice; double-click one to swap it in.
+Whatever you find, plug it in. Then pray it helps.
 
-Every foe has its own mark on the map. Pick one to see what it does, how hard it hits, what it drops, whether it is worth the fight and which of your weapons to use.
+## How to play
 
-Four floors down to the god's heart, each with its own trick and its own keeper. The first two keepers are melee fights: kite swarms, step out of slams. On floor 3 you find saint's reins: shots land harder in first person, and you dodge bullet patterns. The heart is waiting at the bottom.
+- Click the map to walk (arrow keys work too).
+- Orange words and buttons are commands. Lost? Type or click `where`. `help` lists everything.
+- Double-click a module to plug it in or take it out. Hover it to read what it does.
+- Once you can see: WASD to walk, mouse or trackpad to look (←/→ or Q/E too), click or Space to shoot. Tab gives the cursor back.
+- If you fall, you wake again somewhere new.
 
-- Click the map, the orange words and the buttons, or type commands: every button types one. `help` lists them, `where` tells you where to go.
-- In first person: move the mouse or trackpad (or ←/→, Q/E) to look, WASD to walk, hold Space or click to shoot. A trackpad is enough; no mouse needed.
-- Die and you wake again on a new world. A floor takes 5–10 minutes.
-- Desktop browser, sound on. Best at 1280x720 or bigger.
+Desktop browser, sound on. A trackpad is enough.
 
 Made solo in 48 hours for the Ludum Dare 60 Compo, theme "Old Tech".
 
-- Ludum Dare page: <the LD entry URL>
-- Source Code: https://github.com/makscee/plug-and-pray (MIT)
+- Play: https://makscee.itch.io/plug-and-pray
+- Ludum Dare: https://ldjam.com/events/ludum-dare/60/plug-and-pray
+- Source: https://github.com/makscee/plug-and-pray (MIT)
