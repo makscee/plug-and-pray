@@ -69,7 +69,7 @@ export function dpsNow(g: Game): number {
 /** the readiness of the loadout the keeper is balanced for (src/fight/bosses.ts LOADOUTS) */
 function needOf(g: Game, f: number): number {
   const k = LOADOUTS[Math.max(0, Math.min(4, f))];
-  const installed = k.mods.filter((m) => MODS[m]).map((mod, uid) => ({ uid, mod, on: true, readyAt: 0, data: {} }));
+  const installed = k.mods.filter((m) => MODS[m]).map((mod, uid) => ({ uid, mod, on: true, readyAt: 0, data: {}, roll: k.rolls?.[mod] }));
   const maxHp = 10 + k.flesh + installed.reduce((s, i) => s + Number(MODS[i.mod]?.params.hp ?? 0), 0);
   return readiness({ ...g, t: 1e9, player: { ...g.player, installed, maxHp } });
 }
@@ -95,8 +95,12 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
   const armed = p.installed.some((i) => i.on && def(i).family === 'weapon');
   if (!armed) why.push('no weapon is on');
   else if (readiness(warm(g)) < needOf(g, f) * 0.8) {
-    const ref = LOADOUTS[Math.max(0, Math.min(4, f))].mods.filter((m) => MODS[m]?.family === 'weapon').map((mod) => ({ mod }));
-    why.push(dps < dpsOf(ref) * 0.7 ? 'your weapons are weak for it: find or print a stronger one, or a second' : 'you could not take its blows long: an altar (+hp) or armour first');
+    const L = LOADOUTS[Math.max(0, Math.min(4, f))];
+    const ref = L.mods.filter((m) => MODS[m]?.family === 'weapon').map((mod) => ({ mod, roll: L.rolls?.[mod] }));
+    // v2-balance3 (v2r3 fight): the keeper is balanced for a tempered weapon you carry plain: say so
+    const plain = p.installed.find((i) => i.on && L.rolls?.[i.mod] && i.roll?.tag !== 'attuned' && i.roll?.tag !== 'tempered');
+    if (plain && dps < dpsOf(ref) * 0.85) why.push(`temper your ${def(plain).name} at an altar first`);
+    else why.push(dps < dpsOf(ref) * 0.7 ? 'your weapons are weak for it: find or print a stronger one, or a second' : 'you could not take its blows long: an altar (+hp) or armour first');
   }
   if (p.hp < p.maxHp * 0.7) why.push(`mend first (${Math.ceil(p.hp)}/${p.maxHp} hp)`);
   return { name: k.name, hp: k.hp, damage: k.damage, hint: k.def.hint, dps, ready: !why.length, why };

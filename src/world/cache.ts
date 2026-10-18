@@ -58,6 +58,14 @@ export function offerOf(seed: number, f: number): Item[] {
     const k = rest.findIndex(far);
     if (k >= 0) [rest[shown - 1], rest[k]] = [rest[k], rest[shown - 1]];
   }
+  // v2-balance3 (v2r3 fight: floors 3-5 took 17 s with a lance, 100-140 s without): the ossuary and the
+  // furnace always offer a lance
+  const lance = (m: string) => /lance/.test(m);
+  if (f >= 2 && !rest.slice(0, shown).some(lance)) {
+    const k = rest.findIndex(lance);
+    const at = rest.slice(0, shown).findIndex((m) => !far(m));
+    if (k >= 0) [rest[at >= 0 ? at : shown - 1], rest[k]] = [rest[k], rest[at >= 0 ? at : shown - 1]];
+  }
   const [fine, rare] = RARITY_ODDS[Math.min(f, RARITY_ODDS.length - 1)];
   return [...kit.slice(0, head), ...rest].slice(0, OFFER).map((mod) => {
     const it: Item = { kind: 'mod', mod };

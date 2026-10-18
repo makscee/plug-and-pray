@@ -5,7 +5,7 @@
 import { spawn, tickHooks } from '../core/game';
 import { open } from '../core/grid';
 import type { Game } from '../core/types';
-import { BOSS, inZone, type Zone } from './bosses';
+import { BOSS, coldMarks, inZone, type Zone } from './bosses';
 
 type Line = Extract<Zone, { k: 'line' }>;
 
@@ -51,5 +51,6 @@ tickHooks.push((g) => {
   if (shown.get(g) === key) return;
   shown.set(g, key);
   g.ents = g.ents.filter((x) => !x.data?.edge && !x.data?.gap);
-  for (const [x, y, gap] of want) if (open(g, x, y)) spawn(g, { kind: 'prop', x, y, data: gap ? { gap: true } : { edge: true } });
+  const cold = coldMarks(g);
+  for (const [x, y, gap] of want) if (open(g, x, y)) spawn(g, { kind: 'prop', x, y, data: gap ? { gap: true } : cold ? { edge: true, cold } : { edge: true } });
 });

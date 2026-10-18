@@ -37,7 +37,7 @@ gives three rules.
 |---|---|---|---|
 | first steps, blind | cradle | any sight, legs | pinhole eye (0 pwr, 24 px grey), stepper relay (1) |
 | reading the room in colour | cradle, nave | a clear eye | dawn eye (2), vidicon tube (1, smeary), saint's lens (4) |
-| swarms of mites | nave | hit many at once | choir bell (2, rings everything in 2.4), censer flail (2, sweep and warmth), thorn mantle (1) |
+| swarms of mites | nave | hit many at once | choir bell (1, rings everything in 2), censer flail (2, sweep and warmth), thorn mantle (1) |
 | seraph lamps down a line | nave, ossuary | reach them or dodge | rivet sling (1, auto 4 cells, needs an eye), nail psalm (1, aimed), clock of hours (2, foresight), gyro heart (2) |
 | mimics | nave on | know before you reach | lodestone (1, wakes them at 8 cells), bat psalter (sonar wakes them in its range) |
 | **dark** | ossuary | sight without light | bat psalter (2, sonar, loud), lattice eye (3, outlines, full range in the dark), carrion eye (2, needs half the light), or a lamp plus a colour eye |
@@ -75,14 +75,16 @@ Walkers and the bone abbot wear bone armour 1.2: each hit loses 1.2, and never d
 | nail psalm (t0, aimed) | 1 | 1.67 | 1.67 | 0.33 | the cheap reach: seraph lamps down their line, mites, the hum blind. Useless on bone. |
 | spark finger (t0, auto) | 1 | 0.83 | 0.83 | 0.17 | the free bite: mites that reach you, no aiming |
 | rivet sling (t0, auto) | 1 | 0.63 | 0.63 | 0.13 | bites at 4 cells on its own: lamps you can see, mites before they bite |
-| ember spit (t1, aimed) | 2 | 2.29 | 1.14 | 0.23 | burst against soft things: the warden, mimics |
-| bone lance (t1, aimed) | 2 | 2.73 | 1.36 | 1.09 | **the armour answer**: walkers and the abbot |
+| ember spit (t1, aimed) | 1 | 1.58 | 1.58 | 0.32 | a stream of small sparks: soft things, the warden, mimics |
+| bone lance (t1, aimed) | 2 | 3.33 | 1.67 | 1.33 | **the armour answer**: walkers and the abbot |
 | choir bell / censer flail (t1, auto, sweep) | 2 | 0.94 / 1.0 per foe | 0.47 / 0.5 per foe | 0.1 | swarms: every mite in reach at once; the flail also warms you in the ossuary |
 | reliquary saw (t2, auto) | 3 | 3.33 | 1.11 | 0.67 | hands-free close fighting that still cuts bone |
 | heat lance (t2, aimed) | 3 | 3.89 | 1.30 | 1.07 | elites: big hits at 8 cells, through armour |
 
 Was: the nail psalm did 2.5 dps per power and 1.75 against armour, the best everywhere, so it stacked
 (18 of 24 winning loadouts). Now it is cheap reach and nothing more.
+(v2-balance3: it had crept back to 1.2 damage, 2.0 per power, on in 75-80 of 80 kits; back to 1.0, with ember spit
+at 1 power and the bone lance at 1.8 s, so the three aimed picks sit at about 1.6-1.7 dps per power.)
 
 ## Rolls and attunes
 

@@ -7,7 +7,7 @@ import { dist, say } from '../core/game';
 import { clear } from '../core/grid';
 import { active, def, families, param } from '../core/mods';
 import { verb } from '../core/verbs';
-import type { Entity, Game, Inst } from '../core/types';
+import type { Entity, Game, Inst, Line } from '../core/types';
 import { fire } from './shots';
 import { COPY, haste } from '../mods/weapon';
 import { canHit } from '../mods/sense';
@@ -61,6 +61,18 @@ export function shotCooldown(g: Game, i: Inst): number {
   return (param<number>(i, 'cooldown', 1) * Math.pow(1 - COPY, copies - 1)) / haste(g);
 }
 
+/** v2-balance3 (v2r3 fight: `shoot` spam filled the console): a repeat of the last "still cooling" counts up in place */
+function cooling(g: Game, msg: string): void {
+  const log = g.log;
+  const txt = (l?: Line) => (l ?? []).map((s) => (typeof s === 'string' ? s : s.text)).join('');
+  const echo = txt(log[log.length - 1]).startsWith('> ');
+  const at = log.length - (echo ? 2 : 1);
+  const was = txt(log[at]);
+  if (!was.startsWith(msg) || (echo && txt(log[at - 1]) !== txt(log[log.length - 1]))) return say(g, msg);
+  if (echo) log.pop();
+  log[at] = [`${msg} ×${Number(/×(\d+)$/.exec(was)?.[1] ?? 1) + 1}`];
+}
+
 verb('shoot', {
   help: 'fire your aimed weapons where you face (turns to a foe in reach first)',
   when: (g) => aimed(g).length > 0,
@@ -69,7 +81,7 @@ verb('shoot', {
     const fire1 = volley(g);
     if (!fire1.length) {
       const soon = aimed(g).sort((a, b) => ((a.data.readyAt as number) ?? 0) - ((b.data.readyAt as number) ?? 0))[0];
-      return say(g, `${def(soon).name}: still cooling.`);
+      return cooling(g, `${def(soon).name}: still cooling.`);
     }
     // the gyro heart aims with the mouse: leave it be
     if (!active(g, 'gait').some((x) => param(x, 'free', false))) aimAt(g, Math.max(...fire1.map((i) => param<number>(i, 'range', 6))));
