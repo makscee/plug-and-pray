@@ -11,6 +11,7 @@ import { hash, rng } from '../core/rng';
 import { addItem, findInst, findItem, verb } from '../core/verbs';
 import type { Entity, Game, Item, Line, Res } from '../core/types';
 import { lootMod } from './spawn';
+import { cradleEye } from './secrets';
 import { ZONES, zoneFar } from './zones';
 
 export const MAX_SLOTS = 8;
@@ -124,6 +125,8 @@ const noCopper = (c: Cost): Cost => {
 };
 /** the price of the k-th relic at this reliquary */
 export function priceAt(e: Entity, k: number, it: Item): Cost {
+  // r2 hook: its layer eye costs the copper you wake with, so the first hidden layer is a choice in the first minute
+  if (firstShop(e) && !e.data?.rolls && it.kind === 'mod' && e.data?.layer === it.mod) return { copper: 2 };
   const c = priceOf(it);
   return firstShop(e) && k === 0 ? noCopper(c) : c;
 }
@@ -139,6 +142,13 @@ export function offers(g: Game, e: Entity): (Item | null)[] {
       // a reliquary reaches one tier past its printer neighbours: that is what it is for
       const it = lootMod(r, far + 2);
       if (it.kind === 'mod' && !out.some((o) => o.kind === 'mod' && o.mod === it.mod)) out.push(it);
+    }
+    // r2 hook: the reliquary by the start keeps a layer eye on its middle shelf until its first reroll
+    if (firstShop(e) && !d.rolls) {
+      const eye = cradleEye(g.seed);
+      out.splice(0, out.length, ...out.filter((o) => o.kind !== 'mod' || o.mod !== eye).slice(0, 2));
+      out.splice(1, 0, { kind: 'mod', mod: eye });
+      d.layer = eye;
     }
     d.offers = out;
   }
@@ -192,6 +202,9 @@ verb('reroll', {
 
 export const scrapOf = (it: Item): Cost => (it.kind === 'mod' && def(it).family !== 'unique' ? PRICES.scrap[Math.min(2, def(it).tier)] : {});
 
+/** when the last card-reader warning was given, per game */
+const warned = new WeakMap<Game, number>();
+
 verb('recycle', {
   help: 'grind a carried module into resources: recycle pinhole',
   run(g, args) {
@@ -200,6 +213,13 @@ verb('recycle', {
     if (!it || it.kind !== 'mod') return say(g, findInst(g, args) ? 'remove it from its slot first.' : 'no such module in your inventory.');
     const c = scrapOf(it);
     if (!Object.keys(c).length) return say(g, 'this one will not break. it is waiting for something.');
+    // r2: your only card reader, with a card still unread: ask once (a playtester ground both and had to buy one back)
+    const p = g.player;
+    const readers = p.inv.filter((i) => i.kind === 'mod' && i.mod === 'card-reader').length + p.installed.filter((i) => i.mod === 'card-reader').length;
+    if (it.mod === 'card-reader' && readers === 1 && p.inv.some((i) => i.kind === 'card') && (warned.get(g) ?? -99) < g.t - 20) {
+      warned.set(g, g.t);
+      return say(g, ['that is your only card reader, and you carry a card no one has read. ', { text: 'recycle it anyway', cmd: 'recycle card reader' }]);
+    }
     g.player.inv.splice(k, 1);
     for (const [r, n] of Object.entries(c)) addItem(g, { kind: 'res', res: r as Res, n: n! });
     g.events.push({ type: 'recycle' });

@@ -11,3 +11,4 @@ import './mind';
 import './stage';
 import './events';
 import './secrets';
+import './finds';
