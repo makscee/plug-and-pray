@@ -10,7 +10,9 @@ export const RES: Res[] = ['bone', 'glass', 'copper', 'ichor'];
 export interface Roll {
   key: string;
   mult: number;
-  tag: 'attuned' | 'cracked';
+  tag: 'attuned' | 'cracked' | 'tempered';
+  /** times an altar tempered it */
+  n?: number;
 }
 
 export type Item =

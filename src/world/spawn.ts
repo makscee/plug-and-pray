@@ -17,14 +17,25 @@ export function lootMod(r: Rng, far: number): Item {
   const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique');
   const m = r.pick(pool);
   const item: Item = { kind: 'mod', mod: m.id };
-  const nums = Object.entries(m.params).filter(([, v]) => typeof v === 'number');
+  const nums = Object.entries(m.params).filter(([k, v]) => typeof v === 'number' && BETTER[k]);
   if (nums.length && r.chance(0.25)) {
     const [key] = r.pick(nums);
     const good = r.chance(0.5);
-    item.roll = { key, mult: good ? 1.4 : 0.7, tag: good ? 'attuned' : 'cracked' };
+    item.roll = { key, mult: rollMult(key, good), tag: good ? 'attuned' : 'cracked' };
   }
   return item;
 }
+
+/** which way a number is better: up (damage, range) or down (cooldown, lag). Keys left out never roll:
+ *  picture-only ones (res, fps, colors, flicker) and flags (slots, chill) */
+export const BETTER: Record<string, 'up' | 'down'> = {
+  range: 'up', damage: 'up', radius: 'up', hp: 'up', regen: 'up', armour: 'up', mend: 'up', thorns: 'up', haste: 'up',
+  heatproof: 'up', glow: 'up', drain: 'up', power: 'up', speed: 'up', pace: 'up', plan: 'up', span: 'up', reveal: 'up',
+  keep: 'up', tithe: 'up', fov: 'up', ahead: 'up',
+  cooldown: 'down', recharge: 'down', noise: 'down', lag: 'down', blur: 'down', refresh: 'down', loud: 'down',
+};
+/** a good roll (attuned) moves a number its better way by ×1.4 or ×0.7; a bad one (cracked) the other way */
+export const rollMult = (key: string, good: boolean): number => ((BETTER[key] === 'down') === good ? 0.7 : 1.4);
 
 function cellIn(r: Rng, c: Chunk, seed: number): [number, number] {
   const [x0, y0, x1, y1] = r.pick(rooms(seed, c.cx, c.cy));

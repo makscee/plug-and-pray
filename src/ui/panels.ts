@@ -10,7 +10,7 @@ import { VERBS } from '../core/verbs';
 import type { Game, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { costs, does } from '../mods/describe';
-import { affords, fmt, offers, PRICES, priceOf, scrapOf, shopNear } from '../world/printer';
+import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear } from '../world/printer';
 import { altarNear, offers as altarOffers } from '../world/altar';
 import { img, type Of } from './icons';
 import { setupsOf } from '../body';
@@ -188,7 +188,7 @@ export class Panels {
       rows.push({ icon: { thing: 'shop' }, name: 'reliquary', buttons: [{ label: 'reroll', cmd: 'reroll', note: `reroll: ${fmt(PRICES.reroll)}` }] });
       offers(g, shop).forEach((it, k) => {
         if (!it || it.kind !== 'mod') return void rows.push({ name: `${k + 1}. sold`, buttons: [], dim: true });
-        const price = priceOf(it);
+        const price = priceAt(shop, k, it);
         rows.push({
           icon: it, name: label(it), tip: `${does(it)}\n${costs(it)}`,
           buttons: [{ label: '?', cmd: `info ${label(it)}` }, affords(g, price) ? { label: 'buy', cmd: `buy ${k + 1}`, note: fmt(price) } : { label: 'buy', note: `${fmt(price)}: short` }],
