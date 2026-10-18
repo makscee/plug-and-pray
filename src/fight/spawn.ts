@@ -7,7 +7,7 @@ import { hash, rng, type Rng } from '../core/rng';
 import { lootMod } from '../world/spawn';
 import type { Chunk, Entity, Game } from '../core/types';
 import { ZONES, zoneAt, zoneFar } from '../world/zones';
-import { farOf, floorOfChunk, isArrival, origin, stairsChunk } from '../world/floors';
+import { farOf, floorOfChunk, isArrival, LAST, origin, stairsChunk } from '../world/floors';
 
 /** cells closer than this to where you wake hold no enemy (mites sense 6) */
 const CALM = 7.5;
@@ -36,7 +36,7 @@ export function table(far: number): [string, number, number][] {
   if (far === 0) return [['mite', 1, 2]]; // the start chunk's conduits
   const z = zoneFar(far);
   if (z >= ZONES.length - 1) return []; // the heart: its keeper alone (src/world/floors.ts)
-  if (z === 0) return [['mite', 0.85, 2], ['mite', 0.35, 2], ['seraph', 0.25, 1]];
+  if (z === 0) return [['mite', 0.85, 2], ['mite', 0.2, 2], ['seraph', 0.25, 1]]; // v2 balance: melee only now, so one second pack in five (was 0.35)
   // r1 pace: the nave's first ring (by the cradle's border) holds pairs, not threes: a step, not a cliff
   if (z === 1) return far < 2.8 ? [['mite', 0.8, 2], ['mite', 0.15, 2], ['seraph', 0.2, 1], ['mimic', 0.1, 1]] : [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
   // r1 pace: a touch lighter than it was, so the furnace (below) is the hardest zone
@@ -64,14 +64,16 @@ export function fillFoes(g: Game, c: Chunk): void {
   if ((c.cx === sx && c.cy === sy) || (f > 0 && isArrival(c.cx, c.cy))) return;
   const r = rng(hash(g.seed, 23, c.cx, c.cy));
   const far = farOf(c.cx, c.cy);
-  for (const [type, p, n] of table(far)) {
+  // the heart's hall (src/world/floors.ts HEART_APPROACH): the furnace's mix stands between you and its keeper
+  const rows = f === LAST && !isArrival(c.cx, c.cy) ? table(7.5) : table(far);
+  for (const [type, p, n] of rows) {
     if (!r.chance(p)) continue;
     const at = floorCell(r, c, g.ents.filter((e) => e.enemy?.data.elite));
     if (!at) continue;
     for (let k = 0; k < n; k++) {
       // a group stands together: a few tenths apart in its cell
       const [x, y] = [at[0] + (k - (n - 1) / 2) * 0.3, at[1]];
-      if (type === 'mimic') spawn(g, { kind: 'item', x, y, item: lootMod(r, far), data: { mimic: true } });
+      if (type === 'mimic') spawn(g, { kind: 'item', x, y, item: lootMod(r, far, undefined, far < 2), data: { mimic: true } });
       else foe(g, type, x, y);
     }
   }

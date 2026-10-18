@@ -20,6 +20,8 @@ import { startKit } from '../../src/tune/start';
 import { light } from '../../src/sight/lamp';
 import { duel } from './boss';
 import { WARM } from '../../src/mods/sense';
+import { bigOn, fps, fpsEye } from '../../src/body/fps';
+import { dealtOf } from '../../src/mods/uniques';
 
 export interface Snap {
   t: number;
@@ -67,6 +69,24 @@ export interface Run {
   setups: number;
   /** resources gathered over the run (gains between decisions) */
   income: number;
+  /** v2 balance: uniques that came within sight (on the ground, on a shelf at hand), held, and dealt by the game */
+  uniques: { seen: string[]; held: string[]; dealt: number };
+  /** v2 balance: what it had on when it first took on each floor's keeper (the boss sim replays these) */
+  atBoss: Record<number, BossKit>;
+  /** v2 balance: times it broke off from each floor's keeper nearly dead */
+  bossTries: Record<number, number>;
+  /** v2 balance: which keeper it met per floor */
+  bossOf: Record<number, string>;
+}
+export interface BossKit {
+  t: number;
+  mods: { mod: string; roll?: any; rarity?: any; title?: string; on: boolean }[];
+  flesh: number;
+  maxHp: number;
+  hp: number;
+  slots: number;
+  core: number;
+  ready: number;
 }
 
 const DT = 0.1;
@@ -95,6 +115,8 @@ function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReade
   return w;
 }
 type Mode = 'explore' | 'battle';
+/** v2: on floors 3 and 4 it plays through the FPS scope (big view, hitscan at any angle) */
+const FPS = true;
 const lampNear = (g: Game) => g.ents.some((e) => e.enemy && ['seraph', 'pyre', 'saint'].includes(e.enemy.type) && dist(e, g.player) < 10);
 const humNear = (g: Game) => g.ents.some((e) => e.enemy && ENEMIES[e.enemy.type]?.hidden && dist(e, g.player) < 9);
 
@@ -110,6 +132,8 @@ function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantRead
       // the eye that perceives in the zone ahead (src/mods/sense.ts): dark ossuary, the hum, the furnace's glare
       const f = param<string>(it, 'filter', 'color');
       let v = 200 + p('res') / 10 + p('fps');
+      // v2: the FPS eye is how floors 3 and 4 play (src/body/fps.ts): big view, mouse-look, hitscan shots
+      if (FPS && zone >= 2 && p('big')) v += 100 + 20 * p('big');
       if (zone === 2) v += f === 'sonar' || f === 'edge' || f === 'heat' ? 60 : f === '1bit' ? 30 : 0;
       if (deep && (f === 'sonar' || f === 'heat')) v += 25;
       if (zone === 3 && f === 'heat') v -= 90;
@@ -136,6 +160,10 @@ function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantRead
     case 'lamp':
       return zones.needsLamp(zone) || zones.needsLamp(zones.zoneAt(g.player.x, g.player.y)) ? 150 + p('radius') * 5 : 0;
     case 'scanner': {
+      // v2 radars (src/mods/radar.ts): the plumb line points out the keeper and the way down; the rest find things to take
+      const finds = param<string>(it, 'finds', '');
+      if (finds === 'deep') return 60;
+      if (finds) return 18;
       const sees = param<string[]>(it, 'sees', []);
       if (sees.includes('metal') && zone >= 1) return 25; // mimics wake early
       if ((sees.includes('flesh') || sees.includes('heat')) && deep) return 45; // the hum
@@ -144,7 +172,7 @@ function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantRead
     case 'mind': {
       const what = param<string>(it, 'what', '');
       if (what === 'reader') return wantReader ? 300 : 0;
-      if (what === 'map') return 8;
+      if (what === 'map') return param(it, 'click', false) ? 24 : 8; // v2: a map you click walks you
       if (what === 'ledger') return 30; // the tithe: kills pay out twice as often
       return 0;
     }
@@ -224,7 +252,7 @@ export function play(seed: number, o: Opts): Run {
   const g = newGame(seed);
   startKit(g);
   const P = g.player;
-  const run: Run = { seed, style: o.style, ended: 'time', t: 0, marks: {}, snaps: [], steps: [], bought: [], resPeak: 0, resEnd: 0, kills: 0, homes: 0, recycled: 0, log: [], bound: { power: 0, slots: 0, both: 0, n: 0 }, generators: [], loadouts: {}, offs: 0, everOn: [], setups: 0, income: 0 };
+  const run: Run = { seed, style: o.style, ended: 'time', t: 0, marks: {}, snaps: [], steps: [], bought: [], resPeak: 0, resEnd: 0, kills: 0, homes: 0, recycled: 0, log: [], bound: { power: 0, slots: 0, both: 0, n: 0 }, generators: [], loadouts: {}, offs: 0, everOn: [], setups: 0, income: 0, uniques: { seen: [], held: [], dealt: 0 }, atBoss: {}, bossTries: {}, bossOf: {} };
   const seen = new Set<string>();
   // things given up on, for a minute (a corner it could not get round, a lamp it could not reach)
   const bans = new Map<object, number>();
@@ -288,6 +316,10 @@ export function play(seed: number, o: Opts): Run {
         const other = [...P.installed.filter((i) => !i.on), ...P.inv].find((i) => 'mod' in i && MODS[i.mod].family === 'camera' && param(i, 'filter', 'color') !== 'heat') as { mod: string } | undefined;
         if (other) return P.installed.includes(other as any) ? 'on ' + refOf(other) : 'swap in ' + labelOf(other);
       }
+      if (!run.atBoss[g.floor]) {
+        run.bossOf[g.floor] = keeper.enemy!.type;
+        run.atBoss[g.floor] = { t: Math.round(g.t), mods: P.installed.map((i) => ({ mod: i.mod, roll: i.roll, rarity: i.rarity, title: (i as any).title, on: i.on })), flesh: P.flesh ?? 0, maxHp: P.maxHp, hp: Math.round(P.hp * 10) / 10, slots: P.slots, core: P.core, ready: Math.round(zones.readiness(g)) };
+      }
       P.path = [];
       if (process.env.DUEL) console.log('duel', g.t.toFixed(0), 'hp', P.hp.toFixed(1), '/', P.maxHp, 'ready', Math.round(zones.readiness(g)), P.installed.filter((i) => i.on).map((i) => i.mod).join(','), 'foes', g.ents.filter((e) => e.enemy && dist(e, P) < 10).map((e) => e.enemy!.type).join(','));
       const before = keeper.enemy!.hp + P.hp;
@@ -299,6 +331,7 @@ export function play(seed: number, o: Opts): Run {
       if (g.ents.includes(keeper) && Math.abs(keeper.enemy!.hp + P.hp - before) < 0.01) closeIn = g.t + 4;
       // broke off nearly dead: fold home and mend (the keeper keeps its wounds)
       if (!g.ended && P.hp < P.maxHp * 0.3) {
+        run.bossTries[g.floor] = (run.bossTries[g.floor] ?? 0) + 1;
         (P as any)._homing = g.t + 3.2;
         run.homes++;
         restUntilFull = true;
@@ -413,6 +446,18 @@ export function play(seed: number, o: Opts): Run {
     if (lamps.length && lampReady && !trade && inLine(px, py) && !lamps.every((e) => banned.has(e))) {
       for (const [d, ox, oy] of [['n', 0, -1], ['s', 0, 1], ['e', 1, 0], ['w', -1, 0]] as const)
         if (cellAt(g, px + ox, py + oy) === Cell.floor && !inLine(px + ox, py + oy)) { why = 'out of line'; return `go ${d} 1`; }
+    }
+    // v2: an FPS eye on: go big; then aimed weapons shoot down the view at any angle (a hitscan, src/body/fps.ts)
+    if (FPS && fpsEye(g) && !fps(g).big) return 'big';
+    if (FPS && bigOn(g)) {
+      const ready = active(g, 'weapon').filter((i) => param(i, 'aim', 'auto') === 'aimed' && g.t >= ((i.data.readyAt as number) ?? 0));
+      const reach = Math.max(0, ...ready.map((i) => param<number>(i, 'range', 6)));
+      const t = foes.find((e) => dist(e, P) <= reach && clear(g, P.x, P.y, e.x, e.y));
+      if (t) {
+        P.dir = Math.atan2(t.x - P.x, -(t.y - P.y));
+        P.faceLock = g.t + 1;
+        return 'shoot';
+      }
     }
     // aimed weapons: shoot a foe standing in a straight line
     const aimed = active(g, 'weapon').filter((i) => param(i, 'aim', 'auto') === 'aimed' && g.t >= ((i.data.readyAt as number) ?? 0));
@@ -634,7 +679,8 @@ export function play(seed: number, o: Opts): Run {
     // like a person, it heads for the keeper once it knows where: a card's vector, the room on the map, or the heart (told on arrival)
     const [sx, sy] = floors.stairsAt(g.seed, f);
     const [x0, y0, x1, y1] = floors.bossRoom(g.seed, f);
-    const known = f === floors.LAST || g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`) || [[x0, y0], [x1, y0], [x0, y1], [x1, y1], [Math.floor(x), Math.floor(y)]].some(([a, b]) => g.seen.has(`${a},${b}`));
+    const plumb = active(g, 'scanner').some((i) => param(i, 'finds', '') === 'deep');
+    const known = f === floors.LAST || plumb || g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`) || [[x0, y0], [x1, y0], [x0, y1], [x1, y1], [Math.floor(x), Math.floor(y)]].some(([a, b]) => g.seen.has(`${a},${b}`));
     return known ? { x, y, what: 'boss' } : null;
   }
   /** a careful player takes on a keeper once ready for the floor below it, or once it has been on this floor a while */
@@ -662,7 +708,7 @@ export function play(seed: number, o: Opts): Run {
   }
   function machineOffers(m: Entity): { cmd: string; ok: boolean }[] {
     const out: { cmd: string; ok: boolean }[] = [];
-    if (m.data?.altar) for (const [cmd, cost] of altar.offers(g, m)) out.push({ cmd, ok: afford(cost) && (cmd !== 'offer mend' || P.hp < P.maxHp * 0.5) });
+    if (m.data?.altar) for (const [cmd, cost] of altar.offers(g, m)) out.push({ cmd, ok: afford(cost) && (cmd !== 'offer mend' || P.hp < P.maxHp * 0.5) && (cmd !== 'offer copper' || (resOf(g, 'bone') < 4 && resOf(g, 'copper') >= 4)) });
     if (m.kind === 'printer' && m.data?.shop) {
       const zone = Math.max(targetZone(), zoneHere());
       const pick = bestLoadout(g, zone, true);
@@ -854,6 +900,12 @@ export function play(seed: number, o: Opts): Run {
     lastFlesh = P.flesh ?? 0;
     lastPow = Math.max(lastPow, pw);
     lastSlots = P.slots;
+    // v2 balance: uniques in sight or at hand
+    for (const e of g.ents) {
+      if (e.kind === 'item' && e.item?.kind === 'mod' && e.item.rarity === 'unique' && dist(e, P) < 9 && !run.uniques.seen.includes(e.item.mod)) run.uniques.seen.push(e.item.mod);
+      if (e.kind === 'printer' && e.data?.offers && dist(e, P) < 2) for (const it of e.data.offers as any[]) if (it?.rarity === 'unique' && !run.uniques.seen.includes(it.mod)) run.uniques.seen.push(it.mod);
+    }
+    for (const i of [...P.inv, ...P.installed]) if ('mod' in i && i.rarity === 'unique' && !run.uniques.held.includes(i.mod)) run.uniques.held.push(i.mod);
     const before = resAll(g);
     const c = decide();
     if (o.debug && (process.env.ALL || typeof c === 'string' || run.log.length === 0 || !run.log[run.log.length - 1].endsWith('wait'))) run.log.push(`${g.t.toFixed(1)} ${Math.floor(P.x)},${Math.floor(P.y)} hp${P.hp.toFixed(1)} > ${typeof c === 'number' ? 'wait' : c + ' ' + why}${typeof c === 'number' ? ' ' + why + ' wait' : ''}`);
@@ -872,6 +924,7 @@ export function play(seed: number, o: Opts): Run {
   run.t = Math.round(g.t);
   run.kills = g.stats.kills;
   run.resEnd = resAll(g);
+  run.uniques.dealt = dealtOf(g);
   (run as any).offered = offeringOf(g) ?? null; // r2 econ: what the Engine took (it empties your resources)
   (run as any).resBy = Object.fromEntries((['bone', 'glass', 'copper', 'ichor'] as Res[]).map((r) => [r, resOf(g, r)]));
   (run as any).core = P.core;

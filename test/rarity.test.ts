@@ -116,8 +116,8 @@ describe('v2 rarity', () => {
       const e = spawn(g, { kind: 'printer', x: 8.5, y: 8.5, data: { far: 3, shop: true } });
       if (offers(g, e).some((it) => it?.kind === 'mod' && it.rarity === 'unique')) n++;
     }
-    expect(n).toBeGreaterThan(3);
-    expect(n).toBeLessThan(20);
+    expect(n).toBeGreaterThan(1);
+    expect(n).toBeLessThan(12);
   });
 });
 

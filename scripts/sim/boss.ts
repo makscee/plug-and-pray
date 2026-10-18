@@ -9,9 +9,10 @@ import { active, param } from '../../src/core/mods';
 import { exec } from '../../src/core/verbs';
 import { hash, rng } from '../../src/core/rng';
 import type { Entity, Game } from '../../src/core/types';
-import { BOSS, inZone, poolsOf, stageBoss, stunOf, type Zone } from '../../src/fight/bosses';
+import { BOSS, inZone, isUnder, poolsOf, stageBoss, stunOf, type Zone } from '../../src/fight/bosses';
 import { shots, type ShotData } from '../../src/fight/shots';
 import { volley } from '../../src/fight/aim';
+import { fps, fpsEye } from '../../src/body/fps';
 
 export interface Fight {
   boss: string;
@@ -30,6 +31,23 @@ export function fight(floor: number, variant: string, seed: number, o: { react?:
   const { won } = duel(g, floor, seed, o);
   const p = g.player;
   return { boss: variant, seed, won, t: Math.round(g.t), hp: Math.max(0, Math.round(p.hp * 10) / 10), maxHp: p.maxHp };
+}
+
+/** the same fight with a loadout the run sim really had when it met this floor's keeper (scripts/sim/brain.ts
+ *  `atBoss`), at the hp it had: is the boss beatable with what a player brings, not an idealised kit? */
+export function fightKit(floor: number, variant: string, seed: number, kit: { mods: { mod: string; roll?: any; rarity?: any; title?: string; on: boolean }[]; flesh: number; maxHp: number; hp: number; slots: number; core: number }, o: { react?: number; sloppy?: number; limit?: number; trace?: boolean } = {}): Fight {
+  const g = newGame(seed);
+  stageBoss(g, floor, variant);
+  const p = g.player;
+  p.installed = kit.mods.map((m) => ({ uid: g.nextId++, mod: m.mod, roll: m.roll, rarity: m.rarity, title: m.title, on: m.on, readyAt: g.t - 1, data: {} }) as any);
+  [p.slots, p.core, p.flesh, p.maxHp, p.hp] = [kit.slots, kit.core, kit.flesh, kit.maxHp, kit.hp];
+  bigOn(g);
+  const { won } = duel(g, floor, seed, o);
+  return { boss: variant, seed, won, t: Math.round(g.t), hp: Math.max(0, Math.round(p.hp * 10) / 10), maxHp: p.maxHp };
+}
+/** an FPS eye on: go big, as a player would on floors 3 and 4 (src/body/fps.ts) */
+export function bigOn(g: Game): void {
+  if (fpsEye(g) && !fps(g).big) exec(g, 'big');
 }
 
 /** fight the bosses standing in `g` now, until they are down, you are, or `limit` s more pass (v2 floors: the run
@@ -54,13 +72,14 @@ export function duel(g: Game, floor: number, seed: number, o: { react?: number; 
     if (o.bail && p.hp < p.maxHp * o.bail) break;
     const bosses = g.ents.filter((e) => e.enemy && BOSS[e.enemy.type] && Math.abs(e.x - p.x) < 200);
     const up = bosses.filter((e) => Math.abs(e.x - p.x) < 1000);
-    if (!bosses.length) {
+    // (a burrowed worm is parked far off, src/fight/bosses.ts UNDER: still up, just not here)
+    if (!bosses.length && !g.ents.some((e) => e.enemy && BOSS[e.enemy.type] && isUnder(e))) {
       won = true;
       break;
     }
     // zones it knows of: wind-ups at least `react` old, not misread
     const zones: Zone[] = [];
-    for (const e of bosses) {
+    for (const e of [...bosses, ...g.ents.filter((e) => e.enemy && BOSS[e.enemy.type] && isUnder(e))]) {
       const d = e.enemy!.data;
       const zs = d.zones as Zone[] | null;
       if (!zs) continue;
@@ -95,7 +114,8 @@ export function duel(g: Game, floor: number, seed: number, o: { react?: number; 
     };
     // a person decides about six times a second
     const think = Math.round(g.t / DT) % 3 === 0;
-    if (g.t >= stunOf(g) && near && think) {
+    // (with the worm under, nothing to face: just keep off where it comes up)
+    if (g.t >= stunOf(g) && (near || zones.length) && think) {
       let best: [number, number] = [p.x, p.y];
       let bestScore = Infinity;
       const cands: [number, number][] = [[p.x, p.y]];
@@ -103,7 +123,7 @@ export function duel(g: Game, floor: number, seed: number, o: { react?: number; 
         for (let a = 0; a < 16; a++) cands.push([p.x + Math.cos((a / 16) * Math.PI * 2) * step, p.y + Math.sin((a / 16) * Math.PI * 2) * step]);
       for (const [x, y] of cands) {
         if (!open(g, x + 0.25, y) || !open(g, x - 0.25, y) || !open(g, x, y + 0.25) || !open(g, x, y - 0.25)) continue;
-        const range = Math.abs(dist({ x, y }, near) - want);
+        const range = near ? Math.abs(dist({ x, y }, near) - want) : 0;
         // keep going the way it was going: a person does not zigzag every frame
         const [mx, my] = [x - p.x, y - p.y];
         const was = p.path[0] ? [p.path[0][0] - p.x, p.path[0][1] - p.y] : null;
@@ -111,7 +131,7 @@ export function duel(g: Game, floor: number, seed: number, o: { react?: number; 
         // and keep off the walls: a corner is where a slow thing catches you
         let walls = 0;
         for (const r of [1, 2.2]) for (let a = 0; a < 8; a++) if (!open(g, x + Math.cos((a * Math.PI) / 4) * r, y + Math.sin((a * Math.PI) / 4) * r)) walls += r < 2 ? 1 : 0.6;
-        const score = walls * 0.35 + danger(x, y) * 10 + range + (clear(g, x, y, near.x, near.y) ? 0 : 2) + Math.hypot(mx, my) * 0.3 + turn * 0.4;
+        const score = walls * 0.35 + danger(x, y) * 10 + range + (!near || clear(g, x, y, near.x, near.y) ? 0 : 2) + Math.hypot(mx, my) * 0.3 + turn * 0.4;
         if (score < bestScore) [bestScore, best] = [score, [x, y]];
       }
       const [dx, dy] = [best[0] - p.x, best[1] - p.y];
@@ -121,8 +141,8 @@ export function duel(g: Game, floor: number, seed: number, o: { react?: number; 
       p.pace = speed;
       p.path = m < 0.05 ? [] : [best];
       p.faceLock = g.t + 1;
-      p.dir = Math.atan2(near.x - p.x, -(near.y - p.y));
-      if (volley(g).length && dist(near, p) <= reach && clear(g, p.x, p.y, near.x, near.y)) exec(g, 'shoot');
+      if (near) p.dir = Math.atan2(near.x - p.x, -(near.y - p.y));
+      if (near && volley(g).length && dist(near, p) <= reach && clear(g, p.x, p.y, near.x, near.y)) exec(g, 'shoot');
     }
     const at = g.log.length;
     tick(g, DT);

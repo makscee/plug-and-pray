@@ -56,7 +56,7 @@ export const STAIRS: Record<Stairs, { name: string; look: string }> = {
 /** the module ids a floor's arrival cache (and the reliquary there) guarantees: that floor's new kit.
  *  Other slices add their ids here (the FPS eye on 2 and 3, map upgrades on 1...) */
 export const KIT: Record<number, string[]> = {
-  0: ['hollow-tap'],
+  0: ['hollow-tap', 'choir-bell', 'frost-coat'],
   1: ['nail-psalm', 'survey-spool', 'sounding-knell', 'vein-fork', 'plumb-line'],
   2: ['pilgrim-scope', 'illuminated-atlas', 'pulse-choir', 'bone-glass', 'ember-iris', 'censer', 'bone-lance'],
   3: ['martyr-scope', 'glass-diorama', 'rime-hood', 'heat-lance'],
@@ -76,11 +76,14 @@ export const floorAt = (x: number): number => floorOfChunk(Math.floor(x / CHUNK)
 /** a chunk's place within its floor */
 export const local = (cx: number, cy: number): [number, number] => [cx - floorOfChunk(cx) * STRIDE, cy];
 
-/** is this chunk part of a floor (else it is rock)? The heart is two chunks: the landing and the arena north of it */
+/** the heart's approach: chunks of hall between its landing and its arena (r1 pace: the last floor lasted 45 s) */
+export const HEART_APPROACH = 2;
+
+/** is this chunk part of a floor (else it is rock)? The heart is a column: the landing, its hall, the arena north of it */
 export function inside(cx: number, cy: number): boolean {
   const f = floorOfChunk(cx);
   const [lx, ly] = local(cx, cy);
-  if (f === LAST) return lx === 0 && (ly === 0 || ly === -1);
+  if (f === LAST) return lx === 0 && ly <= 0 && ly >= -HEART_APPROACH;
   return Math.abs(lx) <= HALF && Math.abs(ly) <= HALF;
 }
 
@@ -98,10 +101,11 @@ export const isArrival = (cx: number, cy: number): boolean => local(cx, cy)[0] =
 /** where you land on a floor: a cell centre */
 export const origin = (f: number): [number, number] => [f * STRIDE * CHUNK + 8.5, 8.5];
 
-/** the corner chunk that holds the floor's stairs and boss room (the heart: its arena, north of the landing) */
+/** the edge chunk that holds the floor's stairs and boss room (the heart: its arena, north of the landing).
+ *  v2 balance (r1 pace: 43% of a run was walking): the middle of an edge, not a corner, about 35 cells out */
 export function stairsChunk(seed: number, f: number): [number, number] {
-  if (f === LAST) return [f * STRIDE, -1];
-  const [sx, sy] = [[1, 1], [1, -1], [-1, 1], [-1, -1]][hash(seed, 111, f) % 4];
+  if (f === LAST) return [f * STRIDE, -HEART_APPROACH];
+  const [sx, sy] = [[1, 0], [-1, 0], [0, 1], [0, -1]][hash(seed, 111, f) % 4];
   return [f * STRIDE + sx * HALF, sy * HALF];
 }
 const cornerOf = (seed: number, f: number): [number, number] => {
@@ -120,11 +124,12 @@ export function bossRoom(seed: number, f: number): [number, number, number, numb
   const [x0, y0, x1, y1] = roomLocal(f);
   return [cx * CHUNK + x0, cy * CHUNK + y0, cx * CHUNK + x1, cy * CHUNK + y1];
 }
-/** where the stairs stand: the room's corner farthest from the floor's middle, a cell centre */
+/** where the stairs stand: the room's side farthest from the floor's middle, a cell centre */
 export function stairsAt(seed: number, f: number): [number, number] {
   const [x0, y0, x1, y1] = bossRoom(seed, f);
   const [sx, sy] = cornerOf(seed, f);
-  return [(sx > 0 ? x1 - 1 : x0 + 1) + 0.5, (sy > 0 ? y1 - 1 : y0 + 1) + 0.5];
+  const side = (s: number, a: number, b: number) => (s > 0 ? b - 1 : s < 0 ? a + 1 : Math.floor((a + b) / 2));
+  return [side(sx, x0, x1) + 0.5, side(sy, y0, y1) + 0.5];
 }
 /** where the boss stands up: the room's middle */
 export function bossAt(seed: number, f: number): [number, number] {

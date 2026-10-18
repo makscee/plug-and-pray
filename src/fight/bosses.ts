@@ -8,6 +8,7 @@
 import { dist, enemy, hurt, killHooks, say, spawn, spawnEnemy, tickHooks } from '../core/game';
 import { Cell, clear, ensure, open, setCell } from '../core/grid';
 import { label, MODS, slotsUsed } from '../core/mods';
+import { VERBS } from '../core/verbs';
 import { hash, rng } from '../core/rng';
 import type { Entity, Game, Item } from '../core/types';
 import { fire, shots, type ShotData } from './shots';
@@ -260,13 +261,15 @@ const volley = (o: { n: number; spread: number; speed: number; windup: number; r
   },
 });
 
-/** a ring of bullets all round, with a gap toward you to slip through; `times` rings, each turned */
+/** a ring of bullets all round, with a gap to one side of you to slip through; `times` rings, each turned */
 const burst = (o: { n: number; speed: number; windup: number; rest: number; gap?: number; times?: number; every?: number; move?: string; warn?: string }): Atk => ({
   id: 'burst',
   move: o.move ?? 'swells to burst',
   warn: o.warn ?? 'it swells: a ring of bullets comes out all round. find the gap.',
   windup: o.windup,
   rest: o.rest,
+  // (v2 r1 fight: point-blank rings could not be dodged) only with you two cells off or more
+  when: (_g, _e, r) => r >= 2,
   land(g, e) {
     ring(g, e, o.n, o.speed, 0, o.gap ?? 0);
     data(e).shots = (o.times ?? 1) - 1;
@@ -292,6 +295,7 @@ const spiral = (o: { arms: number; secs: number; every: number; spin: number; sp
   warn: o.warn ?? `it spins: ${o.arms} arms of bullets turn round it. move with the gaps.`,
   windup: o.windup,
   rest: o.rest,
+  when: (_g, _e, r) => r >= 2,
   land(g, e) {
     const d = data(e);
     d.until = g.t + o.secs;
@@ -418,6 +422,8 @@ const toll = (o: { r0: number; r1: number; windup: number; rest: number; stun: n
 /** dig in and come up under you (the slag worm): gone from sight (and from your weapons) till it surfaces.
  *  Underground it is parked far off (UNDER), so nothing finds it; the tick below brings it up. */
 export const UNDER = 10000;
+/** how close to you it may surface */
+export const SURFACE = 1.2;
 const burrow = (o: { windup: number; rest: number; under: number; r: number; burst: number; poolSecs?: number }): Atk => ({
   id: 'burrow',
   move: 'digs in',
@@ -444,6 +450,21 @@ tickHooks.push((g) => {
     if (g.t < (d.follow as number)) [z.x, z.y] = [g.player.x, g.player.y];
     if (g.t < (d.under as number)) continue;
     [e.x, e.y] = open(g, z.x, z.y) ? [z.x, z.y] : [e.x - UNDER, e.y];
+    // never inside you (v2 r1 fight: it came up in your body, unseen and unshootable): at least SURFACE cells off
+    const p = g.player;
+    const [ax, ay] = [e.x - p.x, e.y - p.y];
+    const r = Math.hypot(ax, ay);
+    if (r < SURFACE) {
+      const a = r > 0.01 ? Math.atan2(ay, ax) : (hash(g.seed, Math.floor(g.t * 10)) / 2 ** 32) * Math.PI * 2;
+      for (const turn of [0, 1, -1, 2, -2, 3, -3, 4]) {
+        const [nx, ny] = [p.x + Math.cos(a + turn * 0.8) * SURFACE, p.y + Math.sin(a + turn * 0.8) * SURFACE];
+        if (open(g, nx, ny)) {
+          [e.x, e.y] = [nx, ny];
+          break;
+        }
+      }
+    }
+    say(g, `⚠ ${bdef(e).name} bursts up out of the floor!`);
     strikeZones(g, e, [z], BLOW);
     ring(g, e, d.burst as number, 3.2, (hash(g.seed, Math.floor(g.t)) / 2 ** 32) * Math.PI);
     if (d.pool) pool(g, e, z.x, z.y, d.upR as number, d.pool as number);
@@ -460,7 +481,7 @@ function boss(d: BossDef): void {
 
 // floor 0, the cradle: melee and kiting
 boss({
-  id: 'boss-warden', floor: 0, name: 'the great warden', hp: 110, damage: 2.6, speed: 1.6, walk: 'close', r: 0.55, at: [0.5],
+  id: 'boss-warden', floor: 0, name: 'the great warden', hp: 70, damage: 2.4, speed: 1.6, walk: 'close', r: 0.55, at: [0.5],
   hint: 'it charges down the line it sees you on, and bites up close. step aside from the charge, then hit it while it reels.',
   turn: ['the great warden roars. it charges twice now.'],
   phases: [
@@ -469,27 +490,27 @@ boss({
   ],
 });
 boss({
-  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 80, damage: 1.4, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
+  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 55, damage: 1.4, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
   hint: 'she calls mites and stomps. thin the mites, keep off her stomp, bite her between.',
   turn: ['the mite queen shrieks. the brood comes faster.'],
   phases: [
-    [brood({ type: 'mite', n: 3, cap: 4, windup: 1, rest: 1.5 }), slam({ r: 1.7, windup: 1, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.7 cells. step out.' }), volley({ n: 1, spread: 0, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
-    [brood({ type: 'mite', n: 3, cap: 5, windup: 0.9, rest: 1.2 }), slam({ r: 2, windup: 1, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, move: 'spits acid' })],
+    [brood({ type: 'mite', n: 2, cap: 2, windup: 1, rest: 1.5 }), slam({ r: 1.7, windup: 1, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.7 cells. step out.' }), volley({ n: 1, spread: 0, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
+    [brood({ type: 'mite', n: 2, cap: 3, windup: 0.9, rest: 1.2 }), slam({ r: 2, windup: 1, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, move: 'spits acid' })],
   ],
 });
 boss({
-  id: 'boss-bell', floor: 0, name: 'the bell', hp: 100, damage: 3.2, speed: 0.5, walk: 'drift', r: 0.6, at: [0.5],
-  hint: 'its toll stuns whoever stands in the ring round it. hug it (its clapper hits close) or stand off.',
+  id: 'boss-bell', floor: 0, name: 'the bell', hp: 65, damage: 2, speed: 0.5, walk: 'drift', r: 0.6, at: [0.5],
+  hint: 'its toll stuns whoever stands in the ring round it. stand a step from it (inside the ring, outside the clapper) or well off.',
   turn: ['the bell cracks. now its toll echoes: the inner ring, then the outer.'],
   phases: [
-    [toll({ r0: 1.4, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), slam({ r: 1.4, windup: 0.9, rest: 0.7, move: 'swings its clapper', warn: 'the clapper swings: it hits within 1.4 cells. step back into the ring, then in again.' }), toll({ r0: 1.4, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), peal({ r: 1.1, windup: 1.3, rest: 0.7, move: 'drops a bell on you', warn: 'a small bell falls where you stand: step off the ring.' })],
-    [toll({ r0: 1.5, r1: 4, windup: 1.1, rest: 0.8, stun: 1.4, second: [0, 1.6] }), slam({ r: 1.5, windup: 0.9, rest: 0.7, move: 'swings its clapper' }), toll({ r0: 0, r1: 1.6, windup: 1, rest: 0.8, stun: 1.4, second: [1.5, 4] }), peal({ r: 1.1, windup: 1.2, rest: 0.7, n: 2, move: 'drops bells on you' })],
+    [toll({ r0: 1.4, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), slam({ r: 0.9, windup: 0.9, rest: 0.7, move: 'swings its clapper', warn: 'the clapper swings: it hits within 0.9 cells. a step back (not into the ring), then in again.' }), toll({ r0: 1.4, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), peal({ r: 1.1, windup: 1.3, rest: 0.7, move: 'drops a bell on you', warn: 'a small bell falls where you stand: step off the ring.' })],
+    [toll({ r0: 1.5, r1: 4, windup: 1.1, rest: 0.8, stun: 1.4, second: [0, 1.6] }), slam({ r: 1, windup: 0.9, rest: 0.7, move: 'swings its clapper' }), toll({ r0: 0, r1: 1.6, windup: 1, rest: 0.8, stun: 1.4, second: [1.5, 4] }), peal({ r: 1.1, windup: 1.2, rest: 0.7, n: 2, move: 'drops bells on you' })],
   ],
 });
 
 // floor 1, the choir: ranged, and they dodge your shots
 boss({
-  id: 'boss-choir', floor: 1, name: 'the seraph choir', hp: 85, damage: 3.8, speed: 1.4, walk: 'keep', keep: 4.5, dodge: true, r: 0.6, at: [0.5],
+  id: 'boss-choir', floor: 1, name: 'the seraph choir', hp: 136, damage: 3.8, speed: 1.4, walk: 'keep', keep: 4.5, dodge: true, r: 0.6, at: [0.5],
   hint: 'it keeps its distance and slips your shots. it burns down its lines and fans its light at you.',
   turn: ['the choir sings louder. lamps join it.'],
   phases: [
@@ -498,7 +519,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 72, damage: 2.2, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 2.2, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it plays chords of slow notes at you, and moves between its pipes. its pedal note shakes the floor round it.',
   turn: ['the organ pulls out every stop. mimics drop from its pipes.'],
   phases: [
@@ -507,7 +528,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-ringer', floor: 1, name: 'the bell-ringer', hp: 85, damage: 4.3, speed: 1.6, walk: 'keep', keep: 4, dodge: true, r: 0.5, at: [0.5],
+  id: 'boss-ringer', floor: 1, name: 'the bell-ringer', hp: 136, damage: 4.3, speed: 1.6, walk: 'keep', keep: 4, dodge: true, r: 0.5, at: [0.5],
   hint: 'it keeps away and rings the floor where you stand. keep moving; it slips your shots, so shoot as it lands.',
   turn: ['the bell-ringer rings faster: three peals follow you.'],
   phases: [
@@ -527,11 +548,11 @@ boss({
   ],
 });
 boss({
-  id: 'boss-hydra', floor: 2, name: 'the ossuary hydra', hp: 250, damage: 2.4, speed: 0.5, walk: 'drift', r: 0.7, at: [0.5],
+  id: 'boss-hydra', floor: 2, name: 'the ossuary hydra', hp: 250, damage: 2, speed: 0.5, walk: 'drift', r: 0.7, at: [0.5],
   hint: 'three heads spit in turn, then all at once. it grows a head at half.',
   turn: ['the ossuary hydra grows a fourth head.'],
   phases: [
-    [volley({ n: 1, spread: 0, speed: 5, windup: 0.6, rest: 1, times: 3, every: 0.3, move: 'heads spit in turn', warn: 'its heads spit one after another: keep strafing.' }), volley({ n: 3, spread: 0.7, speed: 4, windup: 0.9, rest: 1.2, move: 'all heads draw breath', warn: 'all three heads draw breath: three at once.' }), burst({ n: 12, speed: 3.2, windup: 1.1, rest: 1.4, gap: 3, warn: 'it swells: bone shards all round, with a gap facing you.' })],
+    [volley({ n: 1, spread: 0, speed: 5, windup: 0.6, rest: 1, times: 3, every: 0.3, move: 'heads spit in turn', warn: 'its heads spit one after another: keep strafing.' }), volley({ n: 3, spread: 0.7, speed: 4, windup: 0.9, rest: 1.2, move: 'all heads draw breath', warn: 'all three heads draw breath: three at once.' }), burst({ n: 12, speed: 3.2, windup: 1.1, rest: 1.4, gap: 3, warn: 'it swells: bone shards all round, with a gap to one side: run for it.' })],
     [volley({ n: 1, spread: 0, speed: 5.5, windup: 0.5, rest: 0.8, times: 4, every: 0.25, move: 'heads spit in turn' }), burst({ n: 16, speed: 3.4, windup: 1, rest: 1.2, gap: 3, times: 2, every: 0.7 }), volley({ n: 4, spread: 0.9, speed: 4.4, windup: 0.8, rest: 1, times: 2, every: 0.6, move: 'all heads draw breath' })],
   ],
 });
@@ -547,7 +568,7 @@ boss({
 
 // floor 3, the furnace: improved FPS, heavier patterns
 boss({
-  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 340, damage: 6, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 340, damage: 4.8, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it pours out turning arms of fire and crosses of light. later the floor under you catches.',
   turn: ['the burning saint flares. fire runs to where you stand.'],
   phases: [
@@ -585,7 +606,7 @@ boss({
 
 // floor 4: the heart, every run the same; each phase is a floor's way of fighting
 boss({
-  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 380, damage: 5.4, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
+  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 380, damage: 4.6, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
   hint: 'the heart of the engine. it fights the way every floor did: brood and toll, then lines and peals, then spirals and fire.',
   turn: ['the heart beats faster. light runs down its lines; the floor rings under you.', 'the heart burns white. fire pours out in arms, and the floor catches.'],
   phases: [
@@ -654,6 +675,11 @@ function dodge(g: Game, e: Entity, dt: number): boolean {
   return false;
 }
 
+/** past this many cells from you, or with you this far from its post, a boss starts nothing new */
+export const LEASH = 10;
+/** and after this long away it heals back to its phase line */
+export const LEASH_HEAL = 6;
+
 function bossAi(g: Game, e: Entity, dt: number): void {
   const d = data(e);
   const def = bdef(e);
@@ -695,6 +721,31 @@ function bossAi(g: Game, e: Entity, dt: number): void {
     d.nextAt = g.t + (atk?.rest ?? 1);
     return;
   }
+  // the leash (v2 r1 fun): past LEASH cells, or with you that far from its room, it starts nothing new and goes
+  // back to its post; LEASH_HEAL s away, it is whole again up to its phase line. Leaving is a choice, not a cheat
+  const [hx, hy] = (d.home as [number, number]) ?? [e.x, e.y];
+  if (dist(e, p) > LEASH || Math.hypot(p.x - hx, p.y - hy) > LEASH) {
+    if (!d.awayAt) {
+      d.awayAt = g.t;
+      if (g.t - Number(d.leashSaid ?? -99) > 15) say(g, `${def.name} waits. it will not follow you out.`);
+      d.leashSaid = g.t;
+    }
+    const [vx, vy] = [hx - e.x, hy - e.y];
+    const r = Math.hypot(vx, vy);
+    if (r > 0.2 && def.speed > 0) {
+      const step = Math.min(r, def.speed * dt);
+      const [nx, ny] = [e.x + (vx / r) * step, e.y + (vy / r) * step];
+      if (open(g, nx, ny)) [e.x, e.y] = [nx, ny];
+    }
+    const line = phaseOf(e) ? def.at[phaseOf(e) - 1] : 1;
+    const max = Number(d.maxHp ?? def.hp);
+    if (g.t - Number(d.awayAt) > LEASH_HEAL && e.enemy!.hp < line * max) {
+      e.enemy!.hp = Math.round(line * max);
+      say(g, `${def.name} gathers itself, whole again to ${Math.round(line * 100)}%.`);
+    }
+    return;
+  }
+  d.awayAt = 0;
   if (def.dodge && dodge(g, e, dt)) return;
   if (def.walk === 'close') walkTo(g, e, dt, 1);
   else if (def.walk === 'keep') walkTo(g, e, dt, def.keep ?? 4);
@@ -816,6 +867,10 @@ export const DROP_POOL: string[][] = [
   ['heat-lance', 'reliquary-saw', 'ossuary-plate', 'reliquary-ribs', 'saints-lens'],
   [],
 ];
+/** core power each keeper's ember heart adds (all but the heart's) */
+export const KEEPER_POWER = 2;
+/** and max hp (r1: hp stalled at 22 from floor 2 on, while the keepers hit 4–6) */
+export const KEEPER_FLESH = 2;
 /** floors whose boss also gives up a unique (from the run's deck, src/mods/uniques.ts) */
 export const UNIQUE_FLOORS = [1, 3];
 
@@ -826,7 +881,7 @@ export function bossDrops(g: Game, floor: number): Item[] {
   const out: Item[] = [];
   if (pool.length) {
     const fresh = pool.filter((m) => !owned.has(m));
-    out.push({ kind: 'mod', mod: r.pick(fresh.length ? fresh : pool), rarity: floor >= 2 ? 'rare' : 'fine' });
+    out.push({ kind: 'mod', mod: r.pick(fresh.length ? fresh : pool), rarity: 'rare' }); // v2 balance: every keeper pays a rare
   }
   if (UNIQUE_FLOORS.includes(floor)) out.push(dealUnique(g));
   return out;
@@ -849,6 +904,15 @@ killHooks.push((g, e) => {
   const items = bossDrops(g, def.floor);
   items.forEach((item, k) => spawn(g, { kind: 'item', x: e.x + (k ? 0.4 : -0.2), y: e.y + 0.3, item }));
   say(g, `✦ ${name} is down.${items.length ? ` it leaves ${items.map((i) => (i.kind === 'mod' ? label(i) : '')).join(' and ')}.` : ''}`);
+  // its ember heart (v2 balance, r1 pace: the next floor's kit had no power to run on): +KEEPER_POWER core power
+  if (def.floor < BOSSES.length - 1) {
+    const p = g.player;
+    p.core += KEEPER_POWER;
+    p.flesh = (p.flesh ?? 0) + KEEPER_FLESH;
+    p.maxHp += KEEPER_FLESH;
+    p.hp = p.maxHp;
+    say(g, `its ember heart settles into you: +${KEEPER_POWER} power (${p.core}), +${KEEPER_FLESH} max hp, and it mends you.`);
+  }
   g.events.push({ type: 'boss-down', at: [e.x, e.y], data: def.id });
   bossHooks.down(g, e);
 });
@@ -857,11 +921,12 @@ killHooks.push((g, e) => {
 
 /** a loadout typical for each floor, and the hp it has by then */
 export const LOADOUTS: { mods: string[]; flesh: number; slots: number; core: number }[] = [
-  { mods: ['pinhole-eye', 'stepper-relay', 'spark-finger', 'choir-bell', 'map-spool'], flesh: 2, slots: 5, core: 8 },
-  { mods: ['vidicon-tube', 'stepper-relay', 'nail-psalm', 'censer-flail', 'frost-coat', 'map-spool'], flesh: 4, slots: 6, core: 10 },
-  { mods: ['vidicon-tube', 'gyro-heart', 'bone-lance', 'nail-psalm', 'halo', 'frost-coat', 'map-spool'], flesh: 6, slots: 7, core: 13 },
-  { mods: ['saints-lens', 'gyro-heart', 'heat-lance', 'ember-spit', 'halo', 'ossuary-plate', 'rime-hood', 'map-spool'], flesh: 8, slots: 8, core: 18 },
-  { mods: ['saints-lens', 'gyro-heart', 'heat-lance', 'ember-spit', 'reliquary-saw', 'halo', 'ossuary-plate', 'rime-hood'], flesh: 10, slots: 8, core: 20 },
+  { mods: ['pinhole-eye', 'stepper-relay', 'spark-finger', 'censer-flail', 'lead-lung'], flesh: 0, slots: 6, core: 6 }, // v2 balance: what the run sim really has at the cradle's keeper
+  { mods: ['vidicon-tube', 'stepper-relay', 'nail-psalm', 'spark-finger', 'rivet-sling', 'plumb-line', 'lead-lung'], flesh: 8, slots: 8, core: 9 }, // v2 balance: the run sim's kit at the nave's keeper
+  // floors 3-5 are fought through the FPS scope (stageBoss goes big with it)
+  { mods: ['pilgrim-scope', 'gyro-heart', 'bone-lance', 'nail-psalm', 'halo', 'frost-coat', 'map-spool'], flesh: 6, slots: 7, core: 13 },
+  { mods: ['martyr-scope', 'gyro-heart', 'heat-lance', 'ember-spit', 'halo', 'ossuary-plate', 'rime-hood', 'map-spool'], flesh: 8, slots: 8, core: 18 },
+  { mods: ['martyr-scope', 'gyro-heart', 'heat-lance', 'ember-spit', 'reliquary-saw', 'halo', 'ossuary-plate', 'rime-hood'], flesh: 10, slots: 8, core: 20 },
 ];
 
 /** clear a square of floor round (x, y): room for a fight */
@@ -885,6 +950,8 @@ export function stageBoss(g: Game, floor: number, variant?: string): Entity {
   p.slots = Math.max(k.slots, slotsUsed(g)); // some modules take two slots (v2 inventory)
   p.maxHp = 10 + k.flesh + p.installed.reduce((s, i) => s + Number(MODS[i.mod]?.params.hp ?? 0), 0);
   p.hp = p.maxHp;
+  // a scope in the loadout: the fight is played big (src/body/fps.ts), as on floors 3-5
+  if (p.installed.some((i) => Number(MODS[i.mod]?.params.big ?? 0) > 0)) VERBS.big?.run(g, []);
   arena(g, p.x, p.y);
   g.ents = g.ents.filter((e) => Math.hypot(e.x - p.x, e.y - p.y) > 12);
   p.dir = 0;

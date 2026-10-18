@@ -8,6 +8,9 @@ import type { Item, Res } from '../core/types';
 /** how often a kill leaves its resource (balance pass: was 0.65: resources piled up unspent) */
 export const DROP = 0.35;
 
+/** v2 r1 fun (bone-starved on floors 1–2): mites drop their bone this often */
+export const MITE_DROP = 0.6;
+
 /** per enemy: resource, how many, chance of a module */
 export const DROPS: Record<string, [Res, number, number]> = {
   mite: ['bone', 1, 0.12], // playtest 10-18: early fights pay (was 0.05)
@@ -30,8 +33,8 @@ killHooks.push((g, e) => {
   const [res, n, modChance] = DROPS[type] ?? ['bone', 1, 0];
   // the tithe ledger: kills pay out more often while it is on
   const tithe = active(g, 'mind').reduce((m, i) => Math.max(m, param<number>(i, 'tithe', 1)), 1);
-  if (r.chance(Math.min(1, DROP * tithe))) drop({ kind: 'res', res, n }, 0);
+  if (r.chance(Math.min(1, (type === 'mite' ? MITE_DROP : DROP) * tithe))) drop({ kind: 'res', res, n }, 0);
   const dressed = e.enemy!.data.dressed as Item | undefined;
   if (dressed) drop(dressed, 1);
-  else if (r.chance(modChance)) drop(lootMod(r, Math.hypot(e.x, e.y) / 16), 1);
+  else if (r.chance(modChance)) drop(lootMod(r, Math.hypot(e.x, e.y) / 16, undefined, !g.floor), 1);
 });
