@@ -10,6 +10,7 @@ import { ENEMIES } from '../core/game';
 import { MODS } from '../core/mods';
 import type { Entity, Game } from '../core/types';
 import { flame, lamps } from './lamp';
+import { WARM } from '../mods/sense';
 import { textures } from './textures';
 import { engaged, PUFF_TIME, puffs, struckAt } from './foes';
 import { frames, puff, SIZE, SPRITES, type SpriteDef } from './sprites';
@@ -143,7 +144,7 @@ export function look(type: string, l: Look): void {
 }
 look('mite', { geo: new THREE.TetrahedronGeometry(0.16), color: 0x8a8070, glow: 0x501818, y: 0.2, spin: 6, bob: 0.06, heat: 0.7 });
 look('seraph', { geo: new THREE.IcosahedronGeometry(0.28, 0), color: 0xf0e0b0, glow: 0xffd070, y: 0.6, spin: 0.5, bob: 0.05, heat: 1 });
-look('walker', { geo: new THREE.BoxGeometry(0.4, 0.8, 0.3), color: 0xd8c8a8, glow: 0x281810, y: 0.4, heat: 0.8 });
+look('walker', { geo: new THREE.BoxGeometry(0.4, 0.8, 0.3), color: 0xd8c8a8, glow: 0x281810, y: 0.4, heat: 0.15 }); // cold bone: a heat eye never shows it (src/mods/sense.ts)
 look('mimic', { geo: new THREE.OctahedronGeometry(0.12), color: 0x806040, glow: 0xc08040, y: 0.15, spin: 1, heat: 0.5 });
 look('hum', { geo: new THREE.SphereGeometry(0.2, 5, 3), color: 0x000000, glow: 0x000000, y: 0.5, heat: 0.9 });
 
@@ -284,12 +285,14 @@ export function frameOf(g: Game, e: Entity): number {
   return Math.floor(g.t * 3 + e.id * 0.37) % 2;
 }
 
-function addSprite(g: Game, e: Entity, mode: Mode): void {
+function addSprite(g: Game, e: Entity, mode: Mode, showHidden: boolean): void {
   const type = e.enemy!.type;
   const hidden = ENEMIES[type]?.hidden;
-  // the hum hides from every eye but one that sees warmth
-  if (hidden && mode !== 'heat') return;
+  // the hum hides from every eye but sonar and heat (src/mods/sense.ts: what an eye shows is what you can hit)
+  if (hidden && !showHidden) return;
   const sh = sheet(type);
+  // cold bone (walkers, the abbot) never shows on a heat eye
+  if (mode === 'heat' && !WARM.has(type)) return;
   const f = frameOf(g, e);
   const size = sh.def.size;
   const o = new THREE.Mesh(spriteGeo, mode === 'heat' ? heatSpriteMat(sh.mask[f], sh.def.heat) : mode === 'depth' ? depthSpriteMat(sh.mask[f]) : spriteMat(sh.color[f]));
@@ -339,14 +342,14 @@ function addPuffs(g: Game, mode: Mode): void {
 void SIZE;
 void engaged;
 
-/** entities near you as their shapes; hidden enemies only on a heat eye */
-function place(g: Game, mode: Mode): void {
+/** entities near you as their shapes; hidden enemies only on sonar and heat eyes */
+function place(g: Game, mode: Mode, hidden = false): void {
   ents.clear();
   const p = g.player;
   for (const e of g.ents) {
     if (Math.abs(e.x - p.x) > R || Math.abs(e.y - p.y) > R) continue;
     if (e.enemy) {
-      addSprite(g, e, mode);
+      addSprite(g, e, mode, hidden);
       continue;
     }
     const l = lookOf(e);
@@ -408,6 +411,8 @@ export interface Shot {
   /** cells: things past it fade into black */
   range: number;
   mode?: Mode;
+  /** shows the hidden (the hum): sonar and heat eyes */
+  hidden?: boolean;
 }
 
 const targets = new Map<string, THREE.WebGLRenderTarget>();
@@ -430,7 +435,7 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   const mode = s.mode ?? 'color';
   const p = g.player;
   build(g, p.x, p.y);
-  place(g, mode);
+  place(g, mode, !!s.hidden);
   // snap to half the camera's pixels: the wobble shows even on a big lens
   snap.value = s.res / 2;
   range.value = s.range;

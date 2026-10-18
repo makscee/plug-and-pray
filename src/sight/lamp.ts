@@ -24,11 +24,24 @@ export function lamps(g: Game): Lamp[] {
   }));
 }
 
-/** cells added to every enemy's sense while you carry light: the brightest lamp's radius */
-export function lit(g: Game): number {
+/** your light: the brightest lamp, or a module's own glow (the censer flail) */
+export function light(g: Game): number {
   let r = 0;
+  for (const i of g.player.installed) if (i.on && g.t >= i.readyAt) r = Math.max(r, param<number>(i, 'glow', 0));
   for (const l of lamps(g)) r = Math.max(r, l.radius);
   return r;
+}
+
+/** how loud you are: cells farther that things notice you (a sonar's ping, a heart-shard's beat) */
+export function loud(g: Game): number {
+  let n = 0;
+  for (const i of g.player.installed) if (i.on && g.t >= i.readyAt) n += param<number>(i, 'loud', 0);
+  return n;
+}
+
+/** cells added to every enemy's sense: your light (the brightest lamp's radius) and your noise */
+export function lit(g: Game): number {
+  return light(g) + loud(g);
 }
 
 /** a lamp's brightness 0..1 at time t: flicker dips it, never to nothing */

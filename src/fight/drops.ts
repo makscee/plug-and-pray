@@ -1,5 +1,6 @@
 // What a kill leaves: a resource most of the time, sometimes a module. A mimic gives up what it wore.
 import { killHooks, spawn } from '../core/game';
+import { active, param } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import { lootMod } from '../world/spawn';
 import type { Item, Res } from '../core/types';
@@ -25,7 +26,9 @@ killHooks.push((g, e) => {
   const r = rng(hash(g.seed, 31, e.id));
   const drop = (item: Item, k: number) => spawn(g, { kind: 'item', x: e.x + (k ? 0.3 : 0), y: e.y, item });
   const [res, n, modChance] = DROPS[type] ?? ['bone', 1, 0];
-  if (r.chance(DROP)) drop({ kind: 'res', res, n }, 0);
+  // the tithe ledger: kills pay out more often while it is on
+  const tithe = active(g, 'mind').reduce((m, i) => Math.max(m, param<number>(i, 'tithe', 1)), 1);
+  if (r.chance(Math.min(1, DROP * tithe))) drop({ kind: 'res', res, n }, 0);
   const dressed = e.enemy!.data.dressed as Item | undefined;
   if (dressed) drop(dressed, 1);
   else if (r.chance(modChance)) drop(lootMod(r, Math.hypot(e.x, e.y) / 16), 1);

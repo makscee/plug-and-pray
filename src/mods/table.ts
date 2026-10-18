@@ -10,6 +10,9 @@
 //   mind     what (ledger|map|reader|compass|clock)
 //   power    power (+cap)
 //   tool     drain (yield multiplier), cooldown (s), noise (cells it wakes)
+// Any family (module pass, docs/modules.md): loud (cells farther things notice you while it is on),
+// glow (light it gives, cells: counts as a lamp for the cold and for eyes in the dark); body chill (the
+// ossuary's cold follows you everywhere but the furnace); mind tithe (kills pay out this many times as often)
 
 import { mods } from '../core/mods';
 
@@ -20,22 +23,22 @@ mods([
   { id: 'gyro-heart', name: 'gyro heart', family: 'gait', power: 2, warm: 2, tier: 1, params: { free: true, speed: 2.5 }, text: 'a spinning heart: wasd to walk, click the eye to turn with the mouse.' },
   { id: 'tunnel-tongue', name: 'tunnel tongue', family: 'gait', power: 2, warm: 1.5, tier: 1, params: { dig: true, cooldown: 1 }, text: 'a rasp of bone-iron. it eats plain wall, not ore.' },
   { id: 'votive-battery', name: 'votive battery', family: 'power', power: 0, warm: 1, tier: 1, params: { power: 3 }, text: 'a jar of prayers that still hold a charge.' },
-  { id: 'heart-shard', name: 'heart-shard', family: 'power', power: 0, warm: 2, tier: 2, params: { power: 5 }, text: 'a splinter of the god\'s heart. it beats against your board.' },
+  { id: 'heart-shard', name: 'heart-shard', family: 'power', power: 0, warm: 2, tier: 2, params: { power: 5, loud: 3 }, text: 'a splinter of the god\'s heart. it beats against your board, and everything hears it.' },
   { id: 'slot-board', name: 'slot board', family: 'power', power: 0, warm: 0, tier: 1, params: { slots: 1 }, text: 'a spare socket. install it: one more slot.' },
-  { id: 'ledger', name: 'ledger', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'ledger' }, text: 'a clerk\'s memory: everything you carry, in rows.' },
+  { id: 'ledger', name: 'tithe ledger', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'ledger', tithe: 2 }, text: 'a clerk of the dead counts every kill: twice as many pay out.' },
   { id: 'clock-of-hours', name: 'clock of hours', family: 'mind', power: 2, warm: 1.5, tier: 1, params: { what: 'clock', range: 8, ahead: 1 }, text: 'it ticks a second ahead of the world.' },
-  { id: 'dawn-eye', name: 'dawn eye', family: 'camera', power: 1, warm: 0.5, tier: 0, params: { res: 96, colors: 0, fps: 8, fov: 75, range: 9, filter: 'color' }, text: 'the eye you woke with. plain, honest, a little dim.' },
-  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 1, warm: 1, tier: 0, params: { res: 24, colors: 4, fps: 3, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
-  { id: 'vidicon-tube', name: 'vidicon tube', family: 'camera', power: 2, warm: 1.5, tier: 0, params: { res: 64, colors: 4, fps: 4, fov: 70, range: 9, lag: 0.4, filter: 'color' }, text: 'a glass tube that drags its ghosts behind it.' },
+  { id: 'dawn-eye', name: 'dawn eye', family: 'camera', power: 2, warm: 0.5, tier: 0, params: { res: 96, colors: 0, fps: 8, fov: 75, range: 9, filter: 'color' }, text: 'a clear colour eye. honest, but it needs light to see far.' },
+  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 0, warm: 1, tier: 0, params: { res: 24, colors: 4, fps: 3, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
+  { id: 'vidicon-tube', name: 'vidicon tube', family: 'camera', power: 1, warm: 1.5, tier: 0, params: { res: 64, colors: 4, fps: 4, fov: 70, range: 8, lag: 0.4, filter: 'color' }, text: 'a glass tube that drags its ghosts behind it.' },
   { id: 'saints-lens', name: "saint's lens", family: 'camera', power: 4, warm: 3, tier: 2, params: { res: 200, colors: 0, fps: 15, fov: 80, range: 14, filter: 'color' }, text: 'ground from a saint, they say. it sees as he did.' },
   { id: 'stepper-relay', name: 'stepper relay', family: 'gait', power: 1, warm: 0.5, tier: 0, params: { go: true }, text: 'clicks your legs forward one cell at a time. go n 3.' },
   { id: 'spark-finger', name: 'spark finger', family: 'weapon', power: 1, warm: 0.5, tier: 0, params: { damage: 1, cooldown: 1.2, range: 1.5, aim: 'auto' }, text: 'it bites whatever comes close.' },
   // sight (#1321): eyes that trade sharpness, speed and colour; scanners through walls; lamps that draw things
   { id: 'carrion-eye', name: 'carrion eye', family: 'camera', power: 1, warm: 0.5, tier: 0, params: { res: 96, fps: 12, fov: 70, range: 8, filter: '1bit', noise: 0.1 }, text: 'a crow saw the world in two colours and never blinked.' },
-  { id: 'bat-psalter', name: 'bat psalter', family: 'camera', power: 1, warm: 1, tier: 0, params: { res: 64, fps: 6, fov: 90, range: 10, colors: 8, filter: 'sonar' }, text: 'it sings into the dark and reads the answer.' },
+  { id: 'bat-psalter', name: 'bat psalter', family: 'camera', power: 2, warm: 1, tier: 0, params: { res: 64, fps: 6, fov: 90, range: 10, colors: 8, filter: 'sonar', loud: 3 }, text: 'it sings into the dark and reads the answer. everything hears it sing.' },
   { id: 'ember-iris', name: 'ember iris', family: 'camera', power: 2, warm: 2, tier: 1, params: { res: 48, fps: 3, fov: 60, range: 12, colors: 6, filter: 'heat', noise: 0.15 }, text: 'it sees only what is warm. walls are rumours.' },
-  { id: 'lattice-eye', name: 'lattice eye', family: 'camera', power: 2, warm: 1, tier: 1, params: { res: 128, fps: 10, fov: 75, range: 11, filter: 'edge' }, text: 'a lacemaker\'s eye: every thing is its outline.' },
-  { id: 'fog-of-saints', name: 'fog of saints', family: 'camera', power: 2, warm: 2.5, tier: 1, params: { res: 96, fps: 2, fov: 80, range: 12, blur: 1, lag: 0.8, filter: 'color' }, text: 'colour, the old way: slow, soft, kind.' },
+  { id: 'lattice-eye', name: 'lattice eye', family: 'camera', power: 3, warm: 1, tier: 1, params: { res: 128, fps: 10, fov: 75, range: 11, filter: 'edge' }, text: 'a lacemaker\'s eye: every thing is its outline.' },
+  { id: 'fog-of-saints', name: 'fog of saints', family: 'camera', power: 1, warm: 2.5, tier: 1, params: { res: 96, fps: 2, fov: 80, range: 12, blur: 1, lag: 0.8, filter: 'color' }, text: 'colour, the old way: slow, soft, kind.' },
   { id: 'heat-choir', name: 'heat choir', family: 'scanner', power: 1, warm: 1, tier: 0, params: { range: 7, sees: ['heat'], refresh: 1.5, shape: 'ring' }, text: 'small throats that hum when something warm draws near.' },
   { id: 'lodestone', name: 'lodestone', family: 'scanner', power: 1, warm: 0.5, tier: 0, params: { range: 8, sees: ['metal', 'cards'], refresh: 2, shape: 'ring' }, text: 'a black stone that leans toward iron.' },
   { id: 'bone-listener', name: 'bone-listener', family: 'scanner', power: 1, warm: 1, tier: 1, params: { range: 10, sees: ['flesh'], refresh: 0.8, shape: 'cone' }, text: 'a jawbone pressed to the wall. it hears the hidden.' },
@@ -52,14 +55,14 @@ mods([
   { id: 'card-reader', name: 'card reader', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'reader' }, text: 'a slot for memory cards. it reads what the dead wrote.' },
   { id: 'map-spool', name: 'map spool', family: 'mind', power: 1, warm: 1, tier: 0, params: { what: 'map', span: 33, reveal: 7 }, text: 'a reel of tape that remembers every turn.' },
   { id: 'survey-spool', name: 'survey spool', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 66, reveal: 12 }, text: 'a wider reel, wound by a surveyor long gone.' },
-  { id: 'drowned-compass', name: 'drowned compass', family: 'mind', power: 1, warm: 1, tier: 1, params: { what: 'compass' }, text: 'it pulls toward what the cards promised.' },
+  { id: 'drowned-compass', name: 'drowned compass', family: 'mind', power: 0, warm: 1, tier: 1, params: { what: 'compass' }, text: 'it pulls toward what the cards promised.' },
   { id: 'ninth-eye', name: 'the ninth eye', family: 'camera', power: 3, warm: 2, tier: 3, params: { res: 160, colors: 0, fps: 10, fov: 100, range: 16, filter: 'color' }, text: 'eight were made for the god. this one stayed.' },
   { id: 'thaw-engine', name: 'thaw engine', family: 'unique', power: 0, warm: 0, tier: 3, params: {}, text: 'a cold heart the size of a fist. it wants a breast.' },
   // fight: weapons and body
   { id: 'nail-psalm', name: 'nail psalm', family: 'weapon', power: 1, warm: 1, tier: 0, params: { damage: 2, cooldown: 0.8, range: 8, aim: 'aimed' }, text: 'a verse that ends in a nail. shoot.' },
-  { id: 'ember-spit', name: 'ember spit', family: 'weapon', power: 1, warm: 0.5, tier: 1, params: { damage: 1, cooldown: 0.35, range: 6, aim: 'aimed' }, text: 'it coughs sparks as fast as you ask.' },
+  { id: 'ember-spit', name: 'ember spit', family: 'weapon', power: 2, warm: 0.5, tier: 1, params: { damage: 0.8, cooldown: 0.35, range: 6, aim: 'aimed' }, text: 'it coughs sparks as fast as you ask.' },
   { id: 'bone-lance', name: 'bone lance', family: 'weapon', power: 2, warm: 2, tier: 1, params: { damage: 5, cooldown: 2.2, range: 5, aim: 'aimed' }, text: 'a rib sharpened by a patient god.' },
-  { id: 'choir-bell', name: 'choir bell', family: 'weapon', power: 2, warm: 1.5, tier: 1, params: { damage: 2, cooldown: 1.6, range: 2.4, aim: 'auto' }, text: 'it rings at anything that comes near.' },
+  { id: 'choir-bell', name: 'choir bell', family: 'weapon', power: 2, warm: 1.5, tier: 1, params: { damage: 1.5, cooldown: 1.6, range: 2.4, aim: 'auto', sweep: true }, text: 'it rings at anything that comes near.' },
   { id: 'lead-lung', name: 'lead lung', family: 'body', power: 1, warm: 1, tier: 0, params: { regen: 0.2 }, text: 'heavy breath. you mend three times as fast.' },
   { id: 'frost-coat', name: 'frost coat', family: 'body', power: 1, warm: 1.5, tier: 1, params: { armour: 0.5 }, text: 'rime that takes the edge off every blow.' },
   { id: 'mirror-ward', name: 'mirror ward', family: 'body', power: 2, warm: 2, tier: 1, params: { ward: true, recharge: 8 }, text: 'it gives the next blow back. then it rests.' },
@@ -75,12 +78,12 @@ mods([
   // in reach); body haste (weapons cool faster), mend (hp when below half, every recharge s), heatproof (0..1 of
   // the furnace's heat kept off), thorns (damage back at whatever strikes you up close)
   { id: 'rivet-sling', name: 'rivet sling', family: 'weapon', power: 1, warm: 0.5, tier: 0, params: { damage: 1, cooldown: 1.6, range: 4, aim: 'auto' }, text: 'it flicks iron at anything that comes in sight.' },
-  { id: 'censer-flail', name: 'censer flail', family: 'weapon', power: 2, warm: 1, tier: 1, params: { damage: 1.5, cooldown: 1.5, range: 1.8, aim: 'auto', sweep: true }, text: 'a burning censer on a chain. it swings at all of them.' },
+  { id: 'censer-flail', name: 'censer flail', family: 'weapon', power: 2, warm: 1, tier: 1, params: { damage: 1.5, cooldown: 1.5, range: 1.8, aim: 'auto', sweep: true, glow: 2.5 }, text: 'a burning censer on a chain. it swings at all of them, and keeps you warm.' },
   { id: 'heat-lance', name: 'heat lance', family: 'weapon', power: 3, warm: 2, tier: 2, params: { damage: 7, cooldown: 1.8, range: 8, aim: 'aimed' }, text: 'a needle of the furnace. it goes through what it finds.' },
-  { id: 'reliquary-saw', name: 'reliquary saw', family: 'weapon', power: 2, warm: 1, tier: 2, params: { damage: 3, cooldown: 0.9, range: 1.6, aim: 'auto' }, text: 'teeth taken from a hundred saints. it never tires.' },
+  { id: 'reliquary-saw', name: 'reliquary saw', family: 'weapon', power: 3, warm: 1, tier: 2, params: { damage: 3, cooldown: 0.9, range: 1.6, aim: 'auto' }, text: 'teeth taken from a hundred saints. it never tires.' },
   { id: 'ossuary-plate', name: 'ossuary plate', family: 'body', power: 2, warm: 1.5, tier: 2, params: { armour: 1 }, text: 'a breastplate of knitted bone. heavy. good.' },
-  { id: 'overclock-coil', name: 'overclock coil', family: 'body', power: 3, warm: 2, tier: 1, params: { haste: 0.4 }, text: 'it runs your weapons hot. it drinks for it.' },
+  { id: 'overclock-coil', name: 'overclock coil', family: 'body', power: 3, warm: 2, tier: 1, params: { haste: 0.4, loud: 2 }, text: 'it runs your weapons hot, and whines for it.' },
   { id: 'suture-moth', name: 'suture moth', family: 'body', power: 1, warm: 1, tier: 1, params: { mend: 4, recharge: 18 }, text: 'a moth that sews. it waits until you are torn.' },
-  { id: 'rime-hood', name: 'rime hood', family: 'body', power: 1, warm: 1, tier: 1, params: { heatproof: 1 }, text: 'frost that keeps a head cool where nothing else can.' },
+  { id: 'rime-hood', name: 'rime hood', family: 'body', power: 1, warm: 1, tier: 1, params: { heatproof: 1, chill: 1 }, text: 'frost that keeps a head cool in the furnace, and cold everywhere else.' },
   { id: 'thorn-mantle', name: 'thorn mantle', family: 'body', power: 1, warm: 1, tier: 1, params: { thorns: 1 }, text: 'whatever bites you bleeds for it.' },
 ]);

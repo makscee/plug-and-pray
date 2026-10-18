@@ -32,7 +32,7 @@ const STEPS = [
   [0.1, 'document.querySelector(".panel-near").innerText.includes("nothing here") && document.querySelector(".panel-inv .cell[data-key^=\'glass\'] .badge")?.textContent === "2"'],
   [0, '(g.player.inv = g.player.inv.filter(i => i.mod !== "halo" && i.res !== "glass"), true)'],
   ['go e 3'], [2, 'g.player.x >= 11.5 && g.player.path.length === 0'],
-  ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 4/6"))'],
+  ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 3/4"))'],
   // unstuck: out of a wall at once; otherwise home to where you woke after 3 s
   [0, '(Object.assign(g.player, { x: 1.5, y: 1.5, path: [] }), true)'], ['unstuck', 'JSON.stringify(g.log).includes("wrench") && !(g.player.x === 1.5 && g.player.y === 1.5)'],
   ['unstuck'], [3.2, 'g.player.x === 8.5 && g.player.y === 8.5'],

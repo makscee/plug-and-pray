@@ -37,10 +37,11 @@ export function findItem(g: Game, args: string[]): number {
   if (!q) return -1;
   return g.player.inv.findIndex((it) => itemName(it).includes(q));
 }
-export function findInst(g: Game, args: string[]): Inst | undefined {
+export function findInst(g: Game, args: string[], prefer?: (i: Inst) => boolean): Inst | undefined {
   const q = args.join(' ');
   if (!q) return undefined;
-  return g.player.installed.find((i) => label(i).includes(q));
+  const all = g.player.installed.filter((i) => label(i).includes(q));
+  return (prefer && all.find(prefer)) || all[0];
 }
 
 /** the button for an inventory item: what a click on it does */
@@ -125,7 +126,7 @@ verb('install', {
 verb('remove', {
   help: 'take a module out of its slot',
   run(g, args) {
-    const inst = findInst(g, args);
+    const inst = findInst(g, args, (i) => i.on);
     if (!inst) return say(g, 'nothing installed by that name.');
     switchOff(g, inst);
     g.player.installed = g.player.installed.filter((i) => i !== inst);
@@ -138,7 +139,8 @@ verb('remove', {
 verb('on', {
   help: 'switch a module on (it warms up first)',
   run(g, args) {
-    const inst = findInst(g, args);
+    // two of the same: `on` means the one that is off
+    const inst = findInst(g, args, (i) => !i.on);
     if (!inst) return say(g, 'nothing installed by that name.');
     const err = switchOn(g, inst);
     say(g, err ?? `${label(inst)} warming up.`);
@@ -148,7 +150,7 @@ verb('on', {
 verb('off', {
   help: 'switch a module off: frees its power',
   run(g, args) {
-    const inst = findInst(g, args);
+    const inst = findInst(g, args, (i) => i.on);
     if (!inst) return say(g, 'nothing installed by that name.');
     switchOff(g, inst);
     say(g, `${label(inst)} off.`);

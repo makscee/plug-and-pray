@@ -4,6 +4,7 @@ import { chase, ENEMIES, enemy, hurt, REACH, say } from '../core/game';
 import { clear } from '../core/grid';
 import type { Entity, Game } from '../core/types';
 import { fire } from './shots';
+import { zoneAt } from '../world/zones';
 import './shots';
 import './aim';
 import './body';
@@ -55,15 +56,21 @@ function walker(g: Game, e: Entity, dt: number): void {
   if (near(e, p) > 1.1) chase(g, e, dt);
 }
 
+/** the hum: hidden, and it keeps to the deep (zone 2 on): walk out of the ossuary and it lets you go */
+function hum(g: Game, e: Entity, dt: number): void {
+  if (zoneAt(g.player.x, g.player.y) < 2) return void (e.enemy!.data.noticed = false);
+  chase(g, e, dt);
+}
+
 enemy('mite', { name: 'a choir mite', hp: 1, speed: 2, damage: 0.5, cooldown: 1.8, sense: 6 }); // playtest 10-18: many more mites early, each bites softer (was 1)
 enemy('seraph', { name: 'a seraph lamp', hp: 3, speed: 0, damage: 1.5, cooldown: 3.5, sense: 8, ai: seraph });
-enemy('walker', { name: 'an ossuary walker', hp: 6, speed: 0.7, damage: 2, cooldown: 2.5, sense: 7, ai: walker });
-enemy('hum', { name: 'the hum', hp: 4, speed: 1.1, damage: 1, cooldown: 2, sense: 5, hidden: true });
+enemy('walker', { name: 'an ossuary walker', hp: 6, speed: 0.7, damage: 2, cooldown: 2.5, sense: 7, ai: walker, armour: 0.6 }); // module pass: bone armour wants big hits (bone lance, saw)
+enemy('hum', { name: 'the hum', hp: 4, speed: 1.1, damage: 1, cooldown: 2, sense: 5, hidden: true, ai: hum });
 enemy('mimic', { name: 'a mimic', hp: 3, speed: 1.4, damage: 1.5, cooldown: 1.6, sense: 8 });
 // zones (balance pass): the furnace's lamp, and one elite per zone guarding its shard (src/world/vectors.ts)
 enemy('pyre', { name: 'a pyre seraph', hp: 3, speed: 0, damage: 1.5, cooldown: 2.4, sense: 9, ai: seraph });
 enemy('warden', { name: 'the choir warden', hp: 8, speed: 1.7, damage: 1.5, cooldown: 1.3, sense: 7 });
-enemy('abbot', { name: 'the bone abbot', hp: 16, speed: 0.8, damage: 4, cooldown: 2.2, sense: 8, ai: walker });
+enemy('abbot', { name: 'the bone abbot', hp: 16, speed: 0.8, damage: 4, cooldown: 2.2, sense: 8, ai: walker, armour: 0.6 });
 enemy('saint', { name: 'the furnace saint', hp: 20, speed: 0, damage: 3.5, cooldown: 1.8, sense: 10, ai: seraph });
 /** the elite that guards each zone's shard (zone 3's also guards the engine) */
 export const ELITE = ['', 'warden', 'abbot', 'saint'];

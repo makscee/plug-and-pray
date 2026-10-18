@@ -27,6 +27,17 @@ for (const style of styles) {
   const dead = runs.filter((r) => r.ended === 'dead');
   console.log(`  ${style}: ${won.length}/${runs.length} thaw, ${dead.length} dead, median thaw ${mm(med(won.map((r) => r.t)))}, median shards ${['shard-1', 'shard-2', 'shard-3'].map((k) => mm(med(runs.map((r) => r.marks['shard ' + k])))).join(' ')}`);
   console.log(`  deaths by zone: ${[0, 1, 2, 3].map((z) => `z${z} ${dead.filter((r) => r.deathZone === z).length}`).join(', ')}; killers: ${Object.entries(dead.reduce((m, r) => ((m[r.killer] = (m[r.killer] || 0) + 1), m), {})).map(([k, n]) => `${k} ${n}`).join(', ')}`);
+  const tot = runs.reduce((a, r) => ({ p: a.p + r.bound.power, s: a.s + r.bound.slots, b: a.b + r.bound.both, n: a.n + r.bound.n }), { p: 0, s: 0, b: 0, n: 0 });
+  const pc = (x) => `${Math.round((100 * x) / Math.max(1, tot.n))}%`;
+  console.log(`  loadout pressure (share of 10 s samples wanting more on): power-bound ${pc(tot.p)}, slot-bound ${pc(tot.s)}, both ${pc(tot.b)}`);
+  console.log(`  generators on: ${runs.filter((r) => r.generators.length).length}/${runs.length} runs (${Object.entries(runs.flatMap((r) => r.generators.map((x) => x.replace(/^(attuned|cracked) /, ''))).reduce((m, k) => ((m[k] = (m[k] || 0) + 1), m), {})).map(([k, n]) => `${k} ${n}`).join(', ') || 'none'}); swaps (remove to make room) median ${med(runs.map((r) => r.offs))}`);
+  for (const z of ['z0', 'z1', 'z2', 'z3', 'end']) {
+    const lists = runs.map((r) => r.loadouts[z]).filter(Boolean);
+    if (!lists.length) continue;
+    const count = lists.flat().map((x) => x.replace(/^(attuned|cracked) /, '')).reduce((m, k) => ((m[k] = (m[k] || 0) + 1), m), {});
+    const top = Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 9).map(([k, n]) => `${k} ${Math.round((100 * n) / lists.length)}%`);
+    console.log(`  on at ${z === 'end' ? 'the end' : 'entering ' + z} (${lists.length} runs): ${top.join(', ')}`);
+  }
   console.log(`  power/slot steps per run: median ${med(runs.map((r) => r.steps.length))}; res peak median ${med(runs.map((r) => r.resPeak))}, at end ${med(runs.map((r) => r.resEnd))}; buys median ${med(runs.map((r) => r.bought.length))}`);
   all.push(...runs);
 }

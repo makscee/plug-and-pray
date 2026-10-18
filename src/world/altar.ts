@@ -12,12 +12,12 @@ import { spot } from './gen';
 import { affords, fmt, type Cost } from './printer';
 
 /** the core's power can grow to this at altars */
-export const MAX_CORE = 14;
+export const MAX_CORE = 12; // module pass: past this, power comes from generators that take a slot
 
 /** the price of the next point of power: it climbs with every one */
 export function powerCost(g: Game): Cost {
   // bone and glass carry it, copper climbs slowly (the balance sims: copper runs short, bone piles up)
-  const n = Math.max(0, g.player.core - 6);
+  const n = Math.max(0, g.player.core - 4);
   const c: Cost = { bone: 3 + n, glass: 2 + n };
   if (n >= 1) c.copper = Math.ceil(n / 2);
   if (n >= 4) c.ichor = 1 + (n >= 6 ? 1 : 0);

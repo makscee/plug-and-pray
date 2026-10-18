@@ -32,8 +32,8 @@ export interface Zone {
 export const ZONES: Zone[] = [
   { id: 0, name: 'the cradle', until: 1.5, look: { tint: 'c8a070', fog: '100c0a', dark: 0 }, enter: 'the cradle. warm, close, almost kind.', foe: { hp: 1, damage: 1 }, tier: 0, need: 0 },
   { id: 1, name: 'the choir nave', until: 3.5, look: { tint: 'd0b890', fog: '141018', dark: 0.15 }, enter: 'the choir nave. many small voices, all of them hungry.', foe: { hp: 1.2, damage: 1.15 }, tier: 1, need: 9 },
-  { id: 2, name: 'the ossuary', until: 5.5, look: { tint: '9aa8b0', fog: '080a10', dark: 0.4 }, enter: 'the ossuary. the marrow is cold: without a lamp you will not mend.', foe: { hp: 1.7, damage: 1.45 }, tier: 2, need: 45 },
-  { id: 3, name: 'the furnace', until: Infinity, look: { tint: 'ff7a40', fog: '200804', dark: 0.25 }, enter: 'the furnace. the god\'s heat sears here: keep it off or burn.', foe: { hp: 2, damage: 1.6 }, tier: 2, need: 80 },
+  { id: 2, name: 'the ossuary', until: 5.5, look: { tint: '9aa8b0', fog: '080a10', dark: 0.4 }, enter: 'the ossuary. the marrow is cold: without a lamp you will not mend.', foe: { hp: 1.7, damage: 1.45 }, tier: 2, need: 40 },
+  { id: 3, name: 'the furnace', until: Infinity, look: { tint: 'ff7a40', fog: '200804', dark: 0.25 }, enter: 'the furnace. the god\'s heat sears here: keep it off or burn.', foe: { hp: 2, damage: 1.6 }, tier: 2, need: 70 },
 ];
 
 /** the zone of a chunk */
