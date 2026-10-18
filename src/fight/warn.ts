@@ -43,7 +43,9 @@ function turns(g: Game, e: Entity): void {
   const dps = active(g, 'weapon').reduce((s, i) => s + param<number>(i, 'damage', 0) / Math.max(0.1, param<number>(i, 'cooldown', 1)), 0);
   const weak = armed && dps * 8 < hp && !d.boss; // a boss is a long fight by design (src/fight/bosses.ts)
   const line: Line = [`⚠ ${text}.${!armed ? ' you have no weapon on! ' : weak ? ' your weapon may be too weak. ' : ' '}`];
-  line.push(setupsOf(g).battle ? { text: 'setup battle', cmd: 'setup battle' } : { text: 'unstuck', cmd: 'unstuck' });
+  // a boss's line carries no stray button: `unstuck` there read as part of the boss (v2r1 fight)
+  if (setupsOf(g).battle) line.push({ text: 'setup battle', cmd: 'setup battle' });
+  else if (!d.boss) line.push({ text: 'unstuck', cmd: 'unstuck' });
   say(g, line);
   turned.set(g, { text: armed ? text : `${text} · no weapon on`, at: g.t });
   g.events.push({ type: 'warn', at: [e.x, e.y] });

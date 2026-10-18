@@ -105,11 +105,13 @@ export function strike(g: Game, e: Entity, n: number): void {
   if (!e.enemy) return;
   // armoured foes (walkers, the abbot) shrug off part of every hit: big single hits beat fast small ones
   const armour = (e.enemy.data.armour as number) ?? 0;
+  const raw = n;
   if (armour > 0) n = Math.max(n * 0.2, n - armour);
   // an elite that just missed a big move is open: it takes more (src/fight/index.ts OPEN)
   if (g.t < ((e.enemy.data.open as number) ?? 0)) n *= 1.5;
   e.enemy.hp -= n;
   g.events.push({ type: 'hit', at: [e.x, e.y], data: e.id });
+  for (const f of strikeHooks) f(g, e, n, raw);
   if (e.enemy.hp <= 0) {
     g.ents = g.ents.filter((x) => x !== e);
     g.stats.kills++;
@@ -117,6 +119,8 @@ export function strike(g: Game, e: Entity, n: number): void {
     for (const f of killHooks) f(g, e);
   }
 }
+/** every blow that lands: (game, foe, damage dealt, damage before its armour) for the HUD's hit line */
+export const strikeHooks: ((g: Game, e: Entity, n: number, raw: number) => void)[] = [];
 /** drops and the like when an enemy dies */
 export const killHooks: ((g: Game, e: Entity) => void)[] = [];
 
