@@ -20,7 +20,7 @@ describe('v3 item cards', () => {
   it('weapons show dmg/s and reach, eyes sight range and colour', () => {
     expect(card({ mod: 'nail-psalm' }).nums).toEqual(['1.7 dmg/s', 'reach 8, aimed']);
     expect(card({ mod: 'pinhole-eye' }).nums).toEqual(['sees 6 cells', 'grey']);
-    expect(short({ mod: 'choir-bell' })).toMatch(/^hits everything within 2 cells at once/);
+    expect(short({ mod: 'choir-bell' })).toMatch(/^hits all foes within 2 cells at once/);
   });
   it('a level shows as a roman numeral, nothing when absent', () => {
     expect(card({ mod: 'halo' }).level).toBe('');

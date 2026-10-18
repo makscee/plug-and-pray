@@ -67,7 +67,7 @@ tickHooks.push((g, dt) => {
       // said the first two times, then only now and then
       const n = (told.get(g) ?? 0) + 1;
       told.set(g, n);
-      if (n <= 2 || n % 6 === 0) say(g, `${en.type === 'mimic' ? 'the mimic' : 'the seraph lamp'} sidesteps your shot. it needs ${DODGE.every} s to do it again: shoot twice.`);
+      if (n <= 2 || n % 6 === 0) say(g, `${en.type === 'mimic' ? 'the mimic' : 'the seraph lamp'} sidesteps your shot: shoot twice.`);
       break;
     }
   }

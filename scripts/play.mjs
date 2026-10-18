@@ -39,7 +39,7 @@ const STEPS = [
   ['unstuck'], [3.2, 'g.player.y === 8.5 && g.player.x >= 10.5'],
   // tuning (#1328): the legs' first hint names the card reader; listen gives cells and a compass word
   [0, '(g.ents.push({ id: 99999, kind: "item", x: 12.5, y: 8.5, item: { kind: "res", res: "bone", n: 1 } }), true)'], // the chamber holds only the halo now
-  ['listen', 'JSON.stringify(g.log).includes("a card reader and a memory card lie together") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],
+  ['listen', 'JSON.stringify(g.log).includes("a card reader and a card: take both") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],
   // console: scrolled up, new lines from the world leave the reader where they are; a command you
   // type shows its answer (playtest r2)
   [0, '(document.querySelector(".win-console .out").scrollTop = 0, true)'],

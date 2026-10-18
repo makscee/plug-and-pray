@@ -37,21 +37,21 @@ export interface Floor {
 }
 
 export const FLOORS: Floor[] = [
-  { id: 0, name: 'the cradle', look: { tint: 'c8a070', fog: '100c0a', dark: 0 }, enter: 'the cradle. warm, close, almost kind.', gimmick: 'the walls here are thin: a weapon breaks a one-cell wall with floor behind it. break.', foe: { hp: 1, damage: 1 }, tier: 0, need: 0, stairs: 'rope' },
-  { id: 1, name: 'the choir nave', look: { tint: 'd0b890', fog: '141018', dark: 0.15 }, enter: 'the choir nave. many small voices, all of them hungry.', gimmick: 'the nave echoes: more walls ring hollow here. a sonar eye or listen finds what hides.', foe: { hp: 1.2, damage: 1.15 }, tier: 1, need: 9, stairs: 'spiral' },
-  { id: 2, name: 'the ossuary', look: { tint: '9aa8b0', fog: '080a10', dark: 0.4 }, enter: 'the ossuary. the marrow is cold: without a lamp you will not mend.', gimmick: 'dark and cold: no mending without a light, and your light sets how far you see.', foe: { hp: 1.7, damage: 1.45 }, tier: 2, need: 40, stairs: 'chute' },
-  { id: 3, name: 'the furnace', look: { tint: 'ff7a40', fog: '200804', dark: 0.25 }, enter: 'the furnace. the god\'s heat sears here: keep it off or burn.', gimmick: 'the heat sears you every second unless something keeps it off. a rime hood does.', foe: { hp: 1.85, damage: 1.5 }, tier: 2, need: 70, stairs: 'lift' },
-  { id: 4, name: 'the heart', look: { tint: 'ff5060', fog: '200408', dark: 0.2 }, enter: 'the heart. it beats around you, slow and enormous.', gimmick: 'the god\'s heart. its keeper waits ahead. end it, and the god thaws.', foe: { hp: 2.2, damage: 1.7 }, tier: 2, need: 95, stairs: null },
+  { id: 0, name: 'the cradle', look: { tint: 'c8a070', fog: '100c0a', dark: 0 }, enter: 'the cradle. warm and close.', gimmick: 'thin walls: break a one-cell wall with any weapon.', foe: { hp: 1, damage: 1 }, tier: 0, need: 0, stairs: 'rope' },
+  { id: 1, name: 'the choir nave', look: { tint: 'd0b890', fog: '141018', dark: 0.15 }, enter: 'the choir nave. many hungry voices.', gimmick: 'more hollow walls: a sonar eye or listen finds them.', foe: { hp: 1.2, damage: 1.15 }, tier: 1, need: 9, stairs: 'spiral' },
+  { id: 2, name: 'the ossuary', look: { tint: '9aa8b0', fog: '080a10', dark: 0.4 }, enter: 'the ossuary. cold: no lamp, no mending.', gimmick: 'dark and cold: you mend only in light.', foe: { hp: 1.7, damage: 1.45 }, tier: 2, need: 40, stairs: 'chute' },
+  { id: 3, name: 'the furnace', look: { tint: 'ff7a40', fog: '200804', dark: 0.25 }, enter: 'the furnace. the heat burns you.', gimmick: 'heat hurts every second: a rime hood stops it.', foe: { hp: 1.85, damage: 1.5 }, tier: 2, need: 70, stairs: 'lift' },
+  { id: 4, name: 'the heart', look: { tint: 'ff5060', fog: '200408', dark: 0.2 }, enter: 'the heart. it beats around you.', gimmick: 'the last keeper waits ahead. kill it to thaw the god.', foe: { hp: 2.2, damage: 1.7 }, tier: 2, need: 95, stairs: null },
 ];
 export const LAST = FLOORS.length - 1;
 
 /** v2 variety: what each floor wants from you, said on arrival (its tricks: src/world/gimmicks.ts, src/fight/dodge.ts) */
 export const WANTS: Record<number, string> = {
-  0: 'it wants: kite and bite. lead the swarm across floor that cracks; break the thin walls.',
-  1: 'it wants: aim. space (or a click on the view) shoots. a pale spinning gem over a foe means it sidesteps your first shot: shoot twice. kill a singing cantor first.', // (not ◇: that is a find on the map)
-  2: 'it wants: light. no mending without it, and your light draws them to you. armour for the walkers.',
-  3: 'it wants: a rime hood, and timing: the vents breathe fire on one beat. cross between.',
-  4: 'it wants: everything you have.',
+  0: 'tip: kite swarms over cracked floor.',
+  1: 'tip: aim with space or a click. a spinning gem = it dodges once. kill cantors first.', // (not ◇: that is a find on the map)
+  2: 'tip: bring a lamp, and armour for the walkers. light draws foes.',
+  3: 'tip: wear a rime hood. vents fire on a beat: cross between.',
+  4: 'tip: bring everything you have.',
 };
 
 /** how the stairs read in words: on arrival, on the map, in the nearby list */
@@ -203,7 +203,7 @@ export function onBossDown(g: Game, f = floorOf(g)): void {
     g.ended = 'thaw';
     g.events.push({ type: 'thaw' });
     const o = offer(g);
-    say(g, `the heart's keeper falls. the heart turns over, warming. it drinks what you carry: ${o.total}. ${o.grade}.`);
+    say(g, `the heart's keeper falls. the god thaws. you carried ${o.total}: ${o.grade}.`);
     return;
   }
   const st = stairsOf(g, f);
@@ -213,7 +213,7 @@ export function onBossDown(g: Game, f = floorOf(g)): void {
   g.seen.add(`${Math.floor(st?.x ?? x)},${Math.floor(st?.y ?? y)}`);
   if (!g.vectors.some((v) => v.what === 'way down' && v.x === x && v.y === y)) g.vectors.push({ card: 'boss', x, y, what: 'way down', found: false });
   const name = STAIRS[FLOORS[f].stairs!].name;
-  say(g, `THE WAY DOWN IS OPEN.`, [`${name} unseals behind where it stood. `, { text: 'descend', cmd: 'descend' }, ' when you stand at it.']);
+  say(g, `THE WAY DOWN IS OPEN.`, [`${name} is open. stand at it and `, { text: 'descend', cmd: 'descend' }, '.']);
 }
 
 // ---- the stairs come with their chunk; the boss wakes when you step into its room
@@ -240,7 +240,7 @@ tickHooks.push((g) => {
   const boss = spawnBoss(g, f, bx, by);
   g.events.push({ type: 'boss', at: [bx, by], data: f });
   const who = boss ? ENEMIES[boss.enemy!.type]?.name ?? 'something' : 'something';
-  say(g, f === LAST ? `⚠ ${who} rises from the heart. this is the last of it.` : `⚠ ${who} wakes in the room before the way down. it will not let you pass.`);
+  say(g, f === LAST ? `⚠ ${who} rises: the last fight.` : `⚠ ${who} wakes. it guards the way down.`);
 });
 
 // ---- going down
@@ -269,9 +269,9 @@ export function goDown(g: Game, f: number): void {
   const [dx, dy] = [sx - p.x, sy - p.y];
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
   const lines: (string | Line)[] = [`FLOOR ${f + 1}: ${F.name.toUpperCase()}.`, F.gimmick, WANTS[f]];
-  if (F.stairs) lines.push(`the way down lies somewhere ${word}, past its keeper. a memory card or a scanner points to it.`);
+  if (F.stairs) lines.push(`the way down: somewhere ${word}, past its keeper.`);
   else lines.push(`its keeper waits ${word} of here.`);
-  if (KIT[f]?.length) lines.push('a cache lies where you land: this floor\'s kit. take two.');
+  if (KIT[f]?.length) lines.push('a kit cache lies here: open it and take two.');
   say(g, ...lines);
 }
 
@@ -293,7 +293,7 @@ verb('descend', {
     const f = floorOf(g);
     const st = atStairs(g);
     if (!st) return say(g, 'no stairs here.');
-    if (!bossDown(g, f)) return say(g, `${STAIRS[FLOORS[f].stairs!].name} is sealed. its keeper still stands.`);
+    if (!bossDown(g, f)) return say(g, `${STAIRS[FLOORS[f].stairs!].name} is sealed until its keeper dies.`);
     say(g, `you go down ${STAIRS[FLOORS[f].stairs!].name}.`);
     goDown(g, f + 1);
   },

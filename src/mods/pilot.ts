@@ -128,11 +128,11 @@ export function goto(g: Game, tx: number, ty: number): boolean {
   if (sx === tx && sy === ty) return say(g, 'you are there.'), false;
   const plan = param<number>(inst, 'plan', 40);
   const { path, whole } = route(g, sx, sy, tx, ty, plan, param(inst, 'avoid', false));
-  if (!path.length) return say(g, 'the pilot knows no way there. walk it once, or look at it.'), false;
+  if (!path.length) return say(g, 'the pilot knows no way there. see it or walk it first.'), false;
   if (!whole && Math.abs(path[path.length - 1][0] - tx - 0.5) + Math.abs(path[path.length - 1][1] - ty - 0.5) > Math.abs(sx - tx) + Math.abs(sy - ty) - 2)
     return say(g, 'the pilot knows no way closer. walk some of it first.'), false;
   // v2r2 fun: it will not walk you at a foe at arm's length; away from one it goes
-  if (toward(g, undefined, path)) return say(g, 'the pilot will not walk you into them. away from them it goes.'), false;
+  if (toward(g, undefined, path)) return say(g, 'the pilot will not walk you into foes.'), false;
   p.path = path;
   p.pace = param<number>(inst, 'pace', 2.5);
   trips.set(g, { to: [tx, ty], near: new Set(foes(g).filter((e) => dist(e, p) < 3.5).map((e) => e.id)), hurtAt: p.hurtAt, inst });

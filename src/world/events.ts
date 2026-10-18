@@ -171,11 +171,11 @@ export function stage(g: Game, kind: string, x: number, y: number, r: Rng): void
     // never a module you already have, if four rolls can help it (playtest r2 pace)
     item(g, x, y, fresh(g, lootMod(r, far + 2, undefined, !g.floor), r, far + 2), 'reliquary');
     item(g, x, y, { kind: 'res', res: r.pick(['bone', 'glass'] as const), n: r.int(2, 4) }, 'reliquary');
-    say(g, ['a seal breaks somewhere close. a reliquary stands open, ', ...where(g, x, y)]);
+    say(g, ['a reliquary stands open, ', ...where(g, x, y)]);
   } else if (kind === 'collapse') {
     item(g, x, y, { kind: 'res', res: r.pick(['bone', 'glass'] as const), n: r.int(2, 3) }, 'collapse');
     (RUBBLE[z] ?? RUBBLE[1]).forEach((type, k) => (mark(foe(g, type, x + k * 0.3, y), 'collapse').enemy!.data.noticed = true));
-    say(g, ['the vault groans and gives. rubble, and something shaken awake in it, ', ...where(g, x, y)]);
+    say(g, ['a vault caves in. something woke in the rubble, ', ...where(g, x, y)]);
   } else if (kind === 'machine') {
     const it = fresh(g, lootMod(r, far + 1, undefined, !g.floor), r, far + 1);
     if (it.kind === 'mod') {
@@ -186,11 +186,11 @@ export function stage(g: Game, kind: string, x: number, y: number, r: Rng): void
       }
     }
     item(g, x, y, it, 'machine');
-    say(g, ['a machine dies against the wall, still ticking. something in it works, ', ...where(g, x, y)]);
+    say(g, ['a dead machine. something in it still works, ', ...where(g, x, y)]);
   } else if (kind === 'flare') {
     item(g, x, y, { kind: 'mod', mod: r.pick(FURNACE_KIT) }, 'flare');
     mark(foe(g, 'pyre', x, y + 0.01), 'flare');
-    say(g, ['a vent breathes fire. a pyre lamp kindles over something bright, ', ...where(g, x, y)]);
+    say(g, ['a pyre lamp lights up over loot, ', ...where(g, x, y)]);
   }
   g.events.push({ type: 'set', at: [x, y], data: kind });
 }

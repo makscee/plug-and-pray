@@ -31,7 +31,7 @@ export const walkPace = (g: Game): number => {
   return gyro ? param<number>(gyro, 'speed', 2.5) : 0.5;
 };
 /** the keeper's door (src/tune/door.ts): standing at it, and `go in` */
-export const doorIn: { at: (g: Game) => boolean; run: (g: Game) => void } = { at: () => false, run: (g) => void say(g, 'go in where? there is no door here.') };
+export const doorIn: { at: (g: Game) => boolean; run: (g: Game) => void } = { at: () => false, run: (g) => void say(g, 'no door here.') };
 
 /** an opened niche beside you (src/world/secrets.ts): `go in` steps into it, as its link does */
 export const nicheIn: { run: (g: Game) => boolean } = { run: () => false };

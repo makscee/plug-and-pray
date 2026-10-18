@@ -18,19 +18,19 @@ let shut = false;
 export function tight(g: Game, why: string): string {
   // a price you cannot pay names what you are short of; the console says how to get it
   const w = why.replace(/; you are short: (glass|copper|bone|ichor)\b.*$/, '; short of $1)').replace(/; you are short\b.*$/, '; short)');
-  const frail = /^you could not take its blows long: (.*)$/.exec(w);
+  const frail = /^too frail for its blows: (.*)$/.exec(w);
   if (frail) {
     const fix = frail[1];
     const flesh = /^an altar \(\+hp\) or armour first ?(.*)$/.exec(fix);
     if (!flesh) return `too frail: ${fix.replace(/^turn on your /, 'turn on ').replace(/^install the (.*) you carry$/, 'install your $1')}`;
     return altarSeen(g) ? `too frail: altar flesh${flesh[1] ? ` ${flesh[1]}` : ''} or armour` : 'too frail: no altar seen (listen), or print body at a printer';
   }
-  const short = /^about (\d+) hp short for a fight this long/.exec(w);
-  if (short) return `${short[1]} hp short for this fight: flesh, armour or a stronger weapon`;
+  const short = /^about (\d+) hp short:/.exec(w);
+  if (short) return `${short[1]} hp short: altar, armour or a stronger weapon`;
   return w
     .replace(/^(temper|attune) your (.*) at an altar first/, '$1 $2 at an altar')
     .replace(/^upgrade your (.*) at a printer or altar first/, 'upgrade $1 at a printer or altar')
-    .replace(/^your weapons are weak for it: find or print a stronger one, or a second$/, 'weapons too weak: a stronger one, or a second');
+    .replace(/^weapons too weak: find or print a stronger one, or a second$/, 'weapons too weak: a stronger one, or a second');
 }
 
 const send = (c: string) => (window as unknown as { thaw: { send(c: string): void } }).thaw.send(c);

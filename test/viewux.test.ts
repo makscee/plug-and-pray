@@ -30,7 +30,7 @@ describe('v2r2 ux: the first eye', () => {
     }
     g.ents = g.ents.filter((e) => !e.enemy);
     run(g, 2);
-    expect(goalLine(g)).toMatch(/an eye lies somewhere here/);
+    expect(goalLine(g)).toMatch(/no eye yet. walk/);
     exec(g, 'where');
     expect(text(g)).not.toMatch(/sealed behind a cracked wall/);
     run(g, EYE_HINT);

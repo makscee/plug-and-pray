@@ -187,7 +187,7 @@ export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => num
       // v2r5 newcomer: a second click said nothing at all; it says one short line again
       if (toldClick.has(game)) return say(game, ['this map takes no clicks: ', { text: 'where', cmd: 'where' }, ' walks you.']);
       toldClick.add(game);
-      return say(game, ['below the cradle the map spool only remembers; it takes no clicks. the buttons in the console walk you (', { text: 'where', cmd: 'where' }, '); a surveyor\'s map walks you where you click.']);
+      return say(game, ['below floor 1 this map takes no clicks. ', { text: 'where', cmd: 'where' }, ' walks you; a survey spool walks on click.']);
     }
     const r = canvas.getBoundingClientRect();
     const x = ox + Math.floor(((ev.clientX - r.left) / r.width) * span);

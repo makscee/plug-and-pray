@@ -71,7 +71,7 @@ describe('pilots and waypoints', () => {
     [h.player.x, h.player.y] = [10.5, 10.5];
     spawnEnemy(h, 'mite', 9.5, 9.5);
     exec(h, 'goto 5 5');
-    expect(said(h, 'will not walk you into them')).toBe(true);
+    expect(said(h, 'will not walk you into foes')).toBe(true);
     expect(h.player.path.length).toBe(0);
   });
 

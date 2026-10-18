@@ -125,7 +125,7 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
       const plain = p.installed.find((i) => i.on && L.rolls?.[i.mod] && i.roll?.tag !== 'attuned' && i.roll?.tag !== 'tempered' && moduleLevel(i) < 2 && upgradeCost(i));
       const untempered = !!plain && hit < 0.85;
       if (untempered) why.push(`upgrade your ${def(plain).name} at a printer or altar first${price(g, upgradeCost(plain)!)}`);
-      else if (weak) why.push('your weapons are weak for it: find or print a stronger one, or a second');
+      else if (weak) why.push('weapons too weak: find or print a stronger one, or a second');
       // what it can take: readiness is damage times toughness, so the toughness falls out of the two
       // v2r4 ux: armour you already carry is named ("armour first" with a frost coat in the bag)
       const coat = (m: { mod: string }) => (MODS[m.mod]?.params?.armour as number | undefined ?? 0) > 0;
@@ -139,7 +139,7 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
         if (typeof room !== 'string') link = { text: `swap in ${def(bag).name}`, cmd: `swap in ${label(bag)}` };
         else if (out) link = { text: `swap ${def(out).name} for ${def(bag).name}`, cmd: `remove ${instRef(g, out)}; install ${label(bag)}` };
       }
-      if (!(weak || untempered) || ratio / Math.max(0.01, hit) < 0.8) why.push(`you could not take its blows long: ${fix}`);
+      if (!(weak || untempered) || ratio / Math.max(0.01, hit) < 0.8) why.push(`too frail for its blows: ${fix}`);
     }
   }
   if (p.hp < p.maxHp * 0.7) why.push(`mend first (${Math.ceil(p.hp)}/${p.maxHp} hp)`);
@@ -147,14 +147,14 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
   // the fight at a person's pace (boss-sim --human: winners lose about 8% of a blow a second) is not ready
   else if (armed && dps > 0) {
     const need = Math.ceil(k.damage * HUMAN_PACE * (k.hp / dps));
-    if (p.hp < need) why.push(`about ${need - Math.floor(p.hp)} hp short for a fight this long: more hp (an altar's flesh, armour) or a stronger weapon`);
+    if (p.hp < need) why.push(`about ${need - Math.floor(p.hp)} hp short: more hp (altar, armour) or a stronger weapon`);
   }
   // v2r6 newcomer: "ready" at a bare 10 hp lost the bell and the warden (2-2.5 hp an exchange, 10 hp gone in ~25 s
   // of a 48 s fight): hp for less than half the fight at a newcomer's pace is risky, not ready, and not a "no"
   let risky = '';
   if (!why.length && dps > 0) {
     const half = Math.ceil(0.5 * k.damage * NEW_PACE * (k.hp / dps));
-    if (p.hp < half) risky = `you'll likely need a retreat or two (hp for about ${Math.round((p.hp / half) * 50)}% of the fight; more hp or damage makes it one go)`;
+    if (p.hp < half) risky = `expect a retreat or two (hp for ~${Math.round((p.hp / half) * 50)}% of the fight)`;
   }
   return { name: k.name, hp: k.hp, damage: k.damage, hint: k.def.hint, dps, ready: !why.length, why, risky, ...(link && why.length ? { link } : {}) };
 }
@@ -238,7 +238,7 @@ tickHooks.unshift((g) => {
   // a map walk's next leg bumps the door again at once: said once
   if (g.t - s.said < 3) return void (s.said = g.t);
   s.said = g.t;
-  say(g, [`you stop at the keeper's door. `, { text: 'go in', cmd: 'go in' }, ' when you are ready.']);
+  say(g, [`you stop at the keeper's door. `, { text: 'go in', cmd: 'go in' }, ' when ready.']);
   // the console's weighing too, the first time on this floor
   if (d && !told.get(g)?.has(f)) {
     if (!told.has(g)) told.set(g, new Set());
@@ -266,7 +266,7 @@ doorIn.run = (g) => {
     const eye = sealedEye(g);
     const nearEye = !!eye && Math.hypot(eye.x + eye.fx + 0.5 - g.player.x, eye.y + eye.fy + 0.5 - g.player.y) <= 5;
     if (brk && (!brk.when || brk.when(g) || nearEye)) return brk.run(g, []);
-    return void say(g, bossWoke(g, f) || bossDown(g, f) ? 'the door stands open already.' : "go in where? you are not at a keeper's door.");
+    return void say(g, bossWoke(g, f) || bossDown(g, f) ? 'the door stands open already.' : "go in where? no keeper's door here.");
   }
   gateOf(g).inOn = f;
   const p = g.player;

@@ -110,7 +110,7 @@ export const CHOICES: Record<string, Choice> = {
           const f = g.floor ?? 0;
           const [x, y] = stairsAt(g.seed, f);
           if (!g.vectors.some((v) => v.what === 'way down' && v.x === x && v.y === y)) g.vectors.push({ card: 'lectern', x, y, what: 'way down', found: false });
-          say(g, `the page is a map. vector: ${bearing(g, x, y)}. the way down, past its keeper. the page crumbles.`);
+          say(g, `the page is a map. vector: ${bearing(g, x, y)}: the way down, past its keeper.`);
         },
       },
       {
@@ -130,7 +130,7 @@ export const CHOICES: Record<string, Choice> = {
       run(g, e) {
         g.player.hp -= 3;
         g.player.hurtAt = g.t;
-        say(g, `the saint drinks 3 hp. something warm settles in its palms: ${give(g, rare(g, e, 2))}.`);
+        say(g, `−3 hp. the saint gives: ${give(g, rare(g, e, 2))}.`);
       },
     }],
   },
@@ -142,7 +142,7 @@ export const CHOICES: Record<string, Choice> = {
       run(g) {
         const it = spare(g)!;
         g.player.inv = g.player.inv.filter((i) => i !== it);
-        say(g, `you lay ${label(it)} in the coffin. the lid slides back by itself: ${give(g, dealUnique(g))}.`);
+        say(g, `you give ${label(it)} to the coffin. it gives back: ${give(g, dealUnique(g))}.`);
       },
     }],
   },
@@ -152,7 +152,7 @@ export const CHOICES: Record<string, Choice> = {
       label: 'take it', price: '2 walkers wake: a rare module',
       run(g, e) {
         wake(g, e, 'walker', 2);
-        say(g, `⚠ you lift it off the shelf. two sleepers sit up. you hold ${give(g, rare(g, e, 3))}.`);
+        say(g, `⚠ two sleepers wake. you take ${give(g, rare(g, e, 3))}.`);
       },
     }],
   },
@@ -167,7 +167,7 @@ export const CHOICES: Record<string, Choice> = {
         g.player.hurtAt = g.t;
         const was = label(it);
         it.rarity = 'rare';
-        say(g, `the hammer falls, and you hold it there: 4 hp. ${was} comes off the anvil ${label(it)}.`);
+        say(g, `−4 hp. ${was} comes off the anvil as ${label(it)}.`);
       },
     }],
   },

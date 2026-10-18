@@ -15,100 +15,100 @@ export interface CardText {
 }
 
 export const CARD_TEXT: Record<string, CardText> = {
-  // ---- eyes
-  'pinhole-eye': { does: 'a dim grey view of what is ahead', good: 'your first sight, but hungry (3 power): it costs you a weapon early · short, slow and grey: swap it out' },
-  'dawn-eye': { does: 'a clear colour view: you see what things are', good: 'the honest all-rounder · needs light to see far in the dark' },
-  'vidicon-tube': { does: 'a colour view that smears when you move', good: 'cheap colour at 1 power · ghosts trail behind moving things' },
-  'saints-lens': { does: 'a sharp, far, fast colour view', good: 'the best plain eye · 4 power and 2 slots' },
-  'carrion-eye': { does: 'black & white view; reads scratched walls, sees mimics breathe', good: 'spotting scripture and mimics · needs only half the light' },
-  'bat-psalter': { does: 'sonar view: sees in the dark and finds hollow walls to break', good: 'the dark ossuary and secrets · loud: everything hears you' },
-  'ember-iris': { does: 'heat view: warm things through walls, warm handprints show caches', good: 'seeing foes before they see you · blind in the furnace, walls are vague' },
-  'lattice-eye': { does: 'outline view: sees in the dark and reads scratched walls', good: 'dark halls without a lamp · 3 power, no colours' },
-  'fog-of-saints': { does: 'a soft, slow colour view that reaches far', good: 'colour for 1 power · 2 frames a second, blurred' },
-  'ninth-eye': { does: 'a wide, far colour view that sees the hidden (the hum) in full', good: 'the best eye there is · 3 power' },
-  'pilgrim-scope': { does: 'a wide, quick colour view: the first-person eye', good: 'aiming with the reins · 2 power' },
-  'martyr-scope': { does: 'a wider, sharper first-person colour view', good: 'floor 4 fights with the reins · 3 power' },
+  // ---- eyes (each one is a first-person view: wasd + mouse look)
+  'pinhole-eye': { does: 'a dim grey first-person view', good: 'your first sight · short, slow, grey' },
+  'dawn-eye': { does: 'a clear colour view', good: 'the all-rounder · needs light in the dark' },
+  'vidicon-tube': { does: 'a colour view that smears when you move', good: 'cheap colour · moving things leave ghosts' },
+  'saints-lens': { does: 'a sharp, far, fast colour view', good: 'the best plain eye · takes 2 slots' },
+  'carrion-eye': { does: 'a black & white view; reads wall scratches, spots mimics', good: 'scripture and mimics · needs half the light' },
+  'bat-psalter': { does: 'a sonar view: sees in the dark, finds hollow walls', good: 'the dark ossuary, secrets · loud: foes hear you' },
+  'ember-iris': { does: 'a heat view: warm things show through walls', good: 'seeing foes first · blind in the furnace' },
+  'lattice-eye': { does: 'an outline view: sees in the dark, reads wall scratches', good: 'dark halls without a lamp · no colour' },
+  'fog-of-saints': { does: 'a soft, slow colour view that reaches far', good: 'cheap far colour · blurry, 2 frames/s' },
+  'ninth-eye': { does: 'a wide, far colour view; shows the hum', good: 'the best eye · rare' },
+  'pilgrim-scope': { does: 'a wide, quick colour view', good: 'fights with the reins' },
+  'martyr-scope': { does: 'a wider, sharper colour view', good: 'floor 4 fights with the reins' },
   // ---- scanners: through-wall senses on the view
-  'heat-choir': { does: 'shows warm things through walls, all round you', good: 'knowing what waits behind a corner · short reach' },
-  lodestone: { does: 'shows metal and memory cards through walls; mimics wake early', good: 'finding cards and mimics · 1 power' },
-  'bone-listener': { does: 'shows hidden flesh through walls, ahead of you', good: 'finding the hum and hidden things · only ahead' },
-  'conduit-dowser': { does: 'shows passages through walls and puts them on your map', good: 'finding the way on a maze floor · slow refresh' },
-  'marrow-rod': { does: 'shows veins through walls, ahead of you', good: 'finding copper and glass to drain · only ahead' },
-  'watchers-bell': { does: 'shows every enemy and card through walls, all round you', good: 'never being surprised · 2 power' },
+  'heat-choir': { does: 'shows warm things through walls, all round', good: 'knowing what waits round a corner · short reach' },
+  lodestone: { does: 'shows metal and memory cards through walls', good: 'finding cards · mimics wake early' },
+  'bone-listener': { does: 'shows hidden flesh through walls, ahead', good: 'finding the hum · only ahead' },
+  'conduit-dowser': { does: 'shows passages through walls and maps them', good: 'maze floors · slow refresh' },
+  'marrow-rod': { does: 'shows veins through walls, ahead', good: 'finding copper and glass · only ahead' },
+  'watchers-bell': { does: 'shows every foe and card through walls, all round', good: 'never being surprised' },
   // ---- radars: marks on the map
-  'thread-bell': { does: 'marks every heart near you on the map, roughly', good: 'free (0 power) warning of what is close · short reach' },
-  'sounding-knell': { does: 'marks "something" far off on the map: a find, a cache or a guard', good: 'finding things to walk to · loud, and only roughly where' },
-  'hollow-tap': { does: 'marks hollow walls and warm plates (caches) on the map', good: 'cache hunting · not what is inside' },
-  'vein-fork': { does: 'marks veins far off on the map, and names the ore', good: 'farming copper and glass for shops' },
-  'pulse-choir': { does: 'marks every heart far off on the map, roughly', good: 'seeing packs before they see you · 2 power' },
-  'plumb-line': { does: 'marks the way down and its keeper on the map, the whole floor', good: 'going straight for the stairs · slow' },
-  'bone-glass': { does: 'marks sealed caches far off on the map, and names what is inside', good: 'picking which cache is worth breaking · 2 power' },
+  'thread-bell': { does: 'marks hearts near you on the map, roughly', good: 'a free early warning · short reach' },
+  'sounding-knell': { does: 'marks far finds, caches and guards on the map', good: 'finding where to walk · loud, rough' },
+  'hollow-tap': { does: 'marks hollow walls and caches on the map', good: 'cache hunting · not what is inside' },
+  'vein-fork': { does: 'marks far veins on the map, with the ore name', good: 'farming copper and glass for shops' },
+  'pulse-choir': { does: 'marks every heart far off on the map, roughly', good: 'seeing packs before they see you' },
+  'plumb-line': { does: 'marks the stairs and their keeper, whole floor', good: 'going straight down · slow refresh' },
+  'bone-glass': { does: 'marks far caches and names what is inside', good: 'picking which cache to open' },
   // ---- lamps
-  halo: { does: 'lights the cells around you so eyes see in the dark', good: 'colour eyes in dark halls · things see you farther' },
-  censer: { does: 'a flickering light around you; warmth against the cold', good: 'the ossuary · it gutters, and things see you farther' },
-  'cold-star': { does: 'a big steady light around you', good: 'seeing far with a colour eye in the dark · everything sees you' },
+  halo: { does: 'lights the cells around you', good: 'colour eyes in dark halls · foes see you farther' },
+  censer: { does: 'a flickering light that keeps the cold off', good: 'the ossuary · foes see you farther' },
+  'cold-star': { does: 'a big steady light around you', good: 'far sight in the dark · every foe sees you' },
   // ---- legs and walkers
   'stepper-relay': { does: 'walk cell by cell: go <dir> <n>, arrows, map clicks', good: 'your legs · without legs you crawl' },
-  'servo-gait': { does: 'walk with the arrow keys, cell to cell, fast', good: 'quick hands-on moving · 1 power' },
-  'gyro-heart': { does: 'walk free with wasd, q and e turn', good: 'smooth moving and dodging · 2 power' },
-  'tunnel-tongue': { does: 'dig: eats the plain wall in front of you', good: 'making shortcuts and escapes · not through ore' },
-  'wayfinder-moth': { does: 'walks you to a spot you pick: goto, waypoints, map clicks', good: 'crossing known ground hands-off' },
-  'psalm-of-roads': { does: 'walks you far to a spot you pick, around enemies it sees', good: 'long safe walks · 2 power' },
-  sleepwalker: { does: 'walks you to a near spot you pick, slowly', good: 'free (0 power) auto-walk · slow, short plans' },
+  'servo-gait': { does: 'walk cell to cell with the arrow keys, fast', good: 'quick hands-on moving' },
+  'gyro-heart': { does: 'walk free with wasd; q and e turn', good: 'smooth moving and dodging' },
+  'tunnel-tongue': { does: 'digs through the plain wall in front of you', good: 'shortcuts and escapes · not through ore' },
+  'wayfinder-moth': { does: 'walks you to a spot you pick (goto, map click)', good: 'crossing known ground hands-off' },
+  'psalm-of-roads': { does: 'walks you far to a spot, around foes it sees', good: 'long safe walks' },
+  sleepwalker: { does: 'walks you to a near spot you pick, slowly', good: 'free auto-walk · slow, short' },
   // ---- weapons
   'spark-finger': { does: 'zaps the nearest foe next to you, by itself', good: 'a cheap first weapon · very short reach' },
-  'nail-psalm': { does: 'shoots a nail at the nearest foe you see, fast', good: 'steady ranged damage for 1 power' },
-  'ember-spit': { does: 'shoots a stream of weak sparks', good: 'chewing through packs at range · weak per hit vs armour' },
-  'bone-lance': { does: 'shoots one heavy spear', good: 'big single targets and bosses · slow between shots' },
-  'choir-bell': { does: 'hits everything within 2 cells at once', good: 'swarms of mites · you must let them close' },
-  'rivet-sling': { does: 'flicks iron at anything in sight, by itself', good: 'an easy first ranged weapon · slow' },
-  'censer-flail': { does: 'hits everything close at once, and keeps you warm', good: 'swarms in the cold ossuary · 2 power, short reach' },
-  'heat-lance': { does: 'shoots a heavy needle that goes far', good: 'killing bosses from a distance · 3 power' },
-  'reliquary-saw': { does: 'shreds whatever is next to you, fast', good: 'melee damage · 3 power, you must stand close' },
+  'nail-psalm': { does: 'shoots a nail at the nearest foe in sight', good: 'steady ranged damage' },
+  'ember-spit': { does: 'shoots a fast stream of weak sparks', good: 'packs at range · weak against armour' },
+  'bone-lance': { does: 'shoots one heavy spear', good: 'big targets and bosses · slow to reload' },
+  'choir-bell': { does: 'hits all foes within 2 cells at once', good: 'mite swarms · they must come close' },
+  'rivet-sling': { does: 'flicks iron at a foe in sight, by itself', good: 'an easy first ranged weapon · slow' },
+  'censer-flail': { does: 'hits all foes close by; keeps the cold off', good: 'swarms in the ossuary · short reach' },
+  'heat-lance': { does: 'shoots a heavy, long-range needle', good: 'bosses from afar' },
+  'reliquary-saw': { does: 'shreds the foe next to you, fast', good: 'melee damage · you must stand close' },
   // ---- body
-  'lead-lung': { does: 'you mend faster, and still mend in the cold', good: 'long fights and the ossuary' },
+  'lead-lung': { does: 'you mend faster, even in the cold', good: 'long fights and the ossuary' },
   'frost-coat': { does: 'every hit on you is softer; mite bites do nothing', good: 'swarms of small biters' },
-  'mirror-ward': { does: 'throws the next hit back, then rests', good: 'big slow hitters and bosses · 2 power' },
-  'reliquary-ribs': { does: 'more max hp', good: 'surviving everything a little longer' },
-  'ossuary-plate': { does: 'every hit on you is much softer', good: 'bosses and heavy hitters · 2 power' },
-  'overclock-coil': { does: 'all your weapons fire faster', good: 'more damage from every weapon · 3 power, loud' },
-  'suture-moth': { does: 'heals you once when you drop below half hp, then rests', good: 'a second wind in hard fights' },
-  'rime-hood': { does: 'keeps the furnace heat off you', good: 'the furnace · elsewhere cold: no mending without light' },
-  'thorn-mantle': { does: 'whatever hits you up close takes damage back', good: 'swarms that bite a lot' },
+  'mirror-ward': { does: 'throws the next hit back, then recharges', good: 'big slow hitters and bosses' },
+  'reliquary-ribs': { does: 'more max hp', good: 'surviving a little longer' },
+  'ossuary-plate': { does: 'every hit on you is much softer', good: 'bosses and heavy hitters' },
+  'overclock-coil': { does: 'all your weapons fire faster', good: 'more damage from every weapon · loud' },
+  'suture-moth': { does: 'heals you once below half hp, then recharges', good: 'a second wind in hard fights' },
+  'rime-hood': { does: 'keeps the furnace heat off you', good: 'the furnace · elsewhere you mend only in light' },
+  'thorn-mantle': { does: 'foes that hit you up close take damage back', good: 'swarms that bite a lot' },
   // ---- mind
-  'map-spool': { does: 'a map of what your eyes saw; on floor 1 a click walks you there', good: 'not getting lost · plain inks' },
-  'survey-spool': { does: 'a map with veins and finds in their own colours; click to walk', good: 'routing to loot · 2 power' },
-  'illuminated-atlas': { does: 'a map with pictures and notes on hover; click to walk', good: 'reading a floor at a glance · 2 power' },
-  'glass-diorama': { does: 'a 3D map of the halls with every thing in them; click to walk', good: 'seeing everything nearby · 3 power, smaller span' },
-  'waystone-log': { does: 'notes the places that matter as you pass, each with go', good: 'walking back to printers and readers' },
-  'pilgrims-rosary': { does: 'notes twice as many places, finds and veins too, each with go', good: 'a long memory of the floor' },
-  'card-reader': { does: 'reads memory cards: they point to finds', good: 'turning cards into loot · 1 power' },
+  'map-spool': { does: 'a map of what your eyes saw; floor 1: click to walk', good: 'not getting lost' },
+  'survey-spool': { does: 'a map with veins and finds coloured; click to walk', good: 'routing to loot' },
+  'illuminated-atlas': { does: 'a map with icons and hover notes; click to walk', good: 'reading a floor at a glance' },
+  'glass-diorama': { does: 'a 3D map of the halls and all in them; click to walk', good: 'seeing everything nearby · smaller span' },
+  'waystone-log': { does: 'notes key places as you pass, each with go', good: 'walking back to printers and readers' },
+  'pilgrims-rosary': { does: 'notes twice as many places, finds and veins too', good: 'a long memory of the floor' },
+  'card-reader': { does: 'reads memory cards: they point to finds', good: 'turning cards into loot' },
   ledger: { does: 'kills drop loot more often', good: 'farming bone and copper while you fight' },
-  'drowned-compass': { does: 'points to what the cards promised', good: 'free (0 power) guide to card finds' },
-  'clock-of-hours': { does: 'shows where enemies will be a moment ahead', good: 'dodging and aiming · 2 power' },
-  'saints-reins': { does: 'tab: the mouse looks, a click shoots, wasd walks', good: 'first-person aiming · its own socket' },
-  'martyrs-reins': { does: 'first-person control, firing faster, wider view, shift dashes', good: 'floor 4 fights · its own socket' },
+  'drowned-compass': { does: 'points to what your cards promised', good: 'a free guide to card finds' },
+  'clock-of-hours': { does: 'shows where foes will be a moment ahead', good: 'dodging and aiming' },
+  'saints-reins': { does: 'tab: mouse looks, click shoots, wasd walks', good: 'first-person aiming · its own socket' },
+  'martyrs-reins': { does: 'first-person control; faster fire, wider view, shift dashes', good: 'floor 4 fights · its own socket' },
   // ---- power and slots
   'ember-cell': { does: 'more power for your modules', good: 'quiet power · takes a slot' },
-  'votive-battery': { does: 'more power for your modules', good: 'a big boost · it whispers: things notice you' },
-  'heart-shard': { does: 'a lot more power for your modules', good: 'running many modules · everything hears it' },
+  'votive-battery': { does: 'more power for your modules', good: 'a big boost · a little loud' },
+  'heart-shard': { does: 'a lot more power for your modules', good: 'running many modules · very loud' },
   'slot-board': { does: 'one more slot, for good', good: 'always worth it · used up when installed' },
   // ---- tools
-  'leech-needle': { does: 'drains a vein next to you for resources', good: 'copper and glass for shops · loud: wakes things' },
+  'leech-needle': { does: 'drains a vein next to you for resources', good: 'copper and glass for shops · loud' },
   'bone-auger': { does: 'drains veins fast, twice the yield', good: 'quick resources · very loud' },
   // ---- the end
-  'thaw-engine': { does: 'install it to end the run', good: 'the heart: the ending' },
+  'thaw-engine': { does: 'install it to end the run', good: 'the ending' },
   // ---- uniques: the perk is the mechanic
-  'leech-psalm': { does: 'bites what comes close; every kill mends you 1 hp', good: 'staying alive in swarms' },
-  'vitus-chain': { does: 'each hit leaps on to 2 more foes nearby, at half', good: 'packs: one shot hits three' },
-  'penitent-heels': { does: 'arrow-key legs that leave ash: foes on it move at half speed', good: 'kiting chasers' },
-  'unrolled-reel': { does: 'a map that also shows loot within 16 cells, through walls', good: 'finding every module on a floor' },
-  'ignis-lantern': { does: 'a light that burns foes standing in it', good: 'chip damage on everything near · light makes you seen' },
-  'saints-last-lens': { does: 'a far colour view that sees through one wall', good: 'seeing foes and rooms behind walls · 4 power, 2 slots' },
+  'leech-psalm': { does: 'zaps foes next to you; each kill heals 1 hp', good: 'staying alive in swarms' },
+  'vitus-chain': { does: 'each hit jumps to 2 more foes, at half damage', good: 'packs: one shot hits three' },
+  'penitent-heels': { does: 'arrow-key legs that leave ash: foes on it go half speed', good: 'kiting chasers' },
+  'unrolled-reel': { does: 'a map that shows loot within 16 cells, through walls', good: 'finding every module on a floor' },
+  'ignis-lantern': { does: 'a light that burns foes standing in it', good: 'chip damage on all near · foes see you' },
+  'saints-last-lens': { does: 'a far colour view that sees through one wall', good: 'foes and rooms behind walls · 2 slots' },
   'kiln-heart': { does: 'power that grows the deeper you go: +5 in the furnace', good: 'late floors' },
-  'drowned-bell': { does: 'hits everything within 2 cells and slows it to half for 2 s', good: 'swarms and escapes' },
-  'last-rite': { does: 'a blow that would kill you leaves you at 1 hp, once per 90 s', good: 'a second chance in boss fights' },
-  'vey-mirror': { does: 'throws the next hit back at every foe within 2.5 cells', good: 'surrounded by a pack' },
+  'drowned-bell': { does: 'hits all foes within 2 cells; slows them to half for 2 s', good: 'swarms and escapes' },
+  'last-rite': { does: 'a killing blow leaves you at 1 hp, once per 90 s', good: 'a second chance in boss fights' },
+  'vey-mirror': { does: 'throws the next hit back at all foes within 2.5 cells', good: 'when a pack surrounds you' },
 };
 
 const n = (v: number) => (Math.round(v * 10) / 10).toString();
@@ -225,11 +225,14 @@ export function footer(m: Modish): string {
   return parts.join(' · ');
 }
 
-/** the flavour: its first sentence, at most one short line */
+/** the flavour: its first sentence or clause, at most 6 words, or none (Maks 10-18: short, to the point) */
 export function flavour(m: Modish): string {
   const t = def(m).text ?? '';
-  const first = t.split(/(?<=\.)\s/)[0] ?? '';
-  return first.length > 70 ? first.slice(0, 68).replace(/\s+\S*$/, '') + '…' : first;
+  const first = (t.split(/(?<=\.)\s/)[0] ?? '').trim();
+  const words = (x: string) => x.split(/\s+/).filter(Boolean).length;
+  if (words(first) <= 6) return first;
+  const clause = first.split(/[,:;]/)[0].trim();
+  return words(clause) <= 6 ? clause + '.' : '';
 }
 
 /** the mechanic line (a module not in CARD_TEXT says what describe.ts says, minus its family word) */

@@ -81,7 +81,7 @@ describe('secrets', () => {
     wear(g, 'bat-psalter');
     run(g, 0.2);
     expect(s.found).toBe(true);
-    expect(text(g)).toMatch(/comes back hollow/);
+    expect(text(g)).toMatch(/is hollow|a hollow wall/);
     const before = g.ents.length;
     exec(g, 'break');
     expect(s.done).toBe(true);

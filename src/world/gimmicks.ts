@@ -44,7 +44,7 @@ tickHooks.push((g) => {
     let fell = 0;
     for (const e of [...g.ents]) if (e.enemy && !e.enemy.data.boss && onCrack(c, e.x, e.y)) (strike(g, e, CRUMBLE.foeHurt), fell++);
     if (onCrack(c, p.x, p.y)) hurt(g, CRUMBLE.hurt);
-    say(g, fell ? `the floor gives way under ${fell === 1 ? 'one of them' : `${fell} of them`}.` : 'the cracked floor gives way. it settles again, rubble.');
+    say(g, fell ? `the floor gives way under ${fell === 1 ? 'one of them' : `${fell} of them`}.` : 'the cracked floor gives way.');
   }
   if (floorOf(g) !== 0 || g.t < s.next || s.list.length) return;
   // a fight: two or more foes after you, close
@@ -57,7 +57,7 @@ tickHooks.push((g) => {
   s.next = g.t + CRUMBLE.every;
   g.events.push({ type: 'crack', at: [cx + 0.5, cy + 0.5] });
   s.told++;
-  say(g, s.told <= 2 ? `⚠ the floor cracks between you and them. it gives way in ${CRUMBLE.secs.toFixed(0)} s: let them come across it, and stay off.` : '⚠ the floor cracks.');
+  say(g, s.told <= 2 ? `⚠ the floor cracks: it falls in ${CRUMBLE.secs.toFixed(0)} s. stay off, lure them on.` : '⚠ the floor cracks.');
 });
 
 // ---- the nave: cantors
@@ -102,7 +102,7 @@ tickHooks.push((g) => {
   const c = g.ents.find((e) => singing(g, e) && dist(e, g.player) < 10);
   if (!c) return;
   sang.set(g, true);
-  say(g, `⚠ a cantor sings. while it sings, every foe within ${CANTOR.reach} cells of it hits ${CANTOR.mult}× harder. kill it first.`);
+  say(g, `⚠ a cantor sings: foes within ${CANTOR.reach} cells hit ${CANTOR.mult}× harder. kill it first.`);
 });
 // the nave's chunks: a cantor in some of them, always one in the choir loft
 chunkHook((g, c) => {
@@ -151,7 +151,7 @@ tickHooks.push((g) => {
   const near = vents(g).filter((v) => floorAt(v.x) === 3 && dist(v, p) < 9);
   if (near.length && !s.told) {
     s.told = true;
-    say(g, `⚠ vents in the floor breathe fire, all on one beat: every ${VENT.every} s they glow, then burst. stand off the grates when they glow.`);
+    say(g, `⚠ fire vents: every ${VENT.every} s they glow, then burst. step off glowing grates.`);
   }
   if (ventPhase(g) !== 'burst') return;
   const beat = Math.floor(g.t / VENT.every);

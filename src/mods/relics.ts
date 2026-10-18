@@ -39,7 +39,7 @@ tickHooks.push((g) => {
     if (!e.data?.relic || e.item?.kind !== 'mod' || told.has(e) || dist(e, g.player) > 9) continue;
     told.add(e);
     const [far, go] = goThere(g, e.x, e.y, true);
-    say(g, [`✦ something near hums its own name: ${label(e.item)}, a unique. it lies ${far}. `, go]);
+    say(g, [`✦ a unique nearby: ${label(e.item)}, ${far}. `, go]);
   }
 });
 
@@ -122,7 +122,7 @@ hurtHooks.push((g, n) => {
   const rite = perked(g, 'body', 'rite').find((i) => g.t >= ((i.data.riteAt as number) ?? 0));
   if (!rite) return n;
   rite.data.riteAt = g.t + RITE;
-  say(g, `✦ the abbot's last rite is said over you. you stand, barely. it sleeps ${RITE} s.`);
+  say(g, `✦ last rite: you stay at 1 hp. ready again in ${RITE} s.`);
   return Math.max(0, p.hp - 1);
 });
 

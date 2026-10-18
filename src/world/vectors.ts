@@ -114,7 +114,7 @@ verb('read', {
     const it = g.player.inv[k];
     if (it.kind !== 'card') return;
     if (!reading(g)) {
-      if (bones(g) < READ_BY_HAND.bone!) return say(g, `held in the hand, the reader wants a bone to read by, and you carry none. installed, it reads free.`);
+      if (bones(g) < READ_BY_HAND.bone!) return say(g, `a carried reader wants a bone to read by; you have none. installed: free.`);
       const b = g.player.inv.find((i) => i.kind === 'res' && i.res === 'bone');
       if (b && b.kind === 'res') b.n -= READ_BY_HAND.bone!;
       g.player.inv = g.player.inv.filter((i) => i.kind !== 'res' || i.n > 0);

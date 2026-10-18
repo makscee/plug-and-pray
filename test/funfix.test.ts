@@ -94,7 +94,7 @@ describe('v2r3 fun: the cradle reliquary keeps its eye till your first', () => {
     expect(foundEye(g)).toBe(false);
     const n = g.log.length;
     exec(g, `buy ${k + 1}`);
-    expect(text(g, n)).toMatch(/glass stays shut/);
+    expect(text(g, n)).toMatch(/shut until you find your first eye/);
     expect(p.inv.some((i) => i.kind === 'mod' && MODS[i.mod].family === 'camera')).toBe(false);
     // the first eye found: the glass opens
     p.inv.push({ kind: 'mod', mod: 'pinhole-eye' });
