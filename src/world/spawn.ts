@@ -5,7 +5,7 @@
 
 import { CHUNK, chunkHook, Cell } from '../core/grid';
 import { spawn } from '../core/game';
-import { MODS } from '../core/mods';
+import { BETTER, MODS, rarityKey } from '../core/mods';
 import { hash, rng, type Rng } from '../core/rng';
 import { RES, type Chunk, type Game, type Item } from '../core/types';
 import { floors, rooms } from './gen';
@@ -33,8 +33,15 @@ export function lootMod(r: Rng, far: number, family?: string): Item {
     const good = r.chance(0.5);
     item.roll = { key, mult: rollMult(key, good), tag: good ? 'attuned' : 'cracked' };
   }
+  // v2 rarity: one more draw; deeper (and a printer or reliquary's reach) rolls finer
+  const [fine, rare] = RARITY_ODDS[z];
+  const k = r();
+  if (rarityKey(item) && k < rare + fine) item.rarity = k < rare ? 'rare' : 'fine';
   return item;
 }
+
+/** per zone: the chance a rolled module is fine, and rare (v2 rarity: fine ×1.15 on its key number, rare ×1.3) */
+export const RARITY_ODDS: [number, number][] = [[0.12, 0.03], [0.2, 0.07], [0.25, 0.12], [0.28, 0.18], [0.3, 0.22]]; // v2 floors: the heart is a fifth
 
 /** a module the body already has, carried or installed */
 const held = (g: Game, it: Item) => it.kind === 'mod' && (g.player.inv.some((i) => i.kind === 'mod' && i.mod === it.mod) || g.player.installed.some((i) => i.mod === it.mod));
@@ -61,14 +68,8 @@ const is = (c: Chunk, [cx, cy]: [number, number]) => c.cx === cx && c.cy === cy;
 /** the second weapons the cradle printer keeps beside it (one per seed) */
 export const SECOND = ['rivet-sling', 'choir-bell', 'censer-flail'];
 
-/** which way a number is better: up (damage, range) or down (cooldown, lag). Keys left out never roll:
- *  picture-only ones (res, fps, colors, flicker) and flags (slots, chill) */
-export const BETTER: Record<string, 'up' | 'down'> = {
-  range: 'up', damage: 'up', radius: 'up', hp: 'up', regen: 'up', armour: 'up', mend: 'up', thorns: 'up', haste: 'up',
-  heatproof: 'up', glow: 'up', drain: 'up', power: 'up', speed: 'up', pace: 'up', plan: 'up', span: 'up', reveal: 'up',
-  keep: 'up', tithe: 'up', fov: 'up', ahead: 'up',
-  cooldown: 'down', recharge: 'down', noise: 'down', lag: 'down', blur: 'down', refresh: 'down', loud: 'down',
-};
+/** which way a number is better: moved to src/core/mods.ts (v2 rarity reads it too) */
+export { BETTER };
 /** a good roll (attuned) moves a number its better way by ×1.4 or ×0.7; a bad one (cracked) the other way */
 export const rollMult = (key: string, good: boolean): number => ((BETTER[key] === 'down') === good ? 0.7 : 1.4);
 

@@ -137,3 +137,45 @@ power binding (power alone or with slots) 21% → 42%, slots alone 1% → 0%; na
 - **Small things.** A carried card reader reads for a bone (installed, free). Out of reach, `offer`, `print`,
   `buy` and `break` say where to stand, with a [go there] button. Three or more foes closing on you at a machine
   get one warning.
+
+## Rarity and uniques (v2)
+
+Maks, 10-18: "add some rarity levels to modules and show them in ui, some modules could be unique with special
+properties and special name, make sure a few of those are seen per run".
+
+- **Rarity** rides on the item and the installed module (`rarity`, `title` in src/core/types.ts) and survives
+  install, remove and swaps. `common` is plain. **Fine** moves the module's key number ×1.15 its better way and
+  **rare** ×1.3 (src/core/mods.ts `rarityKey`: a weapon's damage, an eye's range, a lamp's radius, a generator's
+  power, else the altar's first key). It stacks with a roll and a temper. The name says it: "fine dawn eye",
+  "rare attuned bone lance"; the cost line says what it moved ("rare: damage +30%").
+- **Where:** every rolled module (finds, printers, reliquaries, drops, events, mimics: `lootMod`) gets one more
+  draw. Fine / rare odds per zone: cradle 12% / 3%, nave 20% / 7%, ossuary 25% / 12%, furnace 28% / 18%
+  (`RARITY_ODDS`). A printer and a reliquary roll a little deeper than where they stand, so they run finer.
+  Reliquaries charge more: fine +1 copper, rare +1 glass +2 copper.
+- **Uniques** are their own modules (tier 3, so they never roll as loot): a family's body with a lower-case
+  liturgical name and one perk that changes how you play. Each shows "✦ unique" in its cost line and its perk
+  after a ✦ in every description (take, info, shop, inventory titles).
+- **A few per run, by seed** (src/mods/relics.ts, `dealUnique` deals each one once from a seeded deck):
+  1. one of the cradle's four corner chunks (its second half, about a minute out) holds a cheap one; walking within
+     9 cells says "something near hums its own name" with a [go there];
+  2. each elite (warden, abbot, saint) gives one up beside its usual module;
+  3. a reliquary past the cradle keeps one on its last shelf 35% of the time (+1 bone, glass, ichor, +2 copper);
+  4. the ninth eye (a card's vector) counts as one too.
+  So a run that reaches the Engine has seen about three to five.
+
+| unique | body of | power | perk (what it changes) |
+|---|---|---|---|
+| the leech psalm | spark finger | 1 | every kill while it is on mends 1 hp: swarms heal you, so you wade in instead of backing off |
+| the chain of saint vitus | rivet sling | 1 | each hit leaps on to 2 more foes within 3 cells at half: a single-target sling that answers mites |
+| the penitent's heels | servo gait | 1 | ash on every cell you walked for 5 s; foes on it wade at half speed (grey dots on the map): kite along your own path |
+| the pilgrim's unrolled reel | map spool | 1 | loot within 16 cells shows on the map through walls: you route to finds, not rooms |
+| the lantern of saint ignis | censer of embers | 1 | foes in its light burn 0.5 every 1.5 s: light becomes a weapon, and a reason to let them come |
+| the saint's last lens | saint's lens | 4 | sees through one wall: foes behind it show faint and blue on the eye (and count as seen), the rooms behind go on the map |
+| the kiln heart | ember cell | 0 | +1 power per zone deeper (+2 in the cradle, +5 in the furnace); walking back up turns your newest module off |
+| the bell of the drowned choir | choir bell | 2 | what it rings moves at half speed for 2 s: the swarm answer that also buys space from walkers |
+| the abbot's last rite | reliquary ribs | 1 | a blow that would end you leaves you at 1 hp, then it sleeps 90 s: one mistake forgiven per fight |
+| the mirror of saint vey | mirror ward | 2 | the ward throws the hit back at every foe within 2.5 cells, not only the one that struck |
+| the ninth eye | (its own) | 3 | sees the hidden (the hum) in full colour |
+
+Tests: test/rarity.test.ts (scaling, names, odds by depth, the deck, the cradle relic, elite drops, the shelf,
+and each perk).

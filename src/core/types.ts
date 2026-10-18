@@ -15,8 +15,11 @@ export interface Roll {
   n?: number;
 }
 
+/** how fine a find is (v2): fine and rare scale its key number, a unique is its own named module with a perk */
+export type Rarity = 'common' | 'fine' | 'rare' | 'unique';
+
 export type Item =
-  | { kind: 'mod'; mod: string; roll?: Roll }
+  | { kind: 'mod'; mod: string; roll?: Roll; rarity?: Rarity; title?: string }
   | { kind: 'res'; res: Res; n: number }
   | { kind: 'card'; card: string };
 
@@ -25,6 +28,9 @@ export interface Inst {
   uid: number;
   mod: string;
   roll?: Roll;
+  rarity?: Rarity;
+  /** a unique's own name */
+  title?: string;
   on: boolean;
   /** game time (s) when it is warm and works; meaningless while off */
   readyAt: number;

@@ -7,7 +7,7 @@
 import '../../src/mods';
 import { dist, ENEMIES, newGame, tick } from '../../src/core/game';
 import { CHUNK, Cell, clear } from '../../src/core/grid';
-import { active, def, MODS, param, powerMax, powerUsed, size, slotsUsed } from '../../src/core/mods';
+import { active, def, label, MODS, param, powerMax, powerUsed, size, slotsUsed } from '../../src/core/mods';
 import { exec } from '../../src/core/verbs';
 import type { Entity, Game, Res, Roll } from '../../src/core/types';
 import * as printer from '../../src/world/printer';
@@ -155,8 +155,8 @@ function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantRead
 function bestLoadout(g: Game, zone: number, wantReader: boolean, lift: { power?: number; slots?: number } = {}, mode: Mode = 'explore'): Set<object> {
   const P = g.player;
   const all: { ref: object; mod: string; roll?: any }[] = [
-    ...P.installed.map((i) => ({ ref: i as object, mod: i.mod, roll: i.roll })),
-    ...P.inv.filter((i) => i.kind === 'mod' && MODS[i.mod].family !== 'unique').map((i) => ({ ref: i as object, mod: (i as any).mod, roll: (i as any).roll })),
+    ...P.installed.map((i) => ({ ref: i as object, mod: i.mod, roll: i.roll, rarity: i.rarity })),
+    ...P.inv.filter((i) => i.kind === 'mod' && MODS[i.mod].family !== 'unique').map((i) => ({ ref: i as object, mod: (i as any).mod, roll: (i as any).roll, rarity: (i as any).rarity })),
   ];
   const slotBoards = all.filter((a) => param(a, 'slots', 0) > 0);
   const powers = all.filter((a) => MODS[a.mod].family === 'power' && param(a, 'power', 0) > 0).sort((a, b) => param<number>(b, 'power', 0) - param<number>(a, 'power', 0));
@@ -497,9 +497,9 @@ export function play(seed: number, o: Opts): Run {
     return out;
   }
 
-  const labelOf = (i: { mod: string; roll?: any }) => (i.roll ? i.roll.tag + ' ' : '') + MODS[i.mod].name;
+  const labelOf = (i: { mod: string; roll?: any; rarity?: any; title?: string }) => label(i);
   /** an installed module's exact words for on/off: "rivet sling 1" when a "cracked rivet sling" would match too */
-  const refOf = (i: { mod: string; roll?: any }) => {
+  const refOf = (i: { mod: string; roll?: any; rarity?: any; title?: string }) => {
     const l = labelOf(i);
     const same = P.installed.filter((o) => labelOf(o) === l);
     return P.installed.some((o) => labelOf(o) !== l && labelOf(o).includes(l)) || same.length > 1 ? `${l} ${same.indexOf(i as any) + 1}` : l;

@@ -11,10 +11,13 @@ import { hash, rng } from '../core/rng';
 import { addItem, findInst, findItem, goThere, verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Item, Line, Res } from '../core/types';
 import { lootMod } from './spawn';
+import { dealUnique } from '../mods/uniques';
 import { cradleEye } from './secrets';
 import { ZONES, zoneFar } from './zones';
 
 export const MAX_SLOTS = 8;
+/** the chance a reliquary past the cradle keeps a unique (v2 rarity) */
+export const UNIQUE_SHELF = 0.35;
 export type Cost = Partial<Record<Res, number>>;
 
 /** every price and yield in one place: by module tier 0, 1, 2 (uniques never sell or recycle) */
@@ -23,6 +26,8 @@ export const PRICES = {
   print: [{ bone: 2, glass: 1 }, { bone: 2, glass: 1, copper: 2 }, { bone: 3, glass: 1, copper: 3, ichor: 1 }] as Cost[],
   shop: [{ bone: 2, copper: 1 }, { bone: 3, glass: 2, copper: 1 }, { bone: 4, glass: 3, copper: 2, ichor: 1 }] as Cost[],
   reroll: { bone: 1, glass: 1 } as Cost,
+  /** v2 rarity: on top of a relic's shop price */
+  rarity: { fine: { copper: 1 }, rare: { glass: 1, copper: 2 }, unique: { bone: 1, glass: 1, copper: 2, ichor: 1 } } as Partial<Record<string, Cost>>,
   scrap: [{ bone: 1, copper: 1 }, { bone: 2, glass: 1, copper: 1 }, { bone: 2, glass: 2, copper: 1, ichor: 1 }] as Cost[],
 };
 
@@ -136,6 +141,9 @@ export const shopNear = (g: Game): Entity | undefined =>
 export const priceOf = (it: Item): Cost => {
   if (it.kind !== 'mod') return {};
   const c = { ...PRICES.shop[Math.min(2, def(it).tier)] };
+  // v2 rarity: a finer one costs more; a unique most of all
+  const add = PRICES.rarity[it.rarity ?? 'common'] ?? {};
+  for (const [r, n] of Object.entries(add)) c[r as Res] = (c[r as Res] ?? 0) + n!;
   return c;
 };
 /** the reliquary by the start (it stands at 1 chunk) always prices one relic in bone and glass alone */
@@ -173,6 +181,8 @@ export function offers(g: Game, e: Entity): (Item | null)[] {
       out.splice(1, 0, { kind: 'mod', mod: eye });
       d.layer = eye;
     }
+    // v2 rarity: a reliquary past the cradle keeps a unique on its last shelf, now and then (seeded)
+    if (far >= 2 && out.length === 3 && r.chance(UNIQUE_SHELF)) out[2] = dealUnique(g);
     d.offers = out;
   }
   return d.offers as (Item | null)[];
