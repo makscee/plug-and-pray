@@ -44,7 +44,7 @@ function boot(g: Game): void {
   say(
     g,
     // v2r2 ux: four short lines, so a 720-tall console shows them all
-    'core ok. you wake blind. a click on the map walks you.',
+    'core ok. plugged into a dead god, blind. click the map to walk.',
     ['arrows walk too · every verb: ', { text: 'help', cmd: 'help' }, ' · stuck? ', { text: 'unstuck', cmd: 'unstuck' }],
     ['install them: ', { text: 'install all', cmd: kit.map((k) => `install ${k}`).join('; ') }, '  ', ...kit.flatMap((k) => [inst(k), ' '])],
   );
