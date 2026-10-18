@@ -394,7 +394,7 @@ export function play(seed: number, o: Opts): Run {
     // install / remove toward the best loadout
     const zt = targetZone();
     // r2 decide: a carried reader reads for a bone; installing it is for when bone runs out
-    const handReader = P.inv.some((i) => i.kind === 'mod' && i.mod === 'card-reader') && resOf(g, 'bone') >= 1;
+    const handReader = P.inv.some((i) => i.kind === 'mod' && i.mod === 'card-reader') && resOf(g, 'bone') >= 8; // bone to spare
     if (handReader && P.inv.some((i) => i.kind === 'card') && !active(g, 'mind').some((i) => param(i, 'what', '') === 'reader')) return 'read card';
     const wantReader = !handReader && (g.cards.length < 4 || P.inv.some((i) => i.kind === 'card'));
     if (P.inv.some((i) => i.kind === 'mod' && i.mod === 'thaw-engine')) {
