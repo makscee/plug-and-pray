@@ -7,6 +7,7 @@ import { frameHooks } from '../ui';
 import { pips } from '../ui/panels';
 import { hpText } from './report';
 import { fanfares } from './shard';
+import { turned } from './warn';
 import { clean } from '../tune/start';
 import { mapHooks } from '../world/mind';
 
@@ -127,6 +128,25 @@ frameHooks.push((g) => {
   el.innerHTML = `<div class="shard-pulse"></div><p>SCRIPTURE SHARD ${f.n} of 3</p>`;
   document.body.append(el);
   setTimeout(() => el.remove(), 4200);
+});
+
+// an elite turning to you (src/fight/warn.ts): a red line under the HUD for 4 s
+let seenTurn = -1;
+let turnGame: unknown = null;
+frameHooks.push((g) => {
+  const t = turned.get(g);
+  if (turnGame !== g) {
+    turnGame = g;
+    seenTurn = t?.at ?? -1;
+  }
+  if (!t || t.at <= seenTurn) return;
+  seenTurn = t.at;
+  document.querySelector('.elite-warn')?.remove();
+  const el = document.createElement('div');
+  el.className = 'elite-warn';
+  el.textContent = `⚠ ${t.text}`;
+  document.body.append(el);
+  setTimeout(() => el.remove(), 4000);
 });
 
 // ?scene=fight stages a fight in the start chamber for judging: lens, stepper, nail psalm, frost coat

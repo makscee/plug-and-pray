@@ -34,6 +34,15 @@ export function lootMod(r: Rng, far: number, family?: string): Item {
   return item;
 }
 
+/** a module the body already has, carried or installed */
+const held = (g: Game, it: Item) => it.kind === 'mod' && (g.player.inv.some((i) => i.kind === 'mod' && i.mod === it.mod) || g.player.installed.some((i) => i.mod === it.mod));
+/** a loot roll, rolled again (up to `tries` times, from `r`) while it is a module you already have
+ *  (playtest r2 pace: psalm ×2, spool ×3; a find you hold reads as noise) */
+export function fresh(g: Game, it: Item, r: Rng, far: number, tries = 4): Item {
+  for (let k = 0; k < tries && held(g, it); k++) it = lootMod(r, far);
+  return it;
+}
+
 type Room = 'eye' | 'reader' | 'printer' | 'shop';
 /** the four chunks around the start, one per seed-shuffled room: the dawn eye, the reader, the printer, the shop */
 export function opening(seed: number): Record<Room, [number, number]> {
@@ -119,9 +128,12 @@ export function fill(g: Game, c: Chunk): void {
     spawn(g, { kind: 'item', x, y, item: { kind: 'res', res: 'ichor', n: 1 } });
   }
   const loot = r.int(1, 2) + (far >= 4 ? 1 : 0);
+  // a repeat of what you hold rolls again half the time, from its own rng (the chunk stays as it was)
+  const again = rng(hash(g.seed, 14, c.cx, c.cy));
   for (let k = 0; k < loot; k++) {
     const [x, y] = cellIn(r, c, g.seed);
-    spawn(g, { kind: 'item', x, y, item: r.chance(0.55) ? lootMod(r, far) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 2) } });
+    const it: Item = r.chance(0.55) ? lootMod(r, far) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 2) };
+    spawn(g, { kind: 'item', x, y, item: again.chance(0.5) ? fresh(g, it, again, far) : it });
   }
   // enemies: the fight slice's own chunk hook (src/fight/spawn.ts)
 }

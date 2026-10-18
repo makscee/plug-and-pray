@@ -193,3 +193,6 @@ canvas.map { cursor: crosshair; }
 .hpbar { width: max-content; max-width: calc(100vw - clamp(8px, calc(50vw - 252px), calc(100vw - 900px)) - 8px); overflow: hidden; text-overflow: ellipsis; }
 /* a nearby name keeps a few letters; its buttons wrap under it instead */
 .win.panel .row .name { min-width: 88px; }
+/* fight: an elite turns to you (src/fight/warn.ts, src/fight/ui.ts) */
+.elite-warn { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); z-index: 9001; pointer-events: none; padding: 4px 14px; color: #ff6a50; background: #000d; border: 1px solid #ff6a50; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; animation: elitewarn 4s ease-out both; }
+@keyframes elitewarn { 0%, 10%, 20% { opacity: 1; } 5%, 15% { opacity: 0.35; } 80% { opacity: 1; } 100% { opacity: 0; } }

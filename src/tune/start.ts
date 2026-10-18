@@ -2,7 +2,7 @@
 // map spool and the spark finger in its inventory; you install them yourself ("make modules in inventory
 // initially and I have to click to install"), with slots and power for all four and two to spare. `unstuck` gets you out of any corner: the nearest open cell, or home to the start chamber.
 
-import { say, tickHooks } from '../core/game';
+import { dist, say, tickHooks } from '../core/game';
 import { open } from '../core/grid';
 import type { Game } from '../core/types';
 import { verb } from '../core/verbs';
@@ -43,7 +43,7 @@ function nearestOpen(g: Game, x: number, y: number, r = 4): [number, number] | n
 }
 
 verb('unstuck', {
-  help: 'stuck or lost? unstuck: out of a wall, else home to where you woke (3 s)',
+  help: 'stuck or lost? unstuck: out of a wall, else home to where you woke (3 s with a foe on you)',
   run(g) {
     const p = g.player;
     p.path = [];
@@ -56,9 +56,10 @@ verb('unstuck', {
         return say(g, 'you wrench yourself free, onto open floor.');
       }
     }
-    // lost or cornered: home
-    homing.set(g, g.t + 3);
-    say(g, 'you fold up and let the god\'s veins carry you home. 3 s.');
+    // lost: home at once when nothing is on you (playtest r2 pace); cornered: 3 s
+    const close = g.ents.some((e) => e.enemy && dist(e, p) < 2);
+    homing.set(g, g.t + (close ? 3 : 0));
+    say(g, close ? 'you fold up and let the god\'s veins carry you home. 3 s.' : 'you fold up and let the god\'s veins carry you home.');
   },
 });
 
