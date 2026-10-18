@@ -57,6 +57,36 @@ export const floorPaint: Paint = (x, y) => {
   return shade([58, 46, 42], k);
 };
 
+// v6-look (Maks 10-18: "floors should have different textures"): each game floor its own ground.
+// 0 cradle: the grated plates above; 1 choir nave: pale flagstones; 2 ossuary: packed bone knuckles;
+// 3 furnace: soot-black plates with hot seams; 4 heart: wet red flesh ridges
+const naveFloor: Paint = (x, y) => {
+  const row = Math.floor(y / 8);
+  const seam = y % 8 === 0 || (x + (row % 2) * 8) % 16 === 0;
+  return shade([96, 90, 82], seam ? 0.4 : 0.85 + noise(x, y, 5) * 0.3);
+};
+const ossuaryFloor: Paint = (x, y) => {
+  const cx = (x % 8) - 3.5, cy = (y % 8) - 3.5;
+  const bone = cx * cx + cy * cy < 9;
+  return bone ? shade([150, 136, 108], 0.75 + noise(x, y, 6) * 0.35) : shade([40, 34, 28], 0.8);
+};
+const furnaceFloor: Paint = (x, y) => {
+  const seam = x % 16 === 0 || y % 16 === 0;
+  if (seam) return shade([200, 90, 30], 0.7 + noise(x, y, 7) * 0.5);
+  return shade([34, 30, 30], 0.8 + noise(x, y, 8) * 0.4);
+};
+const heartFloor: Paint = (x, y) => {
+  const ridge = Math.abs(((y + Math.round(Math.sin(x * 0.4) * 2)) % 6) - 3) < 1;
+  return shade([110, 34, 40], ridge ? 1.25 : 0.6 + noise(x, y, 9) * 0.3);
+};
+const GROUNDS: Paint[] = [floorPaint, naveFloor, ossuaryFloor, furnaceFloor, heartFloor];
+const grounds: THREE.DataTexture[] = [];
+/** the ground texture of game floor `f` (0 cradle .. 4 heart) */
+export function groundTex(f: number): THREE.DataTexture {
+  const k = Math.max(0, Math.min(GROUNDS.length - 1, f | 0));
+  return (grounds[k] ??= tex(GROUNDS[k]));
+}
+
 export const ceilPaint: Paint = (x, y) => {
   const k = (y % 8 < 2 ? 1.3 : 0.7) * (0.85 + noise(x, y, 4) * 0.3);
   return shade([38, 30, 32], k);
