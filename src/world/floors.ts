@@ -53,13 +53,13 @@ export const STAIRS: Record<Stairs, { name: string; look: string }> = {
   lift: { name: 'the lift', look: 'a cage lift on two rails, light rising through its floor' },
 };
 
-/** the module ids a floor's arrival cache (and the reliquary there) guarantees: that floor's new kit.
- *  Other slices add their ids here (the FPS eye on 2 and 3, map upgrades on 1...) */
+/** the module ids a floor's arrival cache offers (src/world/cache.ts: five of them, take two): that floor's new kit.
+ *  The first is the floor's headline and always on offer (the FPS eyes on 3 and 4); the rest turn with the seed */
 export const KIT: Record<number, string[]> = {
-  0: ['hollow-tap', 'choir-bell', 'frost-coat'],
+  0: ['choir-bell', 'frost-coat', 'hollow-tap', 'lead-lung', 'thorn-mantle'],
   1: ['nail-psalm', 'survey-spool', 'sounding-knell', 'vein-fork', 'plumb-line'],
   2: ['pilgrim-scope', 'illuminated-atlas', 'pulse-choir', 'bone-glass', 'ember-iris', 'censer', 'bone-lance'],
-  3: ['martyr-scope', 'glass-diorama', 'rime-hood', 'heat-lance'],
+  3: ['martyr-scope', 'rime-hood', 'glass-diorama', 'heat-lance', 'heart-shard'],
   4: [],
 };
 
@@ -252,7 +252,7 @@ export function goDown(g: Game, f: number): void {
   const lines: (string | Line)[] = [`FLOOR ${f + 1}: ${F.name.toUpperCase()}.`, F.gimmick];
   if (F.stairs) lines.push(`the way down lies somewhere ${word}, past its keeper. a memory card or a scanner points to it.`);
   else lines.push(`its keeper waits ${word} of here.`);
-  if (KIT[f]?.length) lines.push('a cache lies where you land: this floor\'s kit.');
+  if (KIT[f]?.length) lines.push('a cache lies where you land: this floor\'s kit. take two.');
   say(g, ...lines);
 }
 

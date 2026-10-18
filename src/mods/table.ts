@@ -76,9 +76,9 @@ mods([
   { id: 'nail-psalm', name: 'nail psalm', family: 'weapon', power: 1, warm: 1, tier: 0, params: { damage: 1.2, cooldown: 0.6, range: 8, aim: 'aimed' }, text: 'a verse that ends in a nail. shoot.' }, // r1 econ: was 2 / 0.8; bone armour (1.2) eats most of it
   { id: 'ember-spit', name: 'ember spit', family: 'weapon', power: 2, warm: 0.5, tier: 1, params: { damage: 0.8, cooldown: 0.35, range: 6, aim: 'aimed' }, text: 'it coughs sparks as fast as you ask.' },
   { id: 'bone-lance', name: 'bone lance', family: 'weapon', power: 2, warm: 2, tier: 1, params: { damage: 6, cooldown: 2.2, range: 5, aim: 'aimed' }, text: 'a rib sharpened by a patient god.' },
-  { id: 'choir-bell', name: 'choir bell', family: 'weapon', power: 2, warm: 1.5, tier: 1, params: { damage: 1.5, cooldown: 1.6, range: 2.4, aim: 'auto', sweep: true }, text: 'it rings at anything that comes near.' },
+  { id: 'choir-bell', name: 'choir bell', family: 'weapon', power: 1, warm: 1.5, tier: 1, params: { damage: 1.5, cooldown: 1.4, range: 2.4, aim: 'auto', sweep: true }, text: 'it rings at everything near at once: a swarm hears it together.' }, // v2 variety: was 2 power / 1.6 s, and never worth its power on the cradle
   { id: 'lead-lung', name: 'lead lung', family: 'body', power: 1, warm: 1, tier: 0, params: { regen: 0.3 }, text: 'heavy breath. you mend faster, and still mend in the cold.' },
-  { id: 'frost-coat', name: 'frost coat', family: 'body', power: 1, warm: 1.5, tier: 1, params: { armour: 0.5 }, text: 'rime that takes the edge off every blow.' },
+  { id: 'frost-coat', name: 'frost coat', family: 'body', power: 1, warm: 1.5, tier: 1, params: { armour: 0.5 }, text: 'rime that takes the edge off every blow. a cradle mite\'s bite does not get through.' },
   { id: 'mirror-ward', name: 'mirror ward', family: 'body', power: 2, warm: 2, tier: 1, params: { ward: true, recharge: 8 }, text: 'it gives the next blow back. then it rests.' },
   { id: 'reliquary-ribs', name: 'reliquary ribs', family: 'body', power: 1, warm: 1, tier: 2, params: { hp: 5 }, text: 'a cage of holy bone around your core.' },
   // pilots and waypoint logs (playtest 3): pilot gaits walk a seen path to a point (plan: longest path, pace,

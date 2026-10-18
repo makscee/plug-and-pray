@@ -1,0 +1,28 @@
+/* the kit cache's choice card (src/ui/cache.ts): five tiles across, over the middle of the screen */
+.kit-card { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 9001; width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 96px); overflow-y: auto; box-sizing: border-box; padding: 10px 14px 12px; background: #0d0a09f4; border: 2px solid var(--loot); box-shadow: 0 0 24px #e8bf5a40, 0 8px 24px #000c; animation: kitcard 0.35s ease-out both; }
+@keyframes kitcard { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translateX(-50%); } }
+.kit-card p { margin: 0; }
+.kit-head { display: flex; align-items: baseline; gap: 12px; }
+.kit-title { font-size: 26px; letter-spacing: 3px; text-transform: uppercase; color: var(--loot); }
+.kit-sub { font-size: 18px; letter-spacing: 2px; text-transform: uppercase; color: var(--t-head); }
+.kit-rule { font-size: 18px; color: var(--t-body); margin: 2px 0 8px !important; }
+.kit-rule b { color: var(--loot); font-weight: normal; }
+.kit-rule .ok { color: var(--good); }
+.kit-rule .short { color: var(--warn); }
+.kit-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.kit-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px; background: #1a1310; border: 1px solid var(--line-hi); min-width: 0; }
+.kit-tile.rar-fine { border-color: var(--rar-fine); }
+.kit-tile.rar-rare { border-color: var(--rar-rare); }
+.kit-icon.cell { position: relative; display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid var(--rar-common); background: #0a0807; margin-bottom: 2px; }
+.kit-icon img { image-rendering: pixelated; }
+.kit-tile .name { font-size: 20px; line-height: 1.05; color: var(--t-title); overflow-wrap: anywhere; }
+.kit-meta { font-size: 15px; color: var(--t-meta); }
+.kit-text { font-size: 15px; color: var(--t-body); line-height: 1.15; flex: 1; }
+.kit-fit { font-size: 14px; color: var(--info); line-height: 1.1; }
+.kit-pick { align-self: stretch; margin-top: 4px; font-size: 18px; padding: 3px 6px; color: #120c08; background: var(--loot); border: 0; cursor: pointer; }
+.kit-pick:hover { background: #ffd880; }
+.kit-pick:disabled { background: #3a3028; color: var(--dim); cursor: default; }
+.kit-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.kit-foot button { font-size: 17px; padding: 2px 10px; background: transparent; border: 1px solid var(--line-hi); color: var(--fg); cursor: pointer; }
+.kit-foot button:hover { border-color: var(--acc); color: var(--acc); }
+@media (max-width: 700px) { .kit-row { grid-template-columns: repeat(2, 1fr); } .kit-card { top: 40px; } }

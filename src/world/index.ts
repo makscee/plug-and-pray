@@ -13,3 +13,4 @@ import './events';
 import './secrets';
 import './finds';
 import './bosswire';
+import './cache';
