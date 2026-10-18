@@ -15,7 +15,8 @@ import { eyeRange } from '../mods/sense';
 import { firstSight } from './codex';
 import { see, shoot, placeHooks, type Mode } from './scene';
 import { engaged } from './foes';
-import { shots, type ShotData } from '../fight/shots';
+import { boltWarn, shots, type ShotData } from '../fight/shots';
+import { eaten, hpText, lastBlow } from '../fight/report';
 import { bigOn, bossOf, dash, fps, fpsEye, fpsFire, fpsMove, fpsTurn, lunge, mark, nameOf, ray, weaponState } from '../body/fps';
 
 // ---- bolts: a hot core and a soft halo, never fogged, so a bolt reads in the dark from across a room
@@ -38,23 +39,41 @@ function boltMat(color: number, halo: boolean): THREE.Material {
       : new THREE.MeshBasicMaterial({ color, fog: false })));
   return m;
 }
+/** a dark disc behind the glow, a little wider than it: the bolt sits on black with a dark edge, so it reads
+ *  on a white boss too (v2r1 fight: white bolts vanished into the white hydra) */
+const rimMat = new THREE.MeshBasicMaterial({ color: 0x100004, side: THREE.BackSide, fog: false });
+/** the most a bolt's dark disc spans, as an angle (radians from its centre): close up it stops growing, so one
+ *  bolt never fills the view (v2r1 fight: point-blank shots were giant blobs) */
+export const BOLT_MAX = 0.075;
+/** a shot closer than this is in your body already: not drawn */
+const BOLT_NEAR = 0.3;
+/** the dark disc's size over the core's (the halo is 1.9) */
+const RIM = 2.4;
+/** the size a bolt's core is drawn at, `r` cells from the eye */
+export const boltSize = (size: number, r: number): number => Math.min(size, (r * BOLT_MAX) / RIM);
 placeHooks.push((g, group, mode: Mode) => {
   if (mode === 'depth') return;
   const p = g.player;
   for (const s of shots(g)) {
     const d = s.data as unknown as ShotData;
     if (!d.kind || Math.abs(s.x - p.x) > 14 || Math.abs(s.y - p.y) > 14) continue;
+    const r = Math.hypot(s.x - p.x, s.y - p.y);
+    if (r < BOLT_NEAR) continue;
     const l = BOLT_LOOK[d.kind] ?? BOLT_LOOK.bolt;
     // a bolt throbs, so it reads as alive and coming
     const throb = 1 + 0.25 * Math.sin(g.t * 24 + s.id);
+    const size = boltSize(l.size * throb, r);
     const core = new THREE.Mesh(ball, boltMat(mode === 'heat' ? 0xffffff : l.core, false));
-    core.scale.setScalar(l.size * throb);
+    core.scale.setScalar(size);
     core.position.set(s.x, 0.45, s.y);
+    const rim = new THREE.Mesh(ball, rimMat);
+    rim.scale.setScalar(size * RIM);
+    rim.position.copy(core.position);
     const halo = new THREE.Mesh(ball, boltMat(l.halo, true));
-    halo.scale.setScalar(l.size * 1.9 * throb);
+    halo.scale.setScalar(size * 1.9);
     halo.position.copy(core.position);
     halo.renderOrder = 3;
-    group.add(core, halo);
+    group.add(core, rim, halo);
   }
 });
 
@@ -175,7 +194,7 @@ function make(w: number, h: number): Big {
   lock.textContent = 'click to take the mouse';
   const keys = document.createElement('div');
   keys.className = 'big-keys';
-  keys.innerHTML = 'wasd walk · click shoot · f lunge · <b class="dashkey">shift dash · </b>esc mouse · v small';
+  keys.innerHTML = 'wasd walk · click shoot · f lunge · <b class="dashkey">shift dash · </b>esc mouse · [ ] mouse speed · v small';
   root.append(pic, over, boss, warn, lock, keys, hud);
   document.body.append(root);
   const ctx = pic.getContext('2d')!;
@@ -210,6 +229,8 @@ frameHooks.push((g) => {
   cost = cost * 0.9 + (performance.now() - t0) * 0.1;
 });
 
+/** how far under the crosshair the name of what is under it sits (px) */
+const LABEL_Y = 56;
 /** crosshair, hit markers, the shot's flash and arrows for bolts coming from outside the view */
 function overlay(g: Game, b: Big, inst: Inst): void {
   const W = innerWidth, H = innerHeight;
@@ -244,9 +265,10 @@ function overlay(g: Game, b: Big, inst: Inst): void {
     const txt = `${nameOf(under.foe)} ${under.len.toFixed(1)}` + (reach ? (inReach ? '' : ` · out of reach (${reach})`) : ' · no weapon');
     c.fillStyle = '#000a';
     const tw = c.measureText(txt).width;
-    c.fillRect(cx - tw / 2 - 4, cy + 22, tw + 8, 16);
+    // well under the crosshair, past its widest spread (v2r1: the name sat on the crosshair)
+    c.fillRect(cx - tw / 2 - 4, cy + LABEL_Y - 13, tw + 8, 16);
     c.fillStyle = inReach ? '#ff8a6c' : '#c8b8a0';
-    c.fillText(txt, cx, cy + 35);
+    c.fillText(txt, cx, cy + LABEL_Y);
   }
   // the shot: a short flash at the muzzle and a streak toward the crosshair
   const since = g.t - s.shotAt;
@@ -262,13 +284,16 @@ function overlay(g: Game, b: Big, inst: Inst): void {
     c.arc(cx + W * 0.08, H - 6, 14, 0, Math.PI * 2);
     c.fill();
   }
-  // mk2: hit markers, an X on the crosshair; red and wider on a kill
+  // hit markers, an X on the crosshair: mk1 a plain white one; mk2 red and wider on a kill. A blow armour
+  // mostly ate shows grey, with the word (v2r1: nothing said armour turned 1.5 into 0.7)
   const hit = g.t - s.hitAt;
-  if (mk >= 2 && hit >= 0 && hit < 0.22) {
-    const kill = g.t - s.killAt < 0.22;
+  if (hit >= 0 && hit < 0.22) {
+    const kill = mk >= 2 && g.t - s.killAt < 0.22;
+    const blow = lastBlow(g);
+    const ate = !!blow && blow.t === s.hitAt && eaten(blow);
     const r0 = 7, r1 = kill ? 20 : 14;
     // a dark rim under it, so it reads on a white hit flash too
-    for (const [color, width] of [['#000', kill ? 6 : 5], [kill ? '#ff3020' : '#ffffff', kill ? 3 : 2]] as const) {
+    for (const [color, width] of [['#000', kill ? 6 : 5], [kill ? '#ff3020' : ate ? '#9a9088' : '#ffffff', kill ? 3 : 2]] as const) {
       c.strokeStyle = color;
       c.lineWidth = width;
       c.beginPath();
@@ -277,6 +302,14 @@ function overlay(g: Game, b: Big, inst: Inst): void {
         c.lineTo(cx + dx * r1, cy + dy * r1);
       }
       c.stroke();
+    }
+    if (ate) {
+      c.fillStyle = '#000a';
+      c.fillRect(cx + 18, cy - 30, 60, 16);
+      c.fillStyle = '#c8c0b8';
+      c.textAlign = 'left';
+      c.fillText('armour', cx + 22, cy - 17);
+      c.textAlign = 'center';
     }
   }
   // bolts coming at you from outside the view: a red chevron on that edge
@@ -315,7 +348,7 @@ function hud(g: Game, b: Big): void {
     : '<span class="w none">no weapon on: a click only lunges</span>';
   const dashLine = mark(g) >= 2 ? `<span class="w">dash ${g.t >= s.dashReady ? '<em>ready</em>' : bar(1 - (s.dashReady - g.t) / 1.1, 'cool')}</span>` : '';
   const html =
-    `<span class="hp${p.hp <= p.maxHp * 0.3 ? ' low' : ''}">hp ${bar(p.hp / p.maxHp)} ${Math.ceil(p.hp * 10) / 10}/${p.maxHp}</span>` +
+    `<span class="hp${p.hp <= p.maxHp * 0.3 ? ' low' : ''}">hp ${bar(p.hp / p.maxHp)} ${hpText(p.hp)}/${p.maxHp}</span>` +
     `<span class="pw">power ${powerUsed(g)}/${powerMax(g)}</span>` + weapons + dashLine;
   if (b.hud.dataset.html !== html) {
     b.hud.dataset.html = html;
@@ -331,12 +364,8 @@ function hud(g: Game, b: Big): void {
   }
   // a blow or a bolt winding up, named (the fight HUD's ⚠ line, here big and central)
   const wind = engaged(g, 10).filter((e) => e.enemy!.data.move && g.t < ((e.enemy!.data.windup as number) ?? 0));
-  const coming = shots(g).filter((sh) => {
-    const d = sh.data as unknown as ShotData;
-    const [rx, ry] = [p.x - sh.x, p.y - sh.y];
-    return d.foe && Math.hypot(rx, ry) < 2.5 && rx * d.vx + ry * d.vy > 0;
-  }).length;
-  const wt = wind.length ? `⚠ ${String(wind[0].enemy!.data.move)}${wind.length > 1 ? ` +${wind.length - 1}` : ''}` : coming ? `⚠ bolt${coming > 1 ? 's' : ''} incoming: strafe` : '';
+  const coming = boltWarn(g, 2.5, true);
+  const wt = wind.length ? `⚠ ${String(wind[0].enemy!.data.move)}${wind.length > 1 ? ` +${wind.length - 1}` : ''}` : coming ? `⚠ ${coming.replace('step aside', 'strafe')}` : '';
   if (b.warn.textContent !== wt) b.warn.textContent = wt;
   b.warn.hidden = !wt;
 }

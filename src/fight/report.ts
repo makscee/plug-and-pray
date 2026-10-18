@@ -1,7 +1,7 @@
 // The console's account of a fight: your hits, kills, and what hits you. Blows are gathered for a
 // moment and told as one line ("you hit choir mite ×3 · choir mite hits you ×2 · hp 7/10"), so a
 // fight reads as a few lines, not a wall of them (Maks 10-18); a kill is told at once.
-import { ENEMIES, hurtHooks, say, tickHooks } from '../core/game';
+import { ENEMIES, hurtHooks, say, strikeHooks, tickHooks } from '../core/game';
 import type { Game } from '../core/types';
 
 const KILL: Record<string, string> = {
@@ -77,3 +77,26 @@ hurtHooks.push((g, n, from) => {
 
 /** hp as shown: whole numbers, or halves after armour (9.5) */
 export const hpText = (hp: number): string => String(Math.max(0, Math.ceil(hp * 2) / 2));
+
+/** your last blow that landed: when, on what, how much, how much its armour ate, and whether it fell */
+export interface Blow { t: number; id: number; name: string; n: number; ate: number; kill: boolean }
+const blows = new WeakMap<Game, Blow>();
+export const lastBlow = (g: Game): Blow | undefined => blows.get(g);
+strikeHooks.push((g, e, n, raw) => {
+  const armour = Number(e.enemy!.data.armour ?? 0);
+  const ate = armour > 0 ? raw - Math.max(raw * 0.2, raw - armour) : 0;
+  blows.set(g, { t: g.t, id: e.id, name: short(e.enemy!.type), n, ate, kill: e.enemy!.hp <= 0 });
+});
+
+/** armour ate more of the blow than got through: the HUD and the FPS marker say so */
+export const eaten = (b: Blow): boolean => b.ate > b.n;
+/** the HUD's word on a fresh blow (BLOW_SHOW s): the hit, what armour ate, a kill; '' when stale */
+export const BLOW_SHOW = 0.9;
+export function blowText(g: Game): string {
+  const b = blows.get(g);
+  if (!b || g.t - b.t > BLOW_SHOW || g.t < b.t) return '';
+  if (b.kill) return `✦ ${b.name} down`;
+  const n = +b.n.toFixed(1);
+  // armour that ate most of the blow says so: big single hits beat it (src/core/game.ts strike)
+  return eaten(b) ? `armour ate ${+b.ate.toFixed(1)} · hit ${n}` : `✦ hit ${n}`;
+}

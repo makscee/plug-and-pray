@@ -20,6 +20,11 @@ export const KINDS: Record<string, { speed: number; r: number; range: number }> 
   needle: { speed: 7.5, r: 0.28, range: 12 },
 };
 
+/** the furnace's bosses throw slag; the rest by speed: slow balls, quick needles, bolts between */
+const SLAG_BOSSES = new Set(['boss-saint', 'boss-hammer', 'boss-bellows', 'boss-worm']);
+/** how a boss's bullet looks (its kind): only the look, its hit radius stays the bullet's own */
+export const bossKind = (type: string, speed: number): string => (SLAG_BOSSES.has(type) ? 'slag' : speed < 3.5 ? 'ball' : speed > 4.8 ? 'needle' : 'bolt');
+
 /** the floor you are on: 0 cradle .. 4 the heart (src/world/floors.ts sets `g.floor`; before that, the zone) */
 export const floorNow = (g: Game): number => {
   const f = (g as unknown as { floor?: number }).floor;
