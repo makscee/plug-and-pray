@@ -116,6 +116,11 @@ export function generate(seed: number, cx: number, cy: number): Chunk {
   // odd stubs far out: dead-end conduits that go nowhere
   if (far >= 3 && !boss)
     for (let k = 0; k < Math.min(3, Math.floor(far / 3)); k++) carveConduit(set, r, middle(r.pick(rs)), [r.int(1, CHUNK - 2), r.int(1, CHUNK - 2)], 1);
+  // the boss room: four pillars round its middle break the lines of its bullets (as in the bosses' test arena)
+  if (boss) {
+    const [mx, my] = middle(rs[0]);
+    for (const [i, j] of [[-3, -3], [3, 3], [-3, 3], [3, -3]]) set(mx + i, my + j, Cell.wall);
+  }
   // wall up what no door reaches
   const reach = new Uint8Array(CHUNK * CHUNK);
   const q: [number, number][] = [doors[0][0]];

@@ -19,6 +19,7 @@ import { dpsOf } from '../../src/world/zonemath';
 import { startKit } from '../../src/tune/start';
 import { light } from '../../src/sight/lamp';
 import { duel } from './boss';
+import { WARM } from '../../src/mods/sense';
 
 export interface Snap {
   t: number;
@@ -251,6 +252,8 @@ export function play(seed: number, o: Opts): Run {
   const KEEPER_NEED = [32, 55, 80, 150, 300];
   let floorSince = 0;
   let floorWas = 0;
+  /** until when it walks at a keeper it could not reach from where it stood */
+  let closeIn = -1;
   const send = (cmd: string) => exec(g, cmd);
 
   /** one decision: a command (then a short wait) or a wait */
@@ -273,14 +276,34 @@ export function play(seed: number, o: Opts): Run {
     why = '';
     // v2 floors: a keeper awake and close: the boss sim's player fights it (scripts/sim/boss.ts), a couple of minutes at a time
     const keeper = g.ents.find((e) => e.enemy?.data.boss && e.enemy.data.noticed && dist(e, P) < 14);
+    // a stand-off (a wall between, neither hurt): walk round to it for a few seconds before the duel again
+    if (keeper && g.t < closeIn) {
+      const c = walkTo({ x: keeper.x, y: keeper.y, zone: zoneHere() });
+      if (c !== 'listen') return c;
+    }
     if (keeper) {
+      // a cold keeper (bone) never shows on a heat eye, and what no eye shows no weapon finds: another eye first
+      const eyes = active(g, 'camera');
+      if (!WARM.has(keeper.enemy!.type) && eyes.length && eyes.every((i) => param(i, 'filter', 'color') === 'heat')) {
+        const other = [...P.installed.filter((i) => !i.on), ...P.inv].find((i) => 'mod' in i && MODS[i.mod].family === 'camera' && param(i, 'filter', 'color') !== 'heat') as { mod: string } | undefined;
+        if (other) return P.installed.includes(other as any) ? 'on ' + refOf(other) : 'swap in ' + labelOf(other);
+      }
       P.path = [];
       if (process.env.DUEL) console.log('duel', g.t.toFixed(0), 'hp', P.hp.toFixed(1), '/', P.maxHp, 'ready', Math.round(zones.readiness(g)), P.installed.filter((i) => i.on).map((i) => i.mod).join(','), 'foes', g.ents.filter((e) => e.enemy && dist(e, P) < 10).map((e) => e.enemy!.type).join(','));
-      duel(g, g.floor, seed, { limit: 120 });
+      const before = keeper.enemy!.hp + P.hp;
+      duel(g, g.floor, seed, { limit: 30, bail: 0, trace: !!process.env.DUELTRACE && g.t > Number(process.env.DUELTRACE) });
       if (process.env.DUEL) console.log('  ->', g.t.toFixed(0), 'hp', P.hp.toFixed(1), g.ended ?? '', g.ents.filter((e) => e.enemy?.data.boss).map((e) => e.enemy!.type + ':' + e.enemy!.hp.toFixed(0)).join(','));
       P.path = [];
       P.faceLock = 0;
       why = 'keeper';
+      if (g.ents.includes(keeper) && Math.abs(keeper.enemy!.hp + P.hp - before) < 0.01) closeIn = g.t + 4;
+      // broke off nearly dead: fold home and mend (the keeper keeps its wounds)
+      if (!g.ended && P.hp < P.maxHp * 0.3) {
+        (P as any)._homing = g.t + 3.2;
+        run.homes++;
+        restUntilFull = true;
+        return 'unstuck';
+      }
       return 0.1;
     }
     const px = Math.floor(P.x);
@@ -308,6 +331,13 @@ export function play(seed: number, o: Opts): Run {
         restUntilFull = true;
         return 'unstuck';
       }
+    }
+    // v2: nearly dead with a lamp or anything else on you from afar (it ping-ponged out of a seraph's line to death)
+    if (hpFrac < 0.3 && foes.some((e) => e.enemy!.data.noticed) && !close.length && (!(P as any)._homing || g.t > (P as any)._homing + 20)) {
+      (P as any)._homing = g.t + 3.2;
+      run.homes++;
+      restUntilFull = true;
+      return 'unstuck';
     }
     if ((P as any)._homing && g.t < (P as any)._homing) return 0.3;
     // a walker winding up next to you: step away

@@ -34,7 +34,7 @@ export function fight(floor: number, variant: string, seed: number, o: { react?:
 
 /** fight the bosses standing in `g` now, until they are down, you are, or `limit` s more pass (v2 floors: the run
  *  sim, scripts/sim/brain.ts, hands its player over to this at each floor's keeper) */
-export function duel(g: Game, floor: number, seed: number, o: { react?: number; sloppy?: number; limit?: number; trace?: boolean } = {}): { won: boolean } {
+export function duel(g: Game, floor: number, seed: number, o: { react?: number; sloppy?: number; limit?: number; trace?: boolean; bail?: number } = {}): { won: boolean } {
   const r = rng(hash(seed, 99, floor));
   const p = g.player;
   // the cradle and the choir walk in cell steps by keys: a little slower to react than free movement
@@ -50,6 +50,8 @@ export function duel(g: Game, floor: number, seed: number, o: { react?: number; 
   const seenShot = new Map<number, number>();
   let won = false;
   while (g.t < limit && !g.ended) {
+    // the run's player breaks off nearly dead (o.bail of its hp), to mend and come back
+    if (o.bail && p.hp < p.maxHp * o.bail) break;
     const bosses = g.ents.filter((e) => e.enemy && BOSS[e.enemy.type] && Math.abs(e.x - p.x) < 200);
     const up = bosses.filter((e) => Math.abs(e.x - p.x) < 1000);
     if (!bosses.length) {
