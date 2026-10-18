@@ -30,6 +30,8 @@ export const MEND: Cost = { bone: 2 };
 export const TITHE: Cost = { copper: 2 };
 /** v2r4 run (20 bone and no glass on floor 2, every print and buy wanting glass): an altar grinds bone into glass, 4 for 1 */
 export const GRIND: Cost = { bone: 4 };
+/** v2r5 newcomer (14 bone, 0 copper at the floor-2 altar: flesh, attune and temper all locked): 3 bone for 1 copper */
+export const SMELT: Cost = { bone: 3 };
 /** max hp an altar can add, two at a time */
 export const MAX_FLESH = 18; // v2 balance: was 12; the keepers' ember hearts add 2 each (src/fight/bosses.ts)
 export function fleshCost(g: Game): Cost {
@@ -95,6 +97,9 @@ export const temperCost = (m: Inst): Cost => {
   return c;
 };
 
+/** v2r5 newcomer ("offer copper: 2 copper" read as buying copper): what each exchange gives back */
+export const GIVES: Record<string, string> = { 'offer copper': '1 bone', 'offer bone': '1 glass', 'offer bone for copper': '1 copper' };
+
 /** what an altar offers now: [command, price] */
 export function offers(g: Game, _e: Entity): [string, Cost][] {
   const out: [string, Cost][] = [];
@@ -105,6 +110,7 @@ export function offers(g: Game, _e: Entity): [string, Cost][] {
   if (g.player.hp < g.player.maxHp * 0.7) out.push(['offer mend', MEND]);
   out.push(['offer copper', TITHE]);
   out.push(['offer bone', GRIND]);
+  out.push(['offer bone for copper', SMELT]);
   return out;
 }
 
@@ -120,8 +126,9 @@ const menu = (g: Game) => [
   g.player.core < MAX_CORE ? [{ text: 'offer power', cmd: 'offer power' }, `  +1 power for good: ${fmt(powerCost(g))}`] : ['  power: the core is full.'],
   (g.player.flesh ?? 0) < MAX_FLESH ? [{ text: 'offer flesh', cmd: 'offer flesh' }, `  +2 max hp for good: ${fmt(fleshCost(g))}`] : ['  flesh: as much as it can give.'],
   [{ text: 'offer mend', cmd: 'offer mend' }, `  mend fully: ${fmt(MEND)}`],
-  [{ text: 'offer copper', cmd: 'offer copper' }, `  1 bone for ${fmt(TITHE)}`],
-  [{ text: 'offer bone', cmd: 'offer bone' }, `  1 glass for ${fmt(GRIND)}`],
+  [{ text: 'offer copper', cmd: 'offer copper' }, `  give ${fmt(TITHE)} → 1 bone`],
+  [{ text: 'offer bone', cmd: 'offer bone' }, `  give ${fmt(GRIND)} → 1 glass`],
+  [{ text: 'offer bone for copper', cmd: 'offer bone for copper' }, `  give ${fmt(SMELT)} → 1 copper`],
   ...attunable(g).map((i) => [{ text: `attune ${def(i).name}`, cmd: `attune ${def(i).name}` }, `  ${attuneText(i)} for good: ${fmt(attuneCost(i))}`]),
   ...temperable(g).map((i) => {
     const to = temperTo(i);
@@ -131,10 +138,10 @@ const menu = (g: Game) => [
 ];
 
 verb('offer', {
-  help: 'at an altar: offer power, offer flesh, offer mend, offer copper (2 copper for 1 bone), offer bone (4 bone for 1 glass)',
+  help: 'at an altar: offer power, offer flesh, offer mend, offer copper (give 2 copper → 1 bone), offer bone (give 4 bone → 1 glass), offer bone for copper (give 3 bone → 1 copper)',
   when: (g) => !!altarNear(g),
   whenFail: noAltar,
-  run(g, [what]) {
+  run(g, [what, ...rest]) {
     const e = altarNear(g);
     if (!e) return say(g, noAltar(g));
     const p = g.player;
@@ -170,6 +177,14 @@ verb('offer', {
       if (b && b.kind === 'res') b.n++;
       else p.inv.push({ kind: 'res', res: 'bone', n: 1 });
       return say(g, 'the altar melts the copper down and gives back bone: +1 bone.');
+    }
+    if (what === 'bone' && rest.includes('copper')) {
+      if (!affords(g, SMELT)) return say(g, `the altar wants ${fmt(SMELT)} for a copper.`);
+      pay(g, SMELT);
+      const cu = p.inv.find((i) => i.kind === 'res' && i.res === 'copper');
+      if (cu && cu.kind === 'res') cu.n++;
+      else p.inv.push({ kind: 'res', res: 'copper', n: 1 });
+      return say(g, 'the altar burns the bone down to a green bead: +1 copper.');
     }
     if (what === 'bone') {
       if (!affords(g, GRIND)) return say(g, `the altar wants ${fmt(GRIND)} for a glass.`);

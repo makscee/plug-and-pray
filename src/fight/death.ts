@@ -8,7 +8,7 @@ import { light } from '../sight/lamp';
 import { perceives } from '../mods/sense';
 import { clock } from '../end/timeline';
 import { ELITE } from '.';
-import { BOSS } from './bosses';
+import { BOSS, bossesNear } from './bosses';
 
 export interface Blow { type: string; name: string; n: number; t: number; seen: boolean; id?: number }
 const blows = new WeakMap<Game, Blow[]>();
@@ -40,7 +40,9 @@ export function lesson(g: Game): string {
   const dark = ZONES[zoneAt(g.player.x, g.player.y)].look.dark >= 0.3 && light(g) <= 0;
   if (killer.type === 'heat') return 'a rime hood, or anything heatproof, keeps the furnace off.';
   // v2r1 ux: a keeper's death said "fight from range", which floor 1 has no way to do
-  const boss = BOSS[killer.type];
+  // v2r5 newcomer: the queen's brood or acid took the last hp, and the card gave the swarm advice: a keeper
+  // still up, or among the last blows, is the fight that took you
+  const boss = BOSS[killer.type] ?? [...last].reverse().map((b) => BOSS[b.type]).find(Boolean) ?? BOSS[bossesNear(g, 10)[0]?.enemy?.type ?? ''];
   if (boss) {
     const near = g.player.installed.every((i) => def(i).family !== 'weapon' || param<number>(i, 'range', 1.5) < 3);
     const how = boss.floor === 0 || near ? 'up close, between its blows' : 'from range, out of its blows';
@@ -54,6 +56,9 @@ export function lesson(g: Game): string {
   if (killer.type === 'mimic') return 'a lodestone or sonar shows a mimic before you reach for it.';
   if (dark && !killer.seen) return 'light or sonar: you could not see what hit you.';
   // mites stack on one cell, so a corridor does not split them; walking off does (you outpace them)
+  // v2r5 newcomer: never suggest the bell you already have on
+  const many = g.player.installed.find((i) => i.on && def(i).family === 'weapon' && param<string>(i, 'aim', 'auto') !== 'aimed');
+  if (many && (last.filter((b) => b.type === 'mite').length >= 2 || kinds.size > 1)) return `back off so they come at you one by one, into your ${def(many).name}: mites are slower than you, and a pack split is a pack beaten.`;
   if (last.filter((b) => b.type === 'mite').length >= 2) return 'something that hits many (a censer flail, a bell), or walk back the way you came: mites are slower than you.';
   if (kinds.size > 1) return 'something that hits many (a bell, a flail), or back off so they come at you one by one.';
   if (killer.type === 'seraph' || killer.type === 'pyre') return 'step out of its line: a lamp only fires down its row or column.';
@@ -84,7 +89,7 @@ export function deathInfo(g: Game): { killer: string; blows: string[]; lesson: s
   const killer = last[last.length - 1];
   const short = (b: Volley) => b.name.replace(/^(a|an|the) /, '');
   const fmt = (b: Volley) =>
-    `${b.count > 1 ? `${b.count} ${short(b)}s at once` : short(b)} −${b.n.toFixed(1)} hp at ${clock(b.t)}${b.seen ? '' : ' (unseen)'}`;
+    `${b.count > 1 ? (BOSS[b.type] ? `${short(b)} ×${b.count}` : `${b.count} ${short(b)}s at once`) : short(b)} −${b.n.toFixed(1)} hp at ${clock(b.t)}${b.seen ? '' : ' (unseen)'}`;
   return {
     killer: killer ? `${killer.name} took you` : 'something took you',
     blows: last.map(fmt),

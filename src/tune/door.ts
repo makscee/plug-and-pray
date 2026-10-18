@@ -14,6 +14,15 @@ import { bossAt, bossDown, bossRoom, bossWoke, floorOf, inRoom, LAST, stairsChun
 import { readiness } from '../world/zones';
 import { dpsOf } from '../world/zonemath';
 import { keeperDoor } from './hints';
+import { attuneCost, fleshCost, temperCost } from '../world/altar';
+import { affords, fmt, glassTip, type Cost } from '../world/printer';
+
+/** v2r5 newcomer (the door said "temper" with 0 copper): a price you cannot pay yet says how to get there */
+const price = (g: Game, c: Cost): string => {
+  if (affords(g, c)) return ` (${fmt(c)})`;
+  const tip = glassTip(g, c).trim();
+  return ` (${fmt(c)}; you are short${tip ? `: ${tip.replace(/^short of /, '').replace(/ short of /g, ' ')}` : ': gather more'})`;
+};
 
 export interface Door {
   /** the cell you stand on, a cell outside the room (a cell centre) */
@@ -105,20 +114,29 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
       // v2-balance3 (v2r3 fight): the keeper is balanced for a tempered weapon you carry plain: say so
       const plain = p.installed.find((i) => i.on && L.rolls?.[i.mod] && i.roll?.tag !== 'attuned' && i.roll?.tag !== 'tempered');
       const untempered = !!plain && hit < 0.85;
-      if (untempered) why.push(`temper your ${def(plain).name} at an altar first`);
+      if (untempered) why.push(plain.roll ? `temper your ${def(plain).name} at an altar first${price(g, temperCost(plain))}` : `attune your ${def(plain).name} at an altar first${price(g, attuneCost(plain))}`);
       else if (weak) why.push('your weapons are weak for it: find or print a stronger one, or a second');
       // what it can take: readiness is damage times toughness, so the toughness falls out of the two
       // v2r4 ux: armour you already carry is named ("armour first" with a frost coat in the bag)
       const coat = (m: { mod: string }) => (MODS[m.mod]?.params?.armour as number | undefined ?? 0) > 0;
       const off = p.installed.find((i) => !i.on && coat(i));
       const bag = p.inv.find((i) => i.kind === 'mod' && coat(i));
-      const fix = off ? `turn on your ${def(off).name}` : bag && bag.kind === 'mod' ? `install the ${def(bag).name} you carry` : 'an altar (+hp) or armour first';
+      const fix = off ? `turn on your ${def(off).name}` : bag && bag.kind === 'mod' ? `install the ${def(bag).name} you carry` : `an altar (+hp) or armour first${price(g, fleshCost(g))}`;
       if (!(weak || untempered) || ratio / Math.max(0.01, hit) < 0.8) why.push(`you could not take its blows long: ${fix}`);
     }
   }
   if (p.hp < p.maxHp * 0.7) why.push(`mend first (${Math.ceil(p.hp)}/${p.maxHp} hp)`);
+  // v2r5 newcomer (5 of 6 floor-1 doors said "ready" at 10-14 hp, and all 5 fights were lost): hp that would not last
+  // the fight at a person's pace (boss-sim --human: winners lose about 8% of a blow a second) is not ready
+  else if (armed && dps > 0) {
+    const need = Math.ceil(k.damage * HUMAN_PACE * (k.hp / dps));
+    if (p.hp < need) why.push(`about ${need - Math.floor(p.hp)} hp short for a fight this long: more hp (an altar's flesh, armour) or a stronger weapon`);
+  }
   return { name: k.name, hp: k.hp, damage: k.damage, hint: k.def.hint, dps, ready: !why.length, why };
 }
+
+/** the share of a keeper's blow a person loses a second, in fights they win (boss-sim --human, floors 1-2) */
+export const HUMAN_PACE = 0.08;
 
 const secs = (s: number) => (s >= 90 ? `about ${Math.round(s / 60)} min` : `about ${Math.max(1, Math.round(s))} s`);
 

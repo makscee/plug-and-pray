@@ -33,6 +33,7 @@ import { bossesNear } from '../fight/bosses';
 import { addBlur, addLag, addNoise, blank, creases, FILTERS, foeOutside, heatRamp, MODES, staticFrame } from './index';
 import { baseLook, fovAcross, plan, rowsOf, shownLayers, turnLayers, type Layer } from './layers';
 import { bigOn, reins } from '../body/fps';
+import { aimed } from '../fight/aim';
 import './backdrop.css';
 
 interface Pic {
@@ -643,7 +644,7 @@ function tag(g: Game, b: Bd, base: Inst | null, all: number): void {
     cls = on ? 'reins' : 'cursor';
   } else if (mode === 'map') t = b.map ? (room < 170 ? 'the map' : tight ? 'map · click to walk' : 'no eye: the map is your sight · click to walk') : 'no eye, no map';
   else if (mode === 'static') t = 'an eye warms up…';
-  else t = `${def(base!).name} · ${px} px${tight ? (n ? ` +${n}` : '') : more}`;
+  else t = (aimed(g).length ? (tight ? 'space: shoot · ' : 'space or click: shoot · ') : '') + `${def(base!).name} · ${px} px${tight ? (n ? ` +${n}` : '') : more}`;
   if (b.tag.style.maxWidth !== `${room}px`) b.tag.style.maxWidth = `${room}px`;
   if (b.tag.textContent !== t) b.tag.textContent = t;
   if (b.tag.className !== `bd-tag ${cls}`) b.tag.className = `bd-tag ${cls}`;
