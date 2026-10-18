@@ -19,7 +19,7 @@ const KILL: Record<string, string> = {
 /** how long blows are gathered before they are told */
 export const GATHER = 1.2;
 
-interface Tally { start: number; hit: Map<string, number>; took: Map<string, number> }
+interface Tally { start: number; hit: Map<string, number>; took: Map<string, number>; missed?: number }
 const tallies = new WeakMap<Game, Tally>();
 
 const short = (type: string) => (ENEMIES[type]?.name ?? 'it').replace(/^(a|an|the) /, '');
@@ -28,15 +28,17 @@ const times = (n: number) => (n > 1 ? ` ×${n}` : '');
 
 function tally(g: Game): Tally {
   let t = tallies.get(g);
-  if (!t || (!t.hit.size && !t.took.size)) tallies.set(g, (t = { start: g.t, hit: new Map(), took: new Map() }));
+  if (!t || (!t.hit.size && !t.took.size && !t.missed)) tallies.set(g, (t = { start: g.t, hit: new Map(), took: new Map() }));
   return t;
 }
 
 /** tell what was gathered, as one line */
 export function flush(g: Game): void {
   const t = tallies.get(g);
-  if (!t || (!t.hit.size && !t.took.size)) return;
+  if (!t || (!t.hit.size && !t.took.size && !t.missed)) return;
   const parts = [...[...t.hit].map(([k, n]) => `you hit ${k}${times(n)}`), ...[...t.took].map(([k, n]) => `${k} hits you${times(n)}`)];
+  // Maks 10-18: a shot that strikes nothing says so, so a miss never passes for a hit
+  if (t.missed) parts.push(`you miss${times(t.missed)}`);
   if (t.took.size) parts.push(`hp ${hpText(g.player.hp)}/${g.player.maxHp}`);
   tallies.delete(g);
   say(g, parts.join(' · ') + '.');
@@ -51,6 +53,9 @@ tickHooks.push((g) => {
     } else if (ev.type === 'hit' && !killed.has(ev.at!.join())) {
       const e = g.ents.find((x) => x.id === ev.data);
       if (e?.enemy) count(tally(g).hit, short(e.enemy.type));
+    } else if (ev.type === 'miss') {
+      const t = tally(g);
+      t.missed = (t.missed ?? 0) + 1;
     }
   }
   const t = tallies.get(g);
