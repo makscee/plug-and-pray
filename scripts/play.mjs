@@ -38,7 +38,7 @@ const STEPS = [
   ['unstuck'], [3.2, 'g.player.x === 8.5 && g.player.y === 8.5'],
   // tuning (#1328): the legs' first hint names the card reader; listen gives cells and a compass word
   [0, '(g.ents.push({ id: 99999, kind: "item", x: 12.5, y: 8.5, item: { kind: "res", res: "bone", n: 1 } }), true)'], // the chamber holds only the halo now
-  ['listen', 'JSON.stringify(g.log).includes("a card reader ticks") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],
+  ['listen', 'JSON.stringify(g.log).includes("a card reader and a memory card lie together") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],
   // console: scrolled up, new lines from the world leave the reader where they are; a command you
   // type shows its answer (playtest r2)
   [0, '(document.querySelector(".win-console .out").scrollTop = 0, true)'],
@@ -84,7 +84,7 @@ const STEPS = [
   ['install wayfinder moth'], ['install waystone log'], ['install survey spool'], [2, 'document.querySelector(".waypoints")?.innerText.includes("printer")'],
   ['goto 10 10', 'g.player.path.length > 0'], [3, 'Math.floor(g.player.x) === 10 && Math.floor(g.player.y) === 10 && JSON.stringify(g.log).includes("the pilot sets you down")'],
   ['mark den'], [0.5, 'document.querySelector(".waypoints")?.innerText.includes("den")'],
-  [0, '(() => { const c = document.querySelector("canvas.map"); const r = c.getBoundingClientRect(); c.dispatchEvent(new MouseEvent("click", { clientX: r.left + r.width / 2 - r.width * 4 / 37, clientY: r.top + r.height / 2, bubbles: true })); return JSON.stringify(g.log).includes("goto 6 10"); })()'],
+  [0, '(() => { const c = document.querySelector("canvas.map"); const r = c.getBoundingClientRect(); c.dispatchEvent(new MouseEvent("click", { clientX: r.left + r.width / 2 - r.width * 4 / Number(c.dataset.cells || 37), clientY: r.top + r.height / 2, bubbles: true })); return JSON.stringify(g.log).includes("goto 6 10"); })()'],
   [3, 'Math.floor(g.player.x) === 6 && Math.floor(g.player.y) === 10'],
   // finish (#1325): the Thaw Engine ends the run; light, melting windows, the end card, wake again
   [0, '(g.player.slots++, g.player.inv.push({ kind: "mod", mod: "thaw-engine" }), true)'],
