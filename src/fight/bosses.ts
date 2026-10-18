@@ -957,7 +957,7 @@ export const DROP_POOL: string[][] = [
 /** core power each keeper's ember heart adds (all but the heart's) */
 export const KEEPER_POWER = 2;
 /** and max hp (r1: hp stalled at 22 from floor 2 on, while the keepers hit 4–6) */
-export const KEEPER_FLESH = 2;
+export const KEEPER_FLESH = 3; // v3 econ: 2 → 3, for the income the print → recycle loop paid (careful sim 86% → 96% of 80)
 /** floors whose boss also gives up a unique (from the run's deck, src/mods/uniques.ts) */
 export const UNIQUE_FLOORS = [1, 3];
 

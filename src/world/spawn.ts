@@ -166,6 +166,7 @@ function cache(g: Game, c: Chunk, f: number): void {
   if (f > 0 && f < ZONES.length - 1) spawn(g, { kind: 'item', x: c.cx * CHUNK + 10.5, y: c.cy * CHUNK + 6.5, item: { kind: 'res', res: r.pick(['bone', 'glass', 'copper'] as const), n: 3 + f } });
   // v3 econ: the print → recycle loop paid the deep floors' power and upgrades; the cache pays a share of it now
   if (f > 0 && f < ZONES.length - 1) spawn(g, { kind: 'item', x: c.cx * CHUNK + 11.5, y: c.cy * CHUNK + 6.5, item: { kind: 'res', res: 'bone', n: 2 + 2 * f } });
+  if (f > 0 && f < ZONES.length - 1) spawn(g, { kind: 'item', x: c.cx * CHUNK + 12.5, y: c.cy * CHUNK + 6.5, item: { kind: 'res', res: 'copper', n: 1 + f } });
 }
 
 export function fill(g: Game, c: Chunk): void {
