@@ -13,6 +13,7 @@ import { clear } from '../core/grid';
 import { canHit } from './sense';
 import { perk } from './uniques';
 import type { Inst } from '../core/types';
+import { fx, strikeFx } from '../fx/attacks';
 
 /** each extra copy of one weapon cuts its cooldown by this much (stacked); copies never add hits. Aimed weapons
  *  had this rule (src/fight/aim.ts); v2r2 fight: three choir bells stacked to 4.5 dps hands-free and beat aiming */
@@ -45,6 +46,9 @@ family('weapon', {
     // a sweeping weapon (the censer flail) hits everything in reach, the rest the nearest
     const dmg = param<number>(inst, 'damage', 1);
     const hit = param(inst, 'sweep', false) ? near : near.slice(0, 1);
+    // seen: the bell's ring, the flail's arc, the finger's zap (src/fx/attacks.ts)
+    strikeFx(g, inst, hit[0], range, param(inst, 'sweep', false));
+    for (const t of hit.slice(1)) fx(g, 'spark', t.x, t.y);
     for (const t of hit) strike(g, t, dmg);
     const pk = perk(inst);
     if (pk === 'slow') for (const t of hit) if (t.enemy) t.enemy.data.slowUntil = g.t + SLOW;
@@ -56,6 +60,7 @@ family('weapon', {
         if (!next) break;
         done.add(next);
         g.events.push({ type: 'chain', at: [next.x, next.y], data: [from.x, from.y] });
+        fx(g, 'zap', from.x, from.y, next.x, next.y);
         strike(g, next, dmg * CHAIN.mult);
         from = next;
       }
