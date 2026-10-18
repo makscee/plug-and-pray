@@ -137,3 +137,41 @@ power binding (power alone or with slots) 21% → 42%, slots alone 1% → 0%; na
 - **Small things.** A carried card reader reads for a bone (installed, free). Out of reach, `offer`, `print`,
   `buy` and `break` say where to stand, with a [go there] button. Three or more foes closing on you at a machine
   get one warning.
+
+## Maps, eyes and radars (v2)
+
+Maks, 10-18: "map should be explored depending on the eye ... one eye can see through wall but miss something
+inside there, so it can't for sure be empty", "allow map clicking for moving not from the start", "make it
+necessary to have different radars and scanners to locate different points of interest".
+
+**What you know of a cell** (src/sight/know.ts): *unseen*, *seen* (an eye saw it plainly: a floor drawn there is
+empty), *through* (an eye that sees through walls passed over it: drawn hatched, its shape a rumour, never
+known-empty) and *scanned* (a radar marked what is there). Each eye on writes its own view every frame it takes
+(src/sight/reveal.ts): rays across its cone, one per pixel column, out to its range, which in the dark is your
+light. Heat sees through walls its whole range, sonar 3 cells into the stone; a heat eye also marks warm things
+it sees behind walls as a fading blob. With no eye the map remembers only the cells you walked. A wall one cell
+thick between seen floor and rumoured floor gets a chevron: dig or break through.
+
+**Maps** (src/world/mind.ts), each a tier up:
+
+| map | tier · power | draws | clicks |
+|---|---|---|---|
+| map spool | 0 · 1 | three inks (floor, wall, things); every radar mark a "?" | no: `where` and the console buttons walk you |
+| survey spool | 1 · 2 | veins, loot, printers and marks in their own colours, wall faces edged, 37 cells | click to walk (stepper legs, a pilot) |
+| illuminated atlas | 2 · 2 | each thing as its icon, each mark a picture (ore, chest, heart, stairs, crown); hover a cell for a note | yes |
+| glass diorama | 2 · 3 | the known halls as a small isometric model: walls stand, rumours are glass, foes are their sprites | yes |
+
+**Radars** (src/mods/radar.ts, family scanner with `finds`): each finds one kind of thing across the floor and
+marks it on any map, as sure as it can tell. Nothing else marks these.
+
+| radar | tier · power | finds | precision |
+|---|---|---|---|
+| sounding knell | 0 · 1, loud 2 | "something": modules, cards, printers, altars, caches, guards (26 cells, every 8 s) | a ring 3 cells wide, never what |
+| hollow tap | 0 · 1 | hollow walls and warm plates (14 cells) | the cell, "something behind this wall"; a tapped shell can be broken |
+| vein fork | 0 · 1 | every vein, its ore and size (22 cells) | the cell nearest you |
+| pulse choir | 1 · 2 | every heart, the hidden too (22 cells, every 2 s) | a 1.5-cell ring that fades; not whose |
+| plumb line | 1 · 1 | the way down and what guards it, anywhere on the floor (`data.stairs`, `data.boss`, elites, the engine; `deepHooks`) | exact, named |
+| bone glass | 2 · 2 | caches, and names what is kept there (24 cells) | the cell and its contents |
+
+Floor kits (src/world/floors.ts `KIT`, once floors are on main): floor 1 hollow tap; floor 2 survey spool, sounding
+knell, vein fork, plumb line; floor 3 illuminated atlas, pulse choir, bone glass; floor 4 glass diorama.

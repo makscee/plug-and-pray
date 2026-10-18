@@ -3,11 +3,12 @@
 // Parameters per family (the slices read these; unknown keys are ignored):
 //   camera   res (px), colors (0 = full), fps, fov (deg), range (cells), noise (0..1), lag (s), blur (px), filter: color|gray|1bit|heat|sonar|edge
 //   scanner  range (cells), sees: heat|metal|flesh|doors|cards|enemies|veins (list), refresh (s), shape: ring|cone
+//            radars instead: finds: thing|cache|vein|life|deep, every (s), spread (cells), names
 //   lamp     radius (cells), color (hex string), flicker (0..1)
 //   gait     go (typed cell moves), keys (arrow keys cell to cell), free (WASD + mouse), dig
 //   weapon   damage, cooldown (s), range (cells), aim: auto|aimed
 //   body     hp (+max), regen (hp/s), armour (damage off each hit), ward (returns the next hit), recharge (s)
-//   mind     what (ledger|map|reader|compass|clock)
+//   mind     what (ledger|map|reader|compass|clock); a map: span (cells), detail 0..3, click
 //   power    power (+cap)
 //   tool     drain (yield multiplier), cooldown (s), noise (cells it wakes)
 // Any family (module pass, docs/modules.md): loud (cells farther things notice you while it is on),
@@ -44,6 +45,14 @@ mods([
   { id: 'bone-listener', name: 'bone-listener', family: 'scanner', power: 1, warm: 1, tier: 1, params: { range: 10, sees: ['flesh'], refresh: 0.8, shape: 'cone' }, text: 'a jawbone pressed to the wall. it hears the hidden.' },
   { id: 'conduit-dowser', name: 'conduit dowser', family: 'scanner', power: 1, warm: 1, tier: 0, params: { range: 9, sees: ['doors'], refresh: 3, shape: 'ring' }, text: 'a forked rib that twitches over passages.' },
   { id: 'marrow-rod', name: 'marrow rod', family: 'scanner', power: 1, warm: 1.5, tier: 1, params: { range: 8, sees: ['veins'], refresh: 3, shape: 'cone' }, text: 'it drinks a little of every vein it finds.' },
+  // v2 radars (src/mods/radar.ts): each finds one kind of thing across the floor and marks it on your map, as
+  // sure as it can tell (spread: cells it may be off; names: it says what). Without the right one, those stay unmarked
+  { id: 'sounding-knell', name: 'sounding knell', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'thing', range: 26, every: 8, spread: 3, loud: 2 }, text: 'a knell rung into the stone. what rings back is "something", somewhere near there.' },
+  { id: 'hollow-tap', name: 'hollow tap', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'cache', range: 14, every: 4 }, text: 'a little hammer that taps the walls. it hears where they are hollow, not what is inside.' },
+  { id: 'vein-fork', name: 'vein fork', family: 'scanner', power: 1, warm: 1, tier: 0, params: { finds: 'vein', range: 22, every: 5, names: true }, text: 'a tuning fork that hums the note of ore, and knows which ore.' },
+  { id: 'pulse-choir', name: 'pulse choir', family: 'scanner', power: 2, warm: 1, tier: 1, params: { finds: 'life', range: 22, every: 2, spread: 1.5 }, text: 'it hears every heart within a long throw. not whose.' },
+  { id: 'plumb-line', name: 'plumb line', family: 'scanner', power: 1, warm: 2, tier: 1, params: { finds: 'deep', range: 999, every: 10, names: true }, text: 'a weight on a thread. it leans toward the way down, and toward what keeps it.' },
+  { id: 'bone-glass', name: 'bone glass', family: 'scanner', power: 2, warm: 1.5, tier: 2, params: { finds: 'cache', range: 24, every: 4, names: true }, text: 'a lens of bone that sees into sealed places, and names what is kept there.' },
   { id: 'watchers-bell', name: "watcher's bell", family: 'scanner', power: 2, warm: 1.5, tier: 2, params: { range: 12, sees: ['enemies', 'cards'], refresh: 1, shape: 'ring' }, text: 'it rings for every eye that turns to you.' },
   { id: 'halo', name: 'halo', family: 'lamp', power: 1, warm: 0.5, tier: 0, params: { radius: 3, color: 'ffe0a8', flicker: 0 }, text: 'a ring of light. it was meant for a head.' },
   { id: 'censer', name: 'censer of embers', family: 'lamp', power: 1, warm: 1, tier: 0, params: { radius: 4, color: 'ff9040', flicker: 0.5 }, text: 'smoke and coal on a chain. it gutters, it breathes.' },
@@ -53,8 +62,13 @@ mods([
   { id: 'leech-needle', name: 'leech needle', family: 'tool', power: 1, warm: 1, tier: 0, params: { drain: 1, cooldown: 1.5, noise: 8 }, text: 'a hollow needle. it drinks the walls. loudly.' },
   { id: 'bone-auger', name: 'bone auger', family: 'tool', power: 2, warm: 1.5, tier: 1, params: { drain: 2, cooldown: 1, noise: 12 }, text: 'it chews veins to the root. everything hears.' },
   { id: 'card-reader', name: 'card reader', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'reader' }, text: 'a slot for memory cards. it reads what the dead wrote.' },
-  { id: 'map-spool', name: 'map spool', family: 'mind', power: 1, warm: 1, tier: 0, params: { what: 'map', span: 33, reveal: 7 }, text: 'a reel of tape that remembers every turn.' },
-  { id: 'survey-spool', name: 'survey spool', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 66, reveal: 12 }, text: 'a wider reel, wound by a surveyor long gone.' },
+  // v2 maps (src/world/mind.ts): each draws what your eyes and scanners know, in more detail a tier up.
+  // detail 0 three inks, no clicks; 1 veins and finds in their own inks, a click walks you there; 2 a picture
+  // for every thing and a note on hover; 3 the known halls in glass, with the things in them
+  { id: 'map-spool', name: 'map spool', family: 'mind', power: 1, warm: 1, tier: 0, params: { what: 'map', span: 33, detail: 0 }, text: 'a reel of tape that remembers what your eyes saw, in three inks. it takes no clicks.' },
+  { id: 'survey-spool', name: 'survey spool', family: 'mind', power: 2, warm: 1.5, tier: 1, params: { what: 'map', span: 37, detail: 1, click: true }, text: 'a surveyor\'s reel: veins and finds in their own inks. click it and your legs go there.' },
+  { id: 'illuminated-atlas', name: 'illuminated atlas', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 33, detail: 2, click: true }, text: 'a monk\'s map: every thing a little picture, and a note when you point at it.' },
+  { id: 'glass-diorama', name: 'glass diorama', family: 'mind', power: 3, warm: 2, tier: 2, params: { what: 'map', span: 23, detail: 3, click: true }, text: 'the halls you know, in glass, small enough to hold, with every thing in them.' },
   { id: 'drowned-compass', name: 'drowned compass', family: 'mind', power: 0, warm: 1, tier: 1, params: { what: 'compass' }, text: 'it pulls toward what the cards promised.' },
   { id: 'ninth-eye', name: 'the ninth eye', family: 'camera', power: 3, warm: 2, tier: 3, params: { res: 160, colors: 0, fps: 10, fov: 100, range: 16, filter: 'color' }, text: 'eight were made for the god. this one stayed.' },
   { id: 'thaw-engine', name: 'thaw engine', family: 'unique', power: 0, warm: 0, tier: 3, params: {}, text: 'a cold heart the size of a fist. it wants a breast.' },
@@ -69,7 +83,7 @@ mods([
   { id: 'reliquary-ribs', name: 'reliquary ribs', family: 'body', power: 1, warm: 1, tier: 2, params: { hp: 5 }, text: 'a cage of holy bone around your core.' },
   // pilots and waypoint logs (playtest 3): pilot gaits walk a seen path to a point (plan: longest path, pace,
   // avoid: around what they see); logs note points of interest (keep: how many, auto: which kinds, range: cells)
-  { id: 'wayfinder-moth', name: 'wayfinder moth', family: 'gait', power: 1, warm: 1, tier: 0, params: { pilot: true, plan: 40, pace: 2.5 }, text: 'a moth that remembers every lamp. click the map: it leads you there.' },
+  { id: 'wayfinder-moth', name: 'wayfinder moth', family: 'gait', power: 1, warm: 1, tier: 0, params: { pilot: true, plan: 40, pace: 2.5 }, text: 'a moth that remembers every lamp. goto a waypoint, or click a surveyor\'s map.' },
   { id: 'psalm-of-roads', name: 'psalm of roads', family: 'gait', power: 2, warm: 1.5, tier: 1, params: { pilot: true, plan: 120, pace: 3.2, avoid: true }, text: 'a hymn for long roads. it walks you far, around what it sees.' },
   { id: 'sleepwalker', name: 'sleepwalker', family: 'gait', power: 0, warm: 2, tier: 0, params: { pilot: true, plan: 20, pace: 1.6 }, text: 'it walks for you while you dream. slowly, not far.' },
   { id: 'waystone-log', name: 'waystone log', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'log', keep: 8, range: 8, auto: ['start', 'printer', 'reader', 'card', 'vector'] }, text: 'a pilgrim\'s tally of the places that matter.' },

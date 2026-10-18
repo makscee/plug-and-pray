@@ -11,7 +11,7 @@ import type { Game } from '../core/types';
 import { addItem, exec, verb } from '../core/verbs';
 import { frameHooks } from '../ui';
 import { view } from '../ui/views';
-import { near, see, shoot, type Mode } from './scene';
+import { near, shoot, type Mode } from './scene';
 import { HOLLOW } from './marks';
 import { eyeRange } from '../mods/sense';
 import { engaged } from './foes';
@@ -306,7 +306,7 @@ view('camera', (el, inst, g) => {
       const range = eyeRange(g, inst);
       const name = param<string>(inst, 'filter', 'color');
       const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color', hidden: name === 'sonar' || name === 'heat', filter: name });
-      see(g, range);
+      // what it sees goes on the map from its own tick (src/sight/reveal.ts), headless too
       if (firstSight(g, inst, range)) inst.data.flashAt = g.t;
       // a failed read (a lost GL context, a frame the GPU dropped) comes back all zero: hold the
       // last good frame for one read only, never longer (Maks 10-18: held frames froze an eye)

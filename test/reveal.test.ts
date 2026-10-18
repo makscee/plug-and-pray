@@ -22,12 +22,15 @@ describe('map reveal', () => {
     expect(g.seen.has('10,4')).toBe(false); // behind it
   });
 
-  it('a map spool that is on unrolls the cells in sight as you go, with no eye', () => {
+  it('with no eye the map spool only remembers where you walked; an eye writes its cone', () => {
     const g = newGame(1);
     addItem(g, { kind: 'mod', mod: 'map-spool' });
     exec(g, 'install map spool');
     for (let k = 0; k < 60; k++) tick(g, 1 / 30);
-    const before = g.seen.size;
-    expect(before).toBeGreaterThan(20);
+    expect(g.seen.size).toBeLessThanOrEqual(9);
+    addItem(g, { kind: 'mod', mod: 'pinhole-eye' });
+    exec(g, 'install pinhole eye');
+    for (let k = 0; k < 60; k++) tick(g, 1 / 30);
+    expect(g.seen.size).toBeGreaterThan(20);
   });
 });

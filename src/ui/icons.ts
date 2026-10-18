@@ -288,6 +288,9 @@ function mind(px: Px, p: Params): void {
     px.line(9, 8, 11, 5, RUST);
     px.set(11, 5, EMBER);
     if (num(p, 'span') > 40) px.rect(4, 4, 5, 4, BONE_D);
+    // v2 tiers: the atlas has an illuminated initial, the diorama is a pane of glass over it
+    if (num(p, 'detail') >= 2) px.rect(4, 4, 6, 6, GOLD), px.set(5, 5, RUST);
+    if (num(p, 'detail') >= 3) px.line(3, 12, 12, 3, GLASS), px.line(4, 12, 12, 4, COLD);
     return;
   }
   if (what === 'compass') {
