@@ -18,7 +18,7 @@ Each floor down looks different, plays a little differently and ends at a **keep
 
 - Click the map to walk, click the orange words and buttons, drag modules to install them. Every button types a console command; `help` lists them and `where` says where to go next.
 - With an eye: WASD walks, the mouse, trackpad or ←/→ (Q/E) looks, hold Space or click to shoot. Tab gives the cursor back for your modules; M shows the big map. A trackpad is enough: no mouse needed.
-- Die and you wake again on a new world. A run takes 20–30 minutes.
+- Die and you wake again on a new world. A floor takes 5–10 minutes.
 
 Desktop browser, sound on.
 
