@@ -8,7 +8,7 @@
 import { dist, itemName, reach } from '../core/game';
 import { Cell, cell, veinOf } from '../core/grid';
 import { def, label, powerMax, powerUsed, size, slotsUsed, working } from '../core/mods';
-import { instRef, VERBS } from '../core/verbs';
+import { inPlace, instRef, VERBS } from '../core/verbs';
 import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { costs, does } from '../mods/describe';
@@ -208,7 +208,7 @@ export class Panels {
         const recycle: Btn = Object.keys(scrap).length ? { label: 'recycle', cmd: `recycle ${label(it)}`, note: `recycle: ${fmt(scrap)}` } : { label: 'recycle', note: 'it will not break' };
         buttons = [install, { label: '?', cmd: `info ${label(it)}` }, recycle, drop];
         lines = modLines(it);
-        c = { sel, icon: it, title: `${label(it)} · ${does(it)}`, mod: it.mod, dbl: install.cmd, dim: slotsUsed(g) + size(it) > p.slots, span: size(it), rar: rarOf(it), drag: true };
+        c = { sel, icon: it, title: `${label(it)} · ${does(it)}`, mod: it.mod, dbl: install.cmd, dim: !install.cmd, span: size(it), rar: rarOf(it), drag: true };
       } else if (it.kind === 'card') {
         const scripture = !it.card.startsWith('log');
         buttons = [ok(g, 'read') ? { label: 'read', cmd: 'read card' } : { label: 'read', note: 'needs a card reader' }, drop];
@@ -393,9 +393,9 @@ export class Panels {
       if (first >= 0 && first < k) [p.inv[first], p.inv[k]] = [p.inv[k], p.inv[first]];
       // dropped onto an installed module: that one comes out and this one goes in (v2r1 ux)
       const out = onto ? this.instOf(onto) : undefined;
-      if (out) return this.send(`remove ${instRef(this.g, out)}; install ${label(it)}`);
+      if (out) return inPlace(this.g, it, () => this.send(`remove ${instRef(this.g, out)}; install ${label(it)}`));
       const b = installBtn(this.g, it);
-      return this.send(b.cmd!);
+      return inPlace(this.g, it, () => this.send(b.cmd!));
     }
     if (from === 'modules' && to === 'inv') {
       const inst = this.instOf(key);

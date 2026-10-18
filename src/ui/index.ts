@@ -3,6 +3,7 @@
 import { costs, does } from '../mods/describe';
 import { def, families, label, param, working } from '../core/mods';
 import { LAYERS } from '../world/secrets';
+import { plan } from '../sight/layers';
 import type { Game, Inst } from '../core/types';
 import { Console } from './console';
 import { Panels } from './panels';
@@ -112,6 +113,14 @@ export class Screen {
     if (d.family === 'camera') {
       const eye = f === 'color' ? 1 - Math.min(200, param<number>(inst, 'res', 64)) / 400 : f === 'gray' ? 2 : 3;
       if (w.el.dataset.eye !== String(eye)) w.el.dataset.eye = String(eye);
+      // v2r3 ux: the eye the screen shows (the base) docks only to the map; layer eyes give way to it
+      const base = plan(g).base === inst;
+      if (base !== !!w.el.dataset.base) {
+        if (base) w.el.dataset.base = '1';
+        else delete w.el.dataset.base;
+        // it became the screen's eye while docked: back out where it can
+        if (base) queueMicrotask(() => windows.promote(w!.el));
+      }
     }
     // its first reveal (scripture, a hollow wall, handprints) opens its window (playtest r2)
     const flash = inst.data.flashAt as number | undefined;

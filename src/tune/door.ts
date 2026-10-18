@@ -94,13 +94,22 @@ export function keeperCheck(g: Game, f = floorOf(g)): Check {
   const why: string[] = [];
   const armed = p.installed.some((i) => i.on && def(i).family === 'weapon');
   if (!armed) why.push('no weapon is on');
-  else if (readiness(warm(g)) < needOf(g, f) * 0.8) {
-    const L = LOADOUTS[Math.max(0, Math.min(4, f))];
-    const ref = L.mods.filter((m) => MODS[m]?.family === 'weapon').map((mod) => ({ mod, roll: L.rolls?.[mod] }));
-    // v2-balance3 (v2r3 fight): the keeper is balanced for a tempered weapon you carry plain: say so
-    const plain = p.installed.find((i) => i.on && L.rolls?.[i.mod] && i.roll?.tag !== 'attuned' && i.roll?.tag !== 'tempered');
-    if (plain && dps < dpsOf(ref) * 0.85) why.push(`temper your ${def(plain).name} at an altar first`);
-    else why.push(dps < dpsOf(ref) * 0.7 ? 'your weapons are weak for it: find or print a stronger one, or a second' : 'you could not take its blows long: an altar (+hp) or armour first');
+  else {
+    const ratio = readiness(warm(g)) / needOf(g, f);
+    if (ratio < 0.8) {
+      // v2r3 ux: every blocker at once (one at a time sent him swapping back and forth on floor 2)
+      const L = LOADOUTS[Math.max(0, Math.min(4, f))];
+      const ref = L.mods.filter((m) => MODS[m]?.family === 'weapon').map((mod) => ({ mod, roll: L.rolls?.[mod] }));
+      const hit = dps / Math.max(0.01, dpsOf(ref));
+      const weak = hit < 0.7;
+      // v2-balance3 (v2r3 fight): the keeper is balanced for a tempered weapon you carry plain: say so
+      const plain = p.installed.find((i) => i.on && L.rolls?.[i.mod] && i.roll?.tag !== 'attuned' && i.roll?.tag !== 'tempered');
+      const untempered = !!plain && hit < 0.85;
+      if (untempered) why.push(`temper your ${def(plain).name} at an altar first`);
+      else if (weak) why.push('your weapons are weak for it: find or print a stronger one, or a second');
+      // what it can take: readiness is damage times toughness, so the toughness falls out of the two
+      if (!(weak || untempered) || ratio / Math.max(0.01, hit) < 0.8) why.push('you could not take its blows long: an altar (+hp) or armour first');
+    }
   }
   if (p.hp < p.maxHp * 0.7) why.push(`mend first (${Math.ceil(p.hp)}/${p.maxHp} hp)`);
   return { name: k.name, hp: k.hp, damage: k.damage, hint: k.def.hint, dps, ready: !why.length, why };

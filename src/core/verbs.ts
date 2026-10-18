@@ -111,10 +111,24 @@ export function addItem(g: Game, it: Item): void {
   g.player.inv.push(it);
 }
 
+/** v2r3 ux: a swap puts what came out where what went in sat in the bag, so the grid doesn't shift under the
+ *  next drag (the swapped-out module went to the end and a second drag grabbed the wrong eye) */
+export function inPlace(g: Game, it: Item, run: () => void): void {
+  const k = g.player.inv.indexOf(it);
+  const before = new Set(g.player.inv);
+  run();
+  const inv = g.player.inv;
+  if (k < 0 || inv.includes(it)) return;
+  const out = inv.filter((o) => !before.has(o) && o.kind === 'mod');
+  if (!out.length) return;
+  g.player.inv = inv.filter((o) => !out.includes(o));
+  g.player.inv.splice(Math.min(k, g.player.inv.length), 0, ...out);
+}
+
 /** verbs help and the actions bar never list (test runs only) */
 const HIDDEN = new Set(['conjure']);
-/** verbs a key does (t, p): help lists them, the actions bar does not */
-const KEYED = new Set(['tidy', 'pause', 'map']);
+/** verbs a key does (t, p), and `turn` (the power hint's words): help lists them, the actions bar does not */
+const KEYED = new Set(['tidy', 'pause', 'map', 'turn']);
 
 verb('help', {
   help: 'the goal, the keys and what you can do: help, help go',
