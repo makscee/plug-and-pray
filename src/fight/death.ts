@@ -38,7 +38,7 @@ export function lesson(g: Game): string {
     const how = { warden: 'step aside when it draws breath', abbot: 'two cells back when it raises both arms', saint: 'come at it on a diagonal, off its lines' }[killer.type];
     return `a stronger weapon or a heal first; and ${how}.`;
   }
-  if (killer.type === 'hum') return 'sonar or a heat eye shows the hum; colour eyes never do.';
+  if (killer.type === 'hum') return 'sonar, a heat eye or a bone-listener shows the hum; colour eyes never do.';
   if (killer.type === 'mimic') return 'a lodestone or sonar shows a mimic before you reach for it.';
   if (dark && !killer.seen) return 'light or sonar: you could not see what hit you.';
   // mites stack on one cell, so a corridor does not split them; walking off does (you outpace them)

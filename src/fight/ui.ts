@@ -41,8 +41,8 @@ frameHooks.push((g) => {
     b.dataset.text = key;
     // hp, then the two resources every choice spends: slots and power
     b.innerHTML = `hp <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
-      // in a fight the pips give way to the fight line (r2: it ran off the edge at 1280 px)
-      `<span class="sep">·</span>slots ${su}/${p.slots}${fight ? '' : ` ${pips(su, p.slots)}`}<span class="sep">·</span>power ${pu}/${pm}${fight ? '' : ` ${pips(pu, pm)}`}` +
+      // in a fight slots and power give way to the fight line (r2: it ran off the edge at 1280 px)
+      (fight ? '' : `<span class="sep">·</span>slots ${su}/${p.slots} ${pips(su, p.slots)}<span class="sep">·</span>power ${pu}/${pm} ${pips(pu, pm)}`) +
       (fight ? `<span class="sep">·</span><span class="fight" style="color:#ff6a50">${boxes(fight)}</span>` : '');
   }
   b.dataset.low = String(p.hp <= p.maxHp * 0.3);
@@ -67,7 +67,7 @@ export function fightLine(g: Game): string {
   if (!foe?.enemy) return '';
   const max = Number(foe.enemy.data.maxHp ?? foe.enemy.hp) || 1;
   const hp = Math.max(0, foe.enemy.hp);
-  const n = Math.min(10, Math.ceil(max));
+  const n = Math.min(8, Math.ceil(max));
   const filled = Math.round((hp / max) * n);
   const bar = '▮'.repeat(filled) + '▯'.repeat(Math.max(0, n - filled));
   const all = engaged(g, 6);
