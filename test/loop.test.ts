@@ -64,6 +64,7 @@ describe('v2r2 fun: the keeper door stops every walk', () => {
     const g = newGame(7);
     kit(g);
     g.player.slots = 8;
+    g.player.core += 1; // v4: the cheaper pinhole installs with the kit now
     g.player.inv.push({ kind: 'mod', mod: 'wayfinder-moth' });
     exec(g, 'install wayfinder moth');
     run(g, 2);

@@ -12,6 +12,7 @@ import { verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
 import { aimed, shotCooldown, volley } from '../fight/aim';
 import { autoCooldown, copiesOf, hasteHooks } from '../mods/weapon';
+import { walkPace } from '../mods/gait';
 import { WIDEN } from '../sight/layers';
 import { mouseAims } from '../fight/eye';
 import { armed, warnUnarmed } from '../fight/unarmed';
@@ -25,6 +26,9 @@ export function reins(g: Game): Inst | undefined {
 }
 /** the old name (the sims): the reins */
 export const fpsEye = reins;
+/** v4 (Maks 10-18: "it should play as an fps ... when eye is equipped you should be able to walk around freely"):
+ *  any eye on is first person; the reins are the upgrade on top (the dash, the hit markers, the harder shot) */
+export const canFps = (g: Game): boolean => !!reins(g) || active(g, 'camera').length > 0;
 /** a scope on (the pilgrim's, the martyr's): the eye the reins' big view reads well through */
 export const sharpEye = (g: Game): boolean => active(g, 'camera').some((i) => param<number>(i, 'wide', 0) > 0);
 /** its mark: 0 none, 1 mk1, 2 mk2 */
@@ -58,12 +62,14 @@ export function fps(g: Game): Fps {
   return s;
 }
 /** the reins are taken and work: mouse-look and view-relative keys apply */
-export const bigOn = (g: Game): boolean => fps(g).big && !!reins(g);
+export const bigOn = (g: Game): boolean => fps(g).big && canFps(g);
 // the eye's snap to threats never turns the view under the mouse
 mouseAims.push(bigOn);
 
 /** walking speed in the big view (cells/s) */
 export const WALK = 2.6;
+/** walking speed in the big view with an eye and no legs (cells/s) */
+export const EYE_WALK = 1.6;
 /** iframe: from the dash's start, blows pass through you this long (v2r2 fight: mk2's dash dodged nothing) */
 export const DASH = { cells: 2.2, secs: 0.16, cooldown: 1.1, iframe: 0.3 };
 export const LUNGE = { cells: 0.6, secs: 0.12, reach: 0.7 };
@@ -82,7 +88,8 @@ export function fpsMove(g: Game, fwd: number, side: number): void {
   let vy = fwd * fy + side * fx;
   const r = Math.hypot(vx, vy) || 1;
   const r0 = reins(g);
-  const speed = r0 ? param<number>(r0, 'speed', WALK) : WALK;
+  // an eye alone: your legs' pace (no legs: a slow walk, never the half-cell crawl)
+  const speed = r0 ? param<number>(r0, 'speed', WALK) : Math.max(EYE_WALK, Math.min(WALK, walkPace(g)));
   vx = (vx / r) * speed;
   vy = (vy / r) * speed;
   s.move = [vx, vy];
@@ -149,7 +156,7 @@ export function fpsFire(g: Game): number {
     if (!foe) continue;
     hits++;
     foe.enemy!.data.noticed = true;
-    strike(g, foe, param<number>(i, 'damage', 1) * FPS_DAMAGE);
+    strike(g, foe, param<number>(i, 'damage', 1) * (reins(g) ? FPS_DAMAGE : 1));
     s.hitAt = g.t;
     if (!g.ents.includes(foe)) s.killAt = g.t;
   }
@@ -235,11 +242,16 @@ hurtHooks.push((g, n) => {
 });
 
 // walking and the burst (dash, lunge) move you, sliding along walls; leaving the big view or the eye stops you
+/** whether the reins were on last tick: taking them off gives the cursor back, as before v4 (the sims rely on it) */
+const hadReins = new WeakMap<Game, boolean>();
 tickHooks.push((g, dt) => {
   const s = state.get(g);
   if (!s) return;
+  const r = !!reins(g);
+  if (hadReins.get(g) && !r) s.big = false;
+  hadReins.set(g, r);
   if (!bigOn(g)) {
-    s.big = s.big && !!reins(g);
+    s.big = s.big && canFps(g);
     s.move = null;
     s.dashUntil = -99;
     return;
@@ -280,9 +292,9 @@ family('mind', {
 /** said once per run: taking the reins and letting go teach their keys the first time only */
 const taught = new WeakMap<Game, Set<string>>();
 verb('big', {
-  help: 'the reins: take them (the mouse or q/e looks, a click or space shoots, wasd walks) or give the cursor back (key tab)',
-  when: (g) => !!reins(g),
-  whenFail: () => "no reins on. the saint's reins (floor 3) give you the eye to turn with the mouse.",
+  help: 'first person: the mouse or q/e looks, a click or space shoots, wasd walks; or give the cursor back (key tab)',
+  when: canFps,
+  whenFail: () => 'no eye on: install an eye to walk and look in first person.',
   run(g) {
     const s = fps(g);
     s.big = !s.big;
@@ -290,20 +302,20 @@ verb('big', {
     let t = taught.get(g);
     if (!t) taught.set(g, (t = new Set()));
     // v2r5 newcomer: through the vidicon or a lattice eye the big view is murk; a scope makes it readable
-    if (s.big && !t.has('sharp') && !sharpEye(g)) {
+    if (s.big && reins(g) && !t.has('sharp') && !sharpEye(g)) {
       t.add('sharp');
       say(g, 'the reins want a sharp eye: the pilgrim scope. through this eye the big view is murk.');
     }
     const k = s.big ? 'on' : 'off';
     if (t.has(k)) return;
     t.add(k);
-    say(g, s.big ? 'you take the reins. the mouse or trackpad turns you (q e or ← → too), a click or space shoots, wasd walks the way you look. tab gives the cursor back.' : 'you let the reins go: the cursor is yours, for the windows. tab takes them again.');
+    say(g, s.big ? 'first person. the mouse or trackpad turns you (q e or ← → too), a click or space shoots, wasd walks the way you look. tab gives the cursor back.' : 'the cursor is yours, for the windows. tab (or a click on the view) takes first person again.');
   },
 });
 
 verb('lunge', {
-  help: 'the reins: throw yourself forward; melee weapons strike what you face (key f)',
-  when: (g) => !!reins(g),
+  help: 'first person: throw yourself forward; melee weapons strike what you face (key f)',
+  when: canFps,
   run(g) {
     if (!lunge(g) && armed(g) && !active(g, 'weapon').some((i) => param<string>(i, 'aim', 'auto') === 'auto')) say(g, 'you lunge, but nothing you wear strikes up close: click shoots.');
   },

@@ -71,13 +71,13 @@ describe('v2 flow', () => {
     kit(g);
     g.player.inv.push({ kind: 'mod', mod: 'carrion-eye' }, { kind: 'mod', mod: 'fog-of-saints' });
     g.player.slots = 8;
-    g.player.core = 5;
+    g.player.core = 4; // v4: the pinhole drinks 1 (was 5 with the pinhole at 3)
     exec(g, 'install carrion eye');
     tick(g, 2);
     // power full: carrion 2 + stepper + map + spark = 5
     const room = makeRoom(g, { mod: 'fog-of-saints' }, false);
     expect(typeof room).not.toBe('string');
-    if (typeof room !== 'string') expect(room.off.map((i) => label(i))).toEqual(['carrion eye']);
+    if (typeof room !== 'string') expect(room.off.map((i) => label(i))).toEqual(['pinhole eye']); // v4: the 1-power pinhole stays on beside it now
   });
 
   it('unstuck folds you back to the last quiet spot, not the landing', () => {

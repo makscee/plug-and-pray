@@ -7,7 +7,7 @@
 
 import { CHUNK, Cell, cell, chunkHook, setCell, veinOf } from '../core/grid';
 import { dist, itemName, say, spawn, tickHooks } from '../core/game';
-import { active, label, MODS, param, powerMax, powerUsed } from '../core/mods';
+import { active, label, param } from '../core/mods';
 import { hash, rng, type Rng } from '../core/rng';
 import { goThere, verb, VERBS } from '../core/verbs';
 import { nicheIn } from '../mods/gait';
@@ -217,8 +217,7 @@ export function sealedEye(g: Game): Secret | undefined {
   return secrets(g).find((s) => s.eye && !s.done);
 }
 
-/** v3 (Maks 10-18: "it should require a lot of power, so you sometimes have to put it off in favour of a weapon"):
- *  the first eye you pick up says what it costs, once */
+/** v4: the first eye you pick up says how it plays, once */
 const toldDrink = new WeakSet<Game>();
 tickHooks.push((g) => {
   if (toldDrink.has(g)) return;
@@ -226,11 +225,7 @@ tickHooks.push((g) => {
   if (p.installed.some((i) => i.mod === 'pinhole-eye')) return void toldDrink.add(g);
   if (!p.inv.some((i) => i.kind === 'mod' && i.mod === 'pinhole-eye')) return;
   toldDrink.add(g);
-  const n = MODS['pinhole-eye'].power;
-  const free = powerMax(g) - powerUsed(g);
-  const arms = active(g, 'weapon').reduce((s, i) => s + MODS[i.mod].power, 0);
-  const how = free >= n ? 'install it now, or keep that power for a second weapon' : free + arms >= n ? 'switch off a weapon to wake it, or carry it for later' : 'more power wakes it: a generator (ember cell, votive battery) or an altar. carry it till then, or switch off a weapon and more';
-  say(g, `the eye drinks ${n} power (${free} free): ${how}.`);
+  say(g, 'first sight: install the eye, then wasd to walk, mouse to look.');
 });
 
 chunkHook((g, c) => {

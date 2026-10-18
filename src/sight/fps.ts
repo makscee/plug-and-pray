@@ -98,7 +98,7 @@ function make(): Big {
   const keys = document.createElement('div');
   keys.className = 'big-keys';
   // v2r1 ux: the keys were small grey text; Esc frees the mouse first, then leaves (src/body/input.ts)
-  keys.innerHTML = '<b class="reins-on">◉ reins taken</b><span class="big-layers"></span><br>wasd walk · ← → or q e turn<br>click/space (hold) shoot · f lunge<b class="dashkey"> · shift dash</b><br>tab or esc: the cursor back<br>[ ] or look 0.5–3: turn speed';
+  keys.innerHTML = '<b class="reins-on">◉ first person</b><b class="reins-mk"> · reins</b><span class="big-layers"></span><br>wasd walk · ← → or q e turn<br>click/space (hold) shoot · f lunge<b class="dashkey"> · shift dash</b><br>tab or esc: the cursor back<br>[ ] or look 0.5–3: turn speed';
   // v2r1 ux + pace: no map in big view; your map window's picture, in the corner
   const map = document.createElement('canvas');
   map.className = 'big-map';

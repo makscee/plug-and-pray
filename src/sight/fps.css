@@ -11,6 +11,8 @@
 #bigview .big-keys .dashkey { font-weight: normal; display: none; }
 #bigview .big-keys .reins-on { font-weight: normal; color: var(--good, #8fd46a); }
 #bigview[data-mk='2'] .big-keys .dashkey { display: inline; }
+#bigview .big-keys .reins-mk { font-weight: normal; color: var(--good, #8fd46a); }
+#bigview[data-mk='0'] .big-keys .reins-mk { display: none; }
 #bigview .big-boss { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: min(400px, calc(100vw - 32px)); text-align: center; color: #ff8a6c; text-shadow: 1px 1px 0 #000; pointer-events: none; }
 #bigview .big-boss[hidden] { display: none; }
 #bigview .big-boss .bar { display: block; width: 100%; height: 12px; margin-top: 2px; border-color: #ff6a50; }
