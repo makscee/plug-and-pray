@@ -42,7 +42,7 @@ function hover(c: HTMLCanvasElement): void {
   });
   const legend = document.createElement('p');
   legend.className = 'map-legend';
-  legend.innerHTML = `<i style="color:${ACC}">◆</i> hints, cards · <i style="color:#b0f080">◇</i> finds · <i style="color:#7fd8d0">•</i> piles · <i style="color:${ACC}">▪</i> modules · hover names a cell · `;
+  legend.innerHTML = `<i style="color:${ACC}">◆</i> hints · <i style="color:#b0f080">◇</i> finds · <i style="color:#7fd8d0">•</i> piles · <i style="color:${ACC}">▪</i> mods · `;
   const zoom = document.createElement('button');
   const big = () => mapCell.zoom ?? innerHeight >= 900;
   zoom.textContent = big() ? 'smaller' : 'zoom';
