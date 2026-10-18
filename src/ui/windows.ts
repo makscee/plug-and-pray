@@ -322,7 +322,8 @@ function dock(): void {
     // no room left: over an open module window at the side (never over another chip, the console or the middle)
     const chips = [...document.querySelectorAll<HTMLElement>('.win.min, .win-console')].filter((o) => o !== m && !o.dataset.tidy).map((o) => o.getBoundingClientRect());
     // v2r3 ux: never over the map window (a third chip row sat on its bottom border at 1280x720)
-    const maps = modWins().filter((o) => !o.classList.contains('min') && o.querySelector('canvas.map')).map((o) => o.getBoundingClientRect());
+    // v2r5 newcomer: nor over an eye's window (a weapon chip hid the vidicon's turn and step buttons at 720)
+    const maps = modWins().filter((o) => !o.classList.contains('min') && (o.querySelector('canvas.map') || o.classList.contains('fam-camera'))).map((o) => o.getBoundingClientRect());
     const spot = find([...rects(m), band]) ?? find([...chips, ...maps, band, column]) ?? find([...chips, band, column]);
     moveTo(m, spot ?? [16, innerHeight - h - 6]);
     delete m.dataset.tidy;

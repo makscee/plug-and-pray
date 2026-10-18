@@ -13,7 +13,7 @@ import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { costs, does } from '../mods/describe';
 import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear, shutEye } from '../world/printer';
-import { altarNear, offers as altarOffers } from '../world/altar';
+import { altarNear, GIVES, offers as altarOffers } from '../world/altar';
 import { atStairs, STAIRS, type Stairs } from '../world/floors';
 import { nearPieces } from '../world/events';
 import { img, type Of } from './icons';
@@ -269,7 +269,7 @@ export class Panels {
     if (altar) {
       rows.push({ icon: { thing: 'altar' }, name: 'altar', buttons: [] });
       for (const [cmd, price] of altarOffers(g, altar))
-        rows.push({ name: '', buttons: [affords(g, price) ? { label: cmd, cmd, note: fmt(price) } : { label: cmd, note: `${fmt(price)}: short` }] });
+        rows.push({ name: '', buttons: [affords(g, price) ? { label: cmd, cmd, note: GIVES[cmd] ? `give ${fmt(price)} → ${GIVES[cmd]}` : fmt(price) } : { label: cmd, note: `${GIVES[cmd] ? `give ${fmt(price)} → ${GIVES[cmd]}` : fmt(price)}: short` }] });
     }
     // v2 floors: the stairs down, open or sealed
     const st = atStairs(g);

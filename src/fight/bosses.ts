@@ -14,6 +14,7 @@ import type { Entity, Game, Item, Roll } from '../core/types';
 import { fire, shots, type ShotData } from './shots';
 import { bossKind } from './bolts';
 import { WARM } from '../mods/sense';
+import { inRoom } from '../world/floors';
 import { dealUnique } from '../mods/uniques';
 
 // ---- shapes on the floor: what a wind-up will hit (drawn on the map, marked in the eye, read by the sim)
@@ -401,7 +402,11 @@ const blink = (o: { windup: number; rest: number; then?: (g: Game, e: Entity) =>
 const toll = (o: { r0: number; r1: number; windup: number; rest: number; stun: number; second?: [number, number] }): Atk => ({
   id: 'toll',
   move: 'swings to toll',
-  warn: `the bell swings: its toll stuns between ${o.r0} and ${o.r1} cells. hug it or stand off.`,
+  // v2r5 newcomer: "hug it" against the inner ring (0-1.7) got you stunned; the text follows the ring
+  warn:
+    o.r0 > 0
+      ? `the bell swings: its toll stuns between ${o.r0} and ${o.r1} cells. ${o.second ? `hug it, then step out past ${o.second[1]} for the echo.` : 'hug it or stand off.'}`
+      : `the bell swings: its toll stuns within ${o.r1} cells. step out past ${o.r1} now${o.second ? ', then back in for the echo' : ''}.`,
   windup: o.windup,
   rest: o.rest,
   aim(_g, e) {
@@ -491,21 +496,21 @@ function boss(d: BossDef): void {
 // floor 0, the cradle: melee and kiting
 // (v2-balance3, v2r3 fight: a slam from hugging range is left by one 1-cell step: 0.8 + 1 clears 1.4-1.6)
 boss({
-  id: 'boss-warden', floor: 0, name: 'the great warden', hp: 100, damage: 2.6, speed: 1.6, walk: 'close', r: 0.55, at: [0.5],
+  id: 'boss-warden', floor: 0, name: 'the great warden', hp: 94, damage: 2.4, speed: 1.6, walk: 'close', r: 0.55, at: [0.5],
   hint: 'it charges down the line it sees you on, and bites up close. step aside from the charge, then hit it while it reels.',
   turn: ['the great warden roars. it charges twice now.'],
   phases: [
-    [charge({ windup: 1.1, cells: 5, speed: 9, rest: 1.2, stun: 1.8 }), slam({ r: 1.4, windup: 1.2, rest: 2, move: 'lifts its jaws', warn: 'it lifts its jaws: it bites all round. step back.' })],
-    [charge({ windup: 1, cells: 6, speed: 10, rest: 0.4, stun: 1.5 }), charge({ windup: 0.8, cells: 6, speed: 10, rest: 1, stun: 1.6, move: 'charges again' }), slam({ r: 1.5, windup: 1.1, rest: 1.7, move: 'lifts its jaws' })],
+    [charge({ windup: 1.1, cells: 5, speed: 9, rest: 1.2, stun: 1.8 }), slam({ r: 1.4, windup: 1.2, rest: 3, move: 'lifts its jaws', warn: 'it lifts its jaws: it bites all round. step back.' })],
+    [charge({ windup: 1, cells: 6, speed: 10, rest: 0.4, stun: 1.5 }), charge({ windup: 0.8, cells: 6, speed: 10, rest: 1, stun: 1.6, move: 'charges again' }), slam({ r: 1.5, windup: 1.1, rest: 2.6, move: 'lifts its jaws' })],
   ],
 });
 boss({
-  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 110, damage: 2.4, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
+  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 80, damage: 1.8, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
   hint: 'she calls mites and stomps. thin the mites, keep off her stomp, bite her between.',
   turn: ['the mite queen shrieks. the brood comes faster.'],
   phases: [
-    [brood({ type: 'mite', n: 2, cap: 3, windup: 1, rest: 1.5 }), slam({ r: 1.5, windup: 1.05, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.5 cells. step back.' }), volley({ n: 3, spread: 0.5, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
-    [brood({ type: 'mite', n: 3, cap: 4, windup: 0.9, rest: 1.2 }), slam({ r: 1.6, windup: 1, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, times: 2, every: 0.6, move: 'spits acid' })],
+    [brood({ type: 'mite', n: 2, cap: 2, windup: 1, rest: 1.6 }), slam({ r: 1.5, windup: 1.2, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.5 cells. step back.' }), volley({ n: 3, spread: 0.5, speed: 3.2, windup: 0.9, rest: 1.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
+    [brood({ type: 'mite', n: 3, cap: 4, windup: 0.9, rest: 1.2 }), slam({ r: 1.6, windup: 1.15, rest: 1.3, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.8, rest: 1.3, times: 2, every: 0.9, move: 'spits acid' })],
   ],
 });
 boss({
@@ -523,7 +528,7 @@ boss({
 
 // floor 1, the choir: ranged, and they dodge your shots
 boss({
-  id: 'boss-choir', floor: 1, name: 'the seraph choir', hp: 100, damage: 3.8, speed: 1.4, walk: 'keep', keep: 3.5, dodge: true, r: 0.6, at: [0.5],
+  id: 'boss-choir', floor: 1, name: 'the seraph choir', hp: 84, damage: 3.4, speed: 1.4, walk: 'keep', keep: 3.5, dodge: true, r: 0.6, at: [0.5],
   hint: 'it keeps its distance and slips your shots. it burns down its lines and fans its light at you.',
   turn: ['the choir sings louder. lamps join it.'],
   phases: [
@@ -532,7 +537,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 3.9, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 105, damage: 3.4, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it plays chords of slow notes at you, and moves between its pipes. its pedal note shakes the floor round it.',
   turn: ['the organ pulls out every stop. mimics drop from its pipes.'],
   phases: [
@@ -541,12 +546,12 @@ boss({
   ],
 });
 boss({
-  id: 'boss-ringer', floor: 1, name: 'the bell-ringer', hp: 102, damage: 4.3, speed: 1.6, walk: 'keep', keep: 4, dodge: true, r: 0.5, at: [0.5],
+  id: 'boss-ringer', floor: 1, name: 'the bell-ringer', hp: 88, damage: 4.3, speed: 1.6, walk: 'keep', keep: 3, dodge: true, r: 0.5, at: [0.5],
   hint: 'it keeps away and rings the floor where you stand. keep moving; it slips your shots, so shoot as it lands.',
   turn: ['the bell-ringer rings faster: three peals follow you.'],
   phases: [
-    [peal({ r: 0.9, windup: 1.3, rest: 1, move: 'rings the floor under you' }), volley({ n: 1, spread: 0, speed: 5, windup: 0.6, rest: 1, times: 3, every: 0.35, move: 'throws handbells', warn: 'it throws handbells at you: three, quick. sidestep.' })],
-    [peal({ r: 0.9, windup: 1.4, rest: 0.8, n: 3, move: 'rings three peals' }), volley({ n: 3, spread: 0.5, speed: 5, windup: 0.6, rest: 1, times: 2, every: 0.4, move: 'throws handbells' }), peal({ r: 1, windup: 1.3, rest: 0.8, move: 'rings the floor under you' })],
+    [peal({ r: 0.9, windup: 1.5, rest: 1, move: 'rings the floor under you' }), volley({ n: 1, spread: 0, speed: 5, windup: 0.7, rest: 1.1, times: 2, every: 0.45, move: 'throws handbells', warn: 'it throws handbells at you: two, quick. sidestep.' })],
+    [peal({ r: 0.9, windup: 1.5, rest: 0.9, n: 3, move: 'rings three peals' }), volley({ n: 3, spread: 0.5, speed: 5, windup: 0.7, rest: 1.1, times: 2, every: 0.45, move: 'throws handbells' }), peal({ r: 1, windup: 1.45, rest: 0.8, move: 'rings the floor under you' })],
   ],
 });
 
@@ -743,7 +748,10 @@ function bossAi(g: Game, e: Entity, dt: number): void {
   // the leash (v2 r1 fun): past LEASH cells, or with you that far from its room, it starts nothing new and goes
   // back to its post; LEASH_HEAL s away, it is whole again up to its phase line. Leaving is a choice, not a cheat
   const [hx, hy] = (d.home as [number, number]) ?? [e.x, e.y];
-  if (dist(e, p) > LEASH || Math.hypot(p.x - hx, p.y - hy) > LEASH) {
+  // v2r5 newcomer: every keeper waits at its door the way the queen does (the warden chased a first-timer out, and
+  // the bell hit him on the door cell): out of its room, you are out of the fight
+  const walled = inRoom(g.seed, def.floor, hx, hy) && !inRoom(g.seed, def.floor, p.x, p.y);
+  if (walled || dist(e, p) > LEASH || Math.hypot(p.x - hx, p.y - hy) > LEASH) {
     if (!d.awayAt) {
       d.awayAt = g.t;
       if (g.t - Number(d.leashSaid ?? -99) > 15) say(g, `${def.name} waits. it will not follow you out.`);

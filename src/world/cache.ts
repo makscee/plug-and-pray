@@ -130,7 +130,9 @@ export function fitOf(g: Game, it: Item): string {
   const out = [...(room.remove ? [room.remove, ...(room.more ?? [])] : [])].map((o) => `${label(o)} out`);
   const off = room.off.map((o) => `${label(o)} off`);
   const warn = gone.some((o) => lastSwarm(g, o, it)) ? '⚠ your only weapon for swarms leaves · ' : '';
-  return out.length || off.length ? `${warn}goes in: ${[...out, ...off].join(', ')}` : 'goes straight in';
+  // v2r5 newcomer: the reins through a vidicon showed brown noise
+  const sharp = param<string>(it, 'what', '') === 'reins' && !g.player.installed.some((i) => param<number>(i, 'wide', 0) > 0) ? ' · the reins want a sharp eye: the pilgrim scope' : '';
+  return (out.length || off.length ? `${warn}goes in: ${[...out, ...off].join(', ')}` : 'goes straight in') + sharp;
 }
 
 /** take offer k: pay if it costs, into the body (swapping in), else the bag. Returns why not, or null */

@@ -49,7 +49,10 @@ export const fmt = (c: Cost) => Object.entries(c).map(([r, n]) => `${n} ${r}`).j
 export const affords = (g: Game, c: Cost) => Object.entries(c).every(([r, n]) => have(g, r as Res) >= n!);
 /** v2r4 run (no glass, 20 bone, nothing said where glass comes from): a price short of glass says how to get it */
 export const glassTip = (g: Game, c: Cost, altar = false): string =>
-  (c.glass ?? 0) <= have(g, 'glass') ? '' : altar ? ' short of glass: offer bone here, 4 bone for 1 glass.' : ' short of glass: an altar grinds 4 bone into 1 (offer bone), and a leech needle drains glass veins.';
+  ((c.glass ?? 0) <= have(g, 'glass') ? '' : altar ? ' short of glass: offer bone here, 4 bone for 1 glass.' : ' short of glass: an altar grinds 4 bone into 1 (offer bone), and a leech needle drains glass veins.') + copperTip(g, c, altar);
+/** v2r5 newcomer (0 copper on floor 2, every altar fix locked): a price short of copper says how to get it */
+export const copperTip = (g: Game, c: Cost, altar = false): string =>
+  (c.copper ?? 0) <= have(g, 'copper') ? '' : altar ? ' short of copper: offer bone for copper here, 3 bone for 1.' : ' short of copper: an altar takes 3 bone for 1 (offer bone for copper), and recycling pays copper.';
 
 function pay(g: Game, c: Cost): void {
   for (const [r, n] of Object.entries(c)) {

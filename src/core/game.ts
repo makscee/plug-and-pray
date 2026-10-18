@@ -84,6 +84,11 @@ export function itemName(it: Item): string {
 
 export const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
+/** v2r5 newcomer: when a lamp's orb last hit you. Above half hp a lamp's orb does not stop a walk (every orb said
+ *  "struck. you stop", in the lamp's own line, and the map walk had to be clicked again) */
+const lampAt = new WeakMap<Game, number>();
+export const grazed = (g: Game): boolean => lampAt.get(g) === g.player.hurtAt && g.player.hp >= g.player.maxHp * 0.5;
+
 export function hurt(g: Game, n: number, from?: Entity): void {
   const p = g.player;
   if (g.ended) return;
@@ -91,6 +96,7 @@ export function hurt(g: Game, n: number, from?: Entity): void {
   if (n <= 0) return;
   p.hp = Math.max(0, p.hp - n);
   p.hurtAt = g.t;
+  if (from?.enemy?.type === 'seraph' || from?.enemy?.type === 'pyre') lampAt.set(g, g.t);
   g.events.push({ type: 'hurt', data: n });
   if (p.hp <= 0) {
     g.ended = 'dead';

@@ -96,9 +96,9 @@ describe('v2-balance3: the floor-2 door card weighs the temper', () => {
   it('a tempered nail psalm is ready', () => {
     expect(keeperCheck(kit(true), 1).ready).toBe(true);
   });
-  it('a plain one is told to temper it first', () => {
+  it('a plain one is told to attune it first, with the price (v2r5 newcomer: a plain one cannot be tempered yet)', () => {
     const c = keeperCheck(kit(false), 1);
     expect(c.ready).toBe(false);
-    expect(c.why.join('; ')).toContain('temper your nail psalm at an altar first');
+    expect(c.why.join('; ')).toContain('attune your nail psalm at an altar first (');
   });
 });

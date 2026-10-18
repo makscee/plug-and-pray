@@ -184,7 +184,8 @@ export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => num
   canvas.addEventListener('click', (ev) => {
     // v2 (Maks 10-18): clicking to walk is an upgrade; the map spool only remembers
     if (!walks()) {
-      if (toldClick.has(game)) return;
+      // v2r5 newcomer: a second click said nothing at all; it says one short line again
+      if (toldClick.has(game)) return say(game, ['this map takes no clicks: ', { text: 'where', cmd: 'where' }, ' walks you.']);
       toldClick.add(game);
       return say(game, ['below the cradle the map spool only remembers; it takes no clicks. the buttons in the console walk you (', { text: 'where', cmd: 'where' }, '); a surveyor\'s map walks you where you click.']);
     }
