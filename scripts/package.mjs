@@ -53,7 +53,7 @@ const SHOTS = [
   // first sight: the same run at the pinhole on the way to the keeper (v3: open floor, firstEye(1) = 8.5,-8.5), the eye in
   ['2-sight.png', '?seed=1&still', ['pick 1', 'pick 1', 'scrap', 'install all', 1, 'go e 5', 4, 'js:thaw.g.player.x = 8.5; thaw.g.player.y = -5.5', 1.5, 'go n 3', 4, 'take', 1, 'js:Object.assign(thaw.g.player, { slots: 7, core: 7 })', 'remove spark finger', 'install pinhole eye', 1.5, 'wait:1600', POS]],
   // floor 1's keeper (seed 5 rolls the bell): a floor-1 kit through the door, the room up as a map, a few blows traded
-  ['3-keeper.png', '?seed=5&scene=boss&f=0&still', [1, CLEAN, 'js:Object.assign(thaw.g.player, { slots: 7, core: 7 })', ...KIT('pinhole-eye', 'stepper-relay', 'map-spool', 'choir-bell', 'censer-flail', 'frost-coat'), 1.5, 'go s 1', 1, 'go in', 1.5, 'go s 2', 2, 'go s 1', 1, 'go s 1', 1, 'attack', 3, 'attack', 3, POS, BOSSLOG, 'wait:600']],
+  ['3-keeper.png', '?seed=5&scene=boss&f=0&still', [1, CLEAN, 'js:Object.assign(thaw.g.player, { slots: 7, core: 7 })', ...KIT('stepper-relay', 'map-spool', 'choir-bell', 'censer-flail', 'frost-coat'), 1.5, 'go s 1', 1, 'go in', 1.5, 'go s 2', 2, 'go s 1', 1, 'go s 1', 1, 'attack', 3, 'attack', 3, POS, BOSSLOG, 'wait:600']],
   // floor 3 through the reins (seed 1 rolls the hollow saint): its ring of bolts in the air as it gathers a saltire
   ['4-reins.png', '?seed=1&scene=boss&f=2&still', [...FPS3, LOCKED, ...FIRE(15), POS, BOSSLOG, 'wait:400']],
   ['5-thaw.png', '?seed=1&scene=boss&f=4&still', [1, CLEAN, ...ENDING, 1.2, 0.8, 4, 4, 2, POS]],

@@ -6,8 +6,8 @@ Everything here comes from `npm run package`: it builds `dist/`, plays five shor
 |---|---|
 | `thaw.zip` | the HTML5 build, `index.html` at its root |
 | `1-wake.png` | the map-only start: no eye yet, the radar sweep, click to walk |
-| `2-sight.png` | the first eye: a grey pinhole fills the screen |
-| `3-keeper.png` | the floor-1 keeper (the bell) with its room up as a map |
+| `2-sight.png` | the first eye: first person through a grey pinhole |
+| `3-keeper.png` | the floor-1 keeper (the bell) with its room up as a map and the foe window |
 | `4-reins.png` | floor 3 in first person through saint's reins: the hollow saint's bullet ring |
 | `5-thaw.png` | the ending: the god is warm |
 | `itch-page.md` | the itch.io page text |
@@ -25,7 +25,7 @@ Deadline: the Compo closes Sunday 22:00 UTC (Monday 01:00 MSK); uploads until 23
 6. **Description**: paste `itch-page.md` below its title (fill the LD link after step 2.6, or leave it out).
 7. **Genre** Adventure or Roguelike; tags `ludum-dare-60`, `ludum-dare`, `terminal`, `roguelike`, `dungeon-crawler`.
 8. **Screenshots**: the five PNGs. **Cover image**: any of them (itch crops to 630 x 500).
-9. **Visibility**: Public, **Save**. Open the page in a private window: the map shows, a click on it walks you, and `where` points to your first eye.
+9. **Visibility**: Public, **Save**. Open the page in a private window: the map shows, a click on it walks you, `open` at the reliquary offers the kit, and `where` points to your first eye.
 
 ## 2. Ludum Dare (ldjam.com)
 
