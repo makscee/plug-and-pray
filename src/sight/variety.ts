@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import type { Entity, Game } from '../core/types';
 import { paint, placeHooks, type Mode } from './scene';
+import { SPRITES } from './sprites';
 import type { Paint } from './stairs';
 import { cacheOf } from '../world/cache';
 import { pieceOf } from '../world/piecefill';
@@ -267,7 +268,8 @@ placeHooks.push((g: Game, group: THREE.Group, mode: Mode) => {
       if (!mat) continue;
       const m = new THREE.Mesh(geo.octa, mat);
       m.scale.set(0.09, 0.14, 0.09);
-      m.position.set(e.x, 1.05 + Math.sin(g.t * 3 + e.id) * 0.04, e.y);
+      const sp = SPRITES[e.enemy.type] ?? SPRITES.mite;
+      m.position.set(e.x, sp.lift + sp.size + 0.14 + Math.sin(g.t * 3 + e.id) * 0.03, e.y);
       m.rotation.y = g.t * 2;
       group.add(m);
     }
@@ -289,6 +291,6 @@ placeHooks.push((g: Game, group: THREE.Group, mode: Mode) => {
     group.add(grp);
   }
 });
-const RIME_TELL = P(0xd0f0ff, 0x90d0ff, 0.5);
+const RIME_TELL = P(0x60e0ff, 0x20b0ff, 0.5);
 const CRACK = P(0x100804, 0x000000, 0.4);
 const CRACK_HOT = P(0xff8030, 0xff5010, 0.9);

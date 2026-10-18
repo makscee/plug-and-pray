@@ -62,7 +62,9 @@ export const LANDINGS: Room[] = [
   [3, 3, 13, 13, 'cross'],
   [4, 4, 12, 12, 'ribs'],
 ];
-export const landing = (seed: number, f: number): Room => (f === LAST ? LANDINGS[0] : LANDINGS[hash(seed, 151, f) % LANDINGS.length]);
+/** where you wake keeps to the shapes that hold the old square (the first minute is taught there): square, round, wide square */
+export const WAKINGS: Room[] = [LANDINGS[0], LANDINGS[3], [4, 4, 12, 12, 'box']];
+export const landing = (seed: number, f: number): Room => (f === LAST ? LANDINGS[0] : f === 0 ? WAKINGS[hash(seed, 151, f) % WAKINGS.length] : LANDINGS[hash(seed, 151, f) % LANDINGS.length]);
 
 /** the first chamber (kept for callers that want one) */
 export function room(seed: number, cx: number, cy: number): [number, number, number, number] {

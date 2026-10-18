@@ -63,7 +63,8 @@ export const STAIRS: Record<Stairs, { name: string; look: string }> = {
 };
 
 /** the module ids a floor's arrival cache offers (src/world/cache.ts: five of them, take two): that floor's new kit.
- *  The first is the floor's headline and always on offer (the FPS eyes on 3 and 4); the rest turn with the seed */
+ *  The first is the floor's headline and always on offer (on 3 and 4 the FPS slot: v2-view puts its control module there);
+ *  the rest turn with the seed. The cradle's offer holds no eye (its first eye is a find) */
 export const KIT: Record<number, string[]> = {
   0: ['choir-bell', 'frost-coat', 'hollow-tap', 'lead-lung', 'thorn-mantle'],
   1: ['nail-psalm', 'survey-spool', 'sounding-knell', 'vein-fork', 'plumb-line'],
@@ -115,15 +116,11 @@ export const origin = (f: number): [number, number] => [f * STRIDE * CHUNK + 8.5
 export function stairsChunk(seed: number, f: number): [number, number] {
   if (f === LAST) return [f * STRIDE, -HEART_APPROACH];
   const [sx, sy] = [[1, 0], [-1, 0], [0, 1], [0, -1]][hash(seed, 111, f) % 4];
-  // v2 variety: and along that edge, the middle or one chunk to either side (twelve places a floor's way down can be)
-  const along = (hash(seed, 112, f) % 3) - 1;
-  return [f * STRIDE + (sx ? sx * HALF : along), sy ? sy * HALF : along];
+  return [f * STRIDE + sx * HALF, sy * HALF];
 }
-/** which side of the room the stairs keep to: the edge the room lies on (away from the floor's middle) */
 const cornerOf = (seed: number, f: number): [number, number] => {
   const [cx, cy] = stairsChunk(seed, f);
-  const [lx, ly] = [cx - f * STRIDE, cy];
-  return Math.abs(lx) >= Math.abs(ly) ? [Math.sign(lx), 0] : [0, Math.sign(ly)];
+  return [Math.sign(cx - f * STRIDE), Math.sign(cy)];
 };
 
 /** the boss room in local cells of its chunk: [x0, y0, x1, y1] inclusive, 13×13 open (the bosses want room). The heart's arena is wider */

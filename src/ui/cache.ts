@@ -8,7 +8,7 @@ import { frameHooks } from '.';
 import { def, label, rarityOf, size } from '../core/mods';
 import type { Game } from '../core/types';
 import { boneOf, cacheNear, cardHidden, costOf, fitOf, FREE, freeLeft, hideCard, SCRAP } from '../world/cache';
-import { floorOf, FLOORS } from '../world/floors';
+import { floorOf, FLOORS, KIT } from '../world/floors';
 import { img } from './icons';
 import './cache.css';
 
@@ -69,7 +69,7 @@ frameHooks.push((g) => {
     const icon = el_('div', `kit-icon cell rar-${rarityOf(it)}`);
     icon.append(img(it, 3));
     const name = el_('p', `name rar-${rarityOf(it)}`, label(it));
-    const meta = el_('p', 'kit-meta', `${d.family}${d.power ? ` · ${d.power}⚡︎` : ''}${size(it) > 1 ? ` · ${size(it)} slots` : ''}${n === 0 ? ' · headline' : ''}`);
+    const meta = el_('p', 'kit-meta', `${d.family}${d.power ? ` · ${d.power}⚡︎` : ''}${size(it) > 1 ? ` · ${size(it)} slots` : ''}${it.mod === KIT[f]?.[0] ? ' · headline' : ''}`);
     const text = el_('p', 'kit-text', d.text);
     const fit = el_('p', 'kit-fit', fitOf(g, it));
     const b = el_('button', 'kit-pick', free ? 'take' : `take · ${cost} bone`) as HTMLButtonElement;
