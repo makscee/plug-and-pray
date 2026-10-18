@@ -65,6 +65,8 @@ export interface BossDef {
   walk: 'close' | 'keep' | 'still' | 'drift';
   /** the distance it likes to keep (walk 'keep') */
   keep?: number;
+  /** walk 'drift': it backs off only when you are closer than this (default: 0.6 inside where it drifts to) */
+  near?: number;
   armour?: number;
   /** hit radius for your shots (a boss is big) */
   r: number;
@@ -245,7 +247,8 @@ const peal = (o: { r: number; windup: number; rest: number; n?: number; share?: 
 const volley = (o: { n: number; spread: number; speed: number; windup: number; rest: number; times?: number; every?: number; move?: string; warn?: string }): Atk => ({
   id: 'volley',
   move: o.move ?? 'gathers a volley',
-  warn: o.warn ?? 'it gathers a volley: strafe across it, not away.',
+  // (v2r4 bal: across it once it fires, not while it gathers: it aims where you are when it lands)
+  warn: o.warn ?? 'it gathers a volley: when it fires, run 2-3 cells across it, not away.',
   windup: o.windup,
   rest: o.rest,
   // never point-blank: a bullet from a cell away cannot be dodged
@@ -501,18 +504,20 @@ boss({
   hint: 'she calls mites and stomps. thin the mites, keep off her stomp, bite her between.',
   turn: ['the mite queen shrieks. the brood comes faster.'],
   phases: [
-    [brood({ type: 'mite', n: 2, cap: 3, windup: 1, rest: 1.5 }), slam({ r: 1.5, windup: 1.2, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.5 cells. step back.' }), volley({ n: 3, spread: 0.5, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
-    [brood({ type: 'mite', n: 3, cap: 4, windup: 0.9, rest: 1.2 }), slam({ r: 1.6, windup: 1.2, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, times: 2, every: 0.6, move: 'spits acid' })],
+    [brood({ type: 'mite', n: 2, cap: 3, windup: 1, rest: 1.5 }), slam({ r: 1.5, windup: 1.05, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.5 cells. step back.' }), volley({ n: 3, spread: 0.5, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
+    [brood({ type: 'mite', n: 3, cap: 4, windup: 0.9, rest: 1.2 }), slam({ r: 1.6, windup: 1, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, times: 2, every: 0.6, move: 'spits acid' })],
   ],
 });
 boss({
-  id: 'boss-bell', floor: 0, name: 'the bell', hp: 92, damage: 2.5, speed: 0.5, walk: 'drift', r: 0.6, at: [0.5],
+  id: 'boss-bell', floor: 0, name: 'the bell', hp: 92, damage: 2.5, speed: 0.5, walk: 'drift', near: 1, r: 0.6, at: [0.5],
   hint: 'its toll stuns whoever stands in the ring round it. stand a step from it (inside the ring, outside the clapper) or well off.',
   turn: ['the bell cracks. now its toll echoes: the inner ring, then the outer.'],
   phases: [
-    // v2r2 fight: one 1-cell step clears a dropped bell (r 0.9), and the 8 cells round it are inside the toll (1.6)
-    [toll({ r0: 1.6, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), slam({ r: 0.9, windup: 0.9, rest: 0.7, move: 'swings its clapper', warn: 'the clapper swings: it hits within 0.9 cells. a step back (not into the ring), then in again.' }), toll({ r0: 1.6, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), peal({ r: 0.9, windup: 1.3, rest: 0.7, move: 'drops a bell on you', warn: 'a small bell falls where you stand: one step off the ring.' })],
-    [toll({ r0: 1.6, r1: 4, windup: 1.1, rest: 0.8, stun: 1.4, second: [0, 1.7] }), slam({ r: 1, windup: 0.9, rest: 0.7, move: 'swings its clapper' }), toll({ r0: 0, r1: 1.7, windup: 1, rest: 0.8, stun: 1.4, second: [1.6, 4] }), peal({ r: 0.9, windup: 1.2, rest: 0.7, n: 2, move: 'drops bells on you' })],
+    // v2r2 fight: one 1-cell step clears a dropped bell (r 0.9), and the 8 cells round it are inside the toll
+    // (v2r4 run: it drifted back to 1.6, the toll's edge, after every step in: now it backs off only under 1 cell,
+    // and the toll starts at 1.8, so a cell beside it, diagonal too (1.41), is safe between tolls)
+    [toll({ r0: 1.8, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), slam({ r: 0.9, windup: 0.9, rest: 0.7, move: 'swings its clapper', warn: 'the clapper swings: it hits within 0.9 cells. a step back (not into the ring), then in again.' }), toll({ r0: 1.8, r1: 4, windup: 1.1, rest: 0.7, stun: 1.5 }), peal({ r: 0.9, windup: 1.3, rest: 0.7, move: 'drops a bell on you', warn: 'a small bell falls where you stand: one step off the ring.' })],
+    [toll({ r0: 1.8, r1: 4, windup: 1.1, rest: 0.8, stun: 1.4, second: [0, 1.7] }), slam({ r: 1, windup: 0.9, rest: 0.7, move: 'swings its clapper' }), toll({ r0: 0, r1: 1.7, windup: 1, rest: 0.8, stun: 1.4, second: [1.8, 4] }), peal({ r: 0.9, windup: 1.2, rest: 0.7, n: 2, move: 'drops bells on you' })],
   ],
 });
 
@@ -637,7 +642,7 @@ const atkOf = (e: Entity): Atk | undefined => {
 function walkTo(g: Game, e: Entity, dt: number, want: number): void {
   const def = bdef(e);
   const [vx, vy, r] = toP(g, e);
-  let dir = r > want + 0.4 ? 1 : r < want - 0.6 ? -1 : 0;
+  let dir = r > want + 0.4 ? 1 : r < (def.near ?? want - 0.6) ? -1 : 0;
   // keepers circle you a little when at range
   let [mx, my] = [vx * dir, vy * dir];
   if (def.walk === 'keep' && dir === 0) {

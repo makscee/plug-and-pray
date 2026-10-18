@@ -8,7 +8,7 @@ import '../../src/mods';
 import { dist, ENEMIES, newGame, tick } from '../../src/core/game';
 import { CHUNK, Cell, clear } from '../../src/core/grid';
 import { active, def, label, MODS, param, powerMax, powerUsed, size, slotsUsed } from '../../src/core/mods';
-import { exec } from '../../src/core/verbs';
+import { exec, lastLegs } from '../../src/core/verbs';
 import type { Entity, Game, Res, Roll } from '../../src/core/types';
 import * as printer from '../../src/world/printer';
 import { offeringOf } from '../../src/end/timeline';
@@ -577,7 +577,7 @@ export function play(seed: number, o: Opts): Run {
     const pick = bestLoadout(g, Math.max(zt, zoneHere()), wantReader);
     // two setups (docs/modules.md): explore on, battle's extra weapons installed but off while slots allow
     const keep = withBattle(pick, bestLoadout(g, Math.max(zt, zoneHere()), wantReader, {}, 'battle'));
-    for (const i of P.installed) if (!keep.has(i)) return run.offs++, 'remove ' + labelOf(i);
+    for (const i of P.installed) if (!keep.has(i)) return run.offs++, 'remove ' + labelOf(i) + (lastLegs(g, i) ? ' anyway' : '');
     for (const i of P.inv) if (i.kind === 'mod' && pick.has(i) && slotsUsed(g) + size(i) <= P.slots) return 'install ' + labelOf(i);
     for (const i of P.inv) if (i.kind === 'mod' && keep.has(i) && slotsUsed(g) + size(i) <= P.slots) return 'install ' + labelOf(i);
     const sw = g.t < battleUntil ? null : setupStep('explore', pick);
@@ -743,7 +743,7 @@ export function play(seed: number, o: Opts): Run {
   }
   function machineOffers(m: Entity): { cmd: string; ok: boolean }[] {
     const out: { cmd: string; ok: boolean }[] = [];
-    if (m.data?.altar) for (const [cmd, cost] of altar.offers(g, m)) out.push({ cmd, ok: afford(cost) && (cmd !== 'offer mend' || P.hp < P.maxHp * 0.5) && (cmd !== 'offer copper' || (resOf(g, 'bone') < 4 && resOf(g, 'copper') >= 4)) });
+    if (m.data?.altar) for (const [cmd, cost] of altar.offers(g, m)) out.push({ cmd, ok: afford(cost) && (cmd !== 'offer mend' || P.hp < P.maxHp * 0.5) && (cmd !== 'offer copper' || (resOf(g, 'bone') < 4 && resOf(g, 'copper') >= 4)) && (cmd !== 'offer bone' || (resOf(g, 'glass') < 1 && resOf(g, 'bone') >= 12)) });
     if (m.kind === 'printer' && m.data?.shop) {
       const zone = Math.max(targetZone(), zoneHere());
       const pick = bestLoadout(g, zone, true);

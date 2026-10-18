@@ -1,7 +1,8 @@
 // The fight on screen: an hp bar always on top, and a red flash when you are hurt.
 import { ENEMIES } from '../core/game';
 import { active, param, powerMax, powerUsed, slotsUsed } from '../core/mods';
-import type { Game, Inst } from '../core/types';
+import type { Entity, Game, Inst } from '../core/types';
+import { canHit } from '../mods/sense';
 import { engaged } from '../sight/foes';
 import { frameHooks } from '../ui';
 import { pips } from '../ui/panels';
@@ -96,7 +97,7 @@ export function fightLine(g: Game): string {
   const name = (ENEMIES[foe.enemy.type]?.name ?? 'something').replace(/^(a|an|the) /, '');
   const r = Math.hypot(foe.x - g.player.x, foe.y - g.player.y);
   // a blow that just landed shows for a moment in place of the next one's wait
-  const blow = blowText(g) || weaponLine(g, r);
+  const blow = blowText(g) || weaponLine(g, r, foe);
   // a big blow coming: the elite's (or a walker's) windup, named; rearing mites counted
   const winding = engaged(g, 8).filter((e) => e.enemy!.data.move && g.t < ((e.enemy!.data.windup as number) ?? 0));
   const big = winding.find((e) => e.enemy!.type !== 'mite') ?? winding[0];
@@ -115,7 +116,7 @@ const MOVE_MAX = 22;
 const clip = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
 /** your side of the fight line: auto weapons' next blow, aimed ones' shot, or out of reach (`r` cells off) */
-export function weaponLine(g: Game, r: number): string {
+export function weaponLine(g: Game, r: number, foe?: Entity): string {
   const ws = active(g, 'weapon');
   if (!ws.length) return 'you hit nothing';
   const wait = (i: Inst) => Math.max(0, ((i.data.readyAt as number) ?? 0) - g.t);
@@ -126,7 +127,9 @@ export function weaponLine(g: Game, r: number): string {
   const autos = inReach.filter((i) => param<string>(i, 'aim', 'auto') === 'auto');
   const aims = inReach.filter((i) => param<string>(i, 'aim', 'auto') === 'aimed');
   const parts: string[] = [];
-  if (autos.length) parts.push(soon(autos) <= 0.05 ? 'your blow ready' : `your blow ${soon(autos).toFixed(1)}s`);
+  // v2r4 run: "your blow ready" while the lamp it named stood unseen 2 cells off: say what is wrong instead
+  if (autos.length && foe && !canHit(g, foe)) parts.push('unseen: step next to it');
+  else if (autos.length) parts.push(soon(autos) <= 0.05 ? 'your blow ready' : `your blow ${soon(autos).toFixed(1)}s`);
   if (aims.length) parts.push(soon(aims) <= 0.05 ? 'shoot ready' : `shoot ${soon(aims).toFixed(1)}s`);
   return parts.join(' · ');
 }

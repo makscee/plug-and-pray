@@ -10,7 +10,7 @@ import { findInst } from '../core/verbs';
 import type { Chunk, Entity, Game, Inst, Line, Res } from '../core/types';
 import { spot } from './gen';
 import { farOf, floorOfChunk, isArrival, stairsChunk } from './floors';
-import { affords, fmt, type Cost } from './printer';
+import { affords, fmt, glassTip, type Cost } from './printer';
 import { BETTER, rollMult } from './spawn';
 
 /** the core's power can grow to this at altars */
@@ -28,6 +28,8 @@ export function powerCost(g: Game): Cost {
 export const MEND: Cost = { bone: 2 };
 /** v2 r1 fun (bone-starved on floors 1–2, copper piling up): an altar takes copper for bone, 2 for 1 */
 export const TITHE: Cost = { copper: 2 };
+/** v2r4 run (20 bone and no glass on floor 2, every print and buy wanting glass): an altar grinds bone into glass, 4 for 1 */
+export const GRIND: Cost = { bone: 4 };
 /** max hp an altar can add, two at a time */
 export const MAX_FLESH = 18; // v2 balance: was 12; the keepers' ember hearts add 2 each (src/fight/bosses.ts)
 export function fleshCost(g: Game): Cost {
@@ -102,6 +104,7 @@ export function offers(g: Game, _e: Entity): [string, Cost][] {
   for (const i of temperable(g)) out.push([`temper ${def(i).name}`, temperCost(i)]);
   if (g.player.hp < g.player.maxHp * 0.7) out.push(['offer mend', MEND]);
   out.push(['offer copper', TITHE]);
+  out.push(['offer bone', GRIND]);
   return out;
 }
 
@@ -118,6 +121,7 @@ const menu = (g: Game) => [
   (g.player.flesh ?? 0) < MAX_FLESH ? [{ text: 'offer flesh', cmd: 'offer flesh' }, `  +2 max hp for good: ${fmt(fleshCost(g))}`] : ['  flesh: as much as it can give.'],
   [{ text: 'offer mend', cmd: 'offer mend' }, `  mend fully: ${fmt(MEND)}`],
   [{ text: 'offer copper', cmd: 'offer copper' }, `  1 bone for ${fmt(TITHE)}`],
+  [{ text: 'offer bone', cmd: 'offer bone' }, `  1 glass for ${fmt(GRIND)}`],
   ...attunable(g).map((i) => [{ text: `attune ${def(i).name}`, cmd: `attune ${def(i).name}` }, `  ${attuneText(i)} for good: ${fmt(attuneCost(i))}`]),
   ...temperable(g).map((i) => {
     const to = temperTo(i);
@@ -127,7 +131,7 @@ const menu = (g: Game) => [
 ];
 
 verb('offer', {
-  help: 'at an altar: offer power, offer flesh, offer mend, offer copper (2 copper for 1 bone)',
+  help: 'at an altar: offer power, offer flesh, offer mend, offer copper (2 copper for 1 bone), offer bone (4 bone for 1 glass)',
   when: (g) => !!altarNear(g),
   whenFail: noAltar,
   run(g, [what]) {
@@ -137,7 +141,7 @@ verb('offer', {
     if (what === 'power') {
       if (p.core >= MAX_CORE) return say(g, 'the altar is quiet. your core can hold no more.');
       const c = powerCost(g);
-      if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.`);
+      if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.${glassTip(g, c, true)}`);
       pay(g, c);
       p.core++;
       g.events.push({ type: 'print', at: [e.x, e.y] });
@@ -146,7 +150,7 @@ verb('offer', {
     if (what === 'flesh') {
       if ((p.flesh ?? 0) >= MAX_FLESH) return say(g, 'the altar has no more to give you.');
       const c = fleshCost(g);
-      if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.`);
+      if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.${glassTip(g, c, true)}`);
       pay(g, c);
       p.flesh = (p.flesh ?? 0) + 2;
       p.hp += 2;
@@ -166,6 +170,14 @@ verb('offer', {
       if (b && b.kind === 'res') b.n++;
       else p.inv.push({ kind: 'res', res: 'bone', n: 1 });
       return say(g, 'the altar melts the copper down and gives back bone: +1 bone.');
+    }
+    if (what === 'bone') {
+      if (!affords(g, GRIND)) return say(g, `the altar wants ${fmt(GRIND)} for a glass.`);
+      pay(g, GRIND);
+      const gl = p.inv.find((i) => i.kind === 'res' && i.res === 'glass');
+      if (gl && gl.kind === 'res') gl.n++;
+      else p.inv.push({ kind: 'res', res: 'glass', n: 1 });
+      return say(g, 'the altar grinds the bone fine and fires it: +1 glass.');
     }
     // r4: `offer bone` says what the altar takes rather than the bare menu again
     if (what) return say(g, `the altar takes no single ${what}. it takes these, and pays in power, flesh or mending:`, ...menu(g));
@@ -187,7 +199,7 @@ verb('attune', {
     if (!key) return say(g, 'the altar will not touch that.');
     if (inst.roll?.tag === 'attuned' || inst.roll?.tag === 'tempered') return say(g, `${label(inst)} is attuned already.`, ...(inst.roll.tag === 'attuned' ? [[{ text: `temper ${def(inst).name}`, cmd: `temper ${def(inst).name}` }]] : []));
     const c = attuneCost(inst);
-    if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.`);
+    if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.${glassTip(g, c, true)}`);
     pay(g, c);
     inst.roll = { key, mult: rollMult(key, true), tag: 'attuned' };
     g.events.push({ type: 'print' });
@@ -209,7 +221,7 @@ verb('temper', {
     if (tempered(inst) >= MAX_TEMPER) return say(g, `${label(inst)} is as true as it gets.`);
     if (!inst.roll || inst.roll.tag === 'cracked' || !BETTER[inst.roll.key] || !attuneKey(inst)) return say(g, `attune it first: ${def(inst).name}.`);
     const c = temperCost(inst);
-    if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.`);
+    if (!affords(g, c)) return say(g, `the altar wants ${fmt(c)}.${glassTip(g, c, true)}`);
     pay(g, c);
     const { key, mult } = temperTo(inst);
     inst.roll = { key, mult, tag: 'tempered', n: tempered(inst) + 1 };

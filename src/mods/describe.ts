@@ -54,7 +54,7 @@ function familyDoes(m: Modish): string {
       return `lamp · lights ${n(p<number>('radius'))} cells · things see you farther`;
     case 'gait':
       if (p('pilot')) return `pilot · walks you to a spot: goto, a waypoint's go, or a click on a surveyor's map, ${n(p<number>('pace'))} cells/s, plans ${n(p<number>('plan'))} cells${p('avoid') ? ', around enemies' : ''}`;
-      if (p('go')) return 'legs · walk cells: go <dir> <n>, or the n e s w buttons';
+      if (p('go')) return 'legs · walk cells: go <dir> <n>, the n e s w buttons, map clicks · without legs you crawl';
       if (p('keys')) return `legs · arrow keys, ${n(p<number>('pace'))} cells/s`;
       if (p('free')) return `legs · free walking, wasd, q/e turn, ${n(p<number>('speed'))} cells/s`;
       if (p('dig')) return `digger · dig: eats the wall in front, every ${n(p<number>('cooldown'))} s`;

@@ -12,7 +12,7 @@ import { def, label, MODS, param, rarityKey } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import { addItem, instRef, verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Item, Line } from '../core/types';
-import { lightest, makeRoom } from '../body';
+import { lastSwarm, lightest, makeRoom } from '../body';
 import { floorOf, KIT } from './floors';
 import { RARITY_ODDS, ranged } from './spawn';
 
@@ -123,10 +123,14 @@ export function findOffer(c: Cache, words: string): number {
 export function fitOf(g: Game, it: Item): string {
   if (it.kind !== 'mod') return '';
   const room = makeRoom(g, it, false);
-  if (typeof room === 'string') return 'to your bag: nothing gives way';
+  // v2r4 run: a pick that would cost you your last weapon for swarms says so, loud (src/ui/cache.ts draws ⚠ big)
+  const bell = g.player.installed.find((o) => lastSwarm(g, o, it));
+  if (typeof room === 'string') return bell && def(it).family === 'weapon' ? `⚠ to your bag: your ${label(bell)} stays in, your only weapon for swarms` : 'to your bag: nothing gives way';
+  const gone = [...(room.remove ? [room.remove, ...(room.more ?? [])] : []), ...room.off];
   const out = [...(room.remove ? [room.remove, ...(room.more ?? [])] : [])].map((o) => `${label(o)} out`);
   const off = room.off.map((o) => `${label(o)} off`);
-  return out.length || off.length ? `goes in: ${[...out, ...off].join(', ')}` : 'goes straight in';
+  const warn = gone.some((o) => lastSwarm(g, o, it)) ? '⚠ your only weapon for swarms leaves · ' : '';
+  return out.length || off.length ? `${warn}goes in: ${[...out, ...off].join(', ')}` : 'goes straight in';
 }
 
 /** take offer k: pay if it costs, into the body (swapping in), else the bag. Returns why not, or null */
@@ -150,7 +154,7 @@ export function pick(g: Game, k: number): string | null {
   // v2r2 fun: nothing gave way (legs, the map, a better eye stay): it waits, and a button makes room by hand
   // v2r3 ux: the obvious swap first, one of its own kind (the survey spool for the map spool, not the bell)
   const kind = (o: { mod: string }) => `${def(o).family}/${param<string>(o, 'what', '')}`;
-  const same = g.player.installed.find((o) => !['camera', 'power'].includes(def(o).family) && kind(o) === kind(it));
+  const same = g.player.installed.find((o) => !['camera', 'power'].includes(def(o).family) && kind(o) === kind(it) && !lastSwarm(g, o, it));
   const out = added ? undefined : same ?? lightest(g);
   const ask: Line = out ? [' ', { text: `take out ${label(out)} for it`, cmd: `remove ${instRef(g, out)}; install ${name}` }] : [];
   say(g, [`you take ${name} from the cache${cost ? ` for ${cost} bone` : ''}. `, added ? '' : `it waits in your bag${typeof room === 'string' ? `: ${room.replace(/\.$/, '')}` : ''}.`, ...ask], `  ${def(it).text}`);

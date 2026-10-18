@@ -21,6 +21,8 @@
 .kit-meta { font-size: 15px; color: var(--t-meta); }
 .kit-text { font-size: 15px; color: var(--t-body); line-height: 1.15; flex: 1; }
 .kit-fit { font-size: 14px; color: var(--info); line-height: 1.1; min-height: 3.3em; } /* v2r4 ux: room for a longer line after a pick */
+/* v2r4 run: a pick that costs your last weapon for swarms, or one that stays out for it: big and red */
+.kit-fit.kit-warn { font-size: 18px; color: var(--danger); font-weight: bold; }
 .kit-pick { align-self: stretch; margin-top: 4px; font-size: 18px; padding: 3px 6px; color: #120c08; background: var(--loot); border: 0; cursor: pointer; }
 .kit-pick:hover { background: #ffd880; }
 .kit-pick:disabled { background: #3a3028; color: var(--dim); cursor: default; }

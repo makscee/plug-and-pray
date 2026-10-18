@@ -158,8 +158,8 @@ tickHooks.push((g) => {
     const best = got.slice().sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
     const line: Line = [
       best
-        ? `the ${label(inst)}: ${got.length} ${got.length === 1 ? NOUN[k] : NOUN[k] === 'something' ? 'somethings' : NOUN[k] === 'way down' ? 'ways' : NOUN[k] + 's'} on your map; the nearest, ${best.what}, ${toward(g, best.x, best.y)}.`
-        : `the ${label(inst)}: nothing within ${cells(param<number>(inst, 'range', 20) | 0)} yet. it keeps listening.`,
+        ? `the ${label(inst).replace(/^the /, '')}: ${got.length} ${got.length === 1 ? NOUN[k] : NOUN[k] === 'something' ? 'somethings' : NOUN[k] === 'way down' ? 'ways' : NOUN[k] + 's'} on your map; the nearest, ${best.what}, ${toward(g, best.x, best.y)}.`
+        : `the ${label(inst).replace(/^the /, '')}: nothing within ${cells(param<number>(inst, 'range', 20) | 0)} yet. it keeps listening.`,
     ];
     say(g, line);
   }
