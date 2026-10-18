@@ -6,6 +6,7 @@ import { COLD, HEAT, SEAR, zoneAt } from '../world/zones';
 import { active, family, param } from '../core/mods';
 import { light } from '../sight/lamp';
 import type { Game, Inst } from '../core/types';
+import { perk } from '../mods/uniques';
 
 /** hp per second with no body module, once you have gone QUIET seconds without damage */
 export const REGEN = 0.5; // r1 econ: was 0.2 after 4 s; now no mending in a fight (6 s quiet), then a short rest
@@ -77,6 +78,8 @@ hurtHooks.push((g, n, from) => {
   const src = from && g.ents.find((e) => e === from || e.id === from.id);
   say(g, src?.enemy ? `the mirror ward throws the hit back at ${ENEMIES[src.enemy.type]?.name ?? 'it'}.` : 'the mirror ward drinks the hit.');
   if (src?.enemy) strike(g, src, n);
+  // v2 unique: the mirror of saint vey throws it at every foe near you
+  if (perk(ward) === 'all') for (const e of g.ents.filter((e) => e.enemy && e !== src && dist(e, g.player) <= 2.5)) strike(g, e, n);
   return 0;
 });
 hurtHooks.push((g, n) => (n > 0 ? Math.max(n > 0.5 ? 0.25 : 0, n - sum(g, 'armour')) : n));

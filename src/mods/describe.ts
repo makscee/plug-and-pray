@@ -1,10 +1,8 @@
 // What a module does, in plain words, built from its family and params (with the find's roll applied),
 // so every module and every attuned/cracked variant explains itself without a hand-written line.
 
-import { def, param, size } from '../core/mods';
-import type { Roll } from '../core/types';
-
-type Modish = { mod: string; roll?: Roll };
+import { BETTER, def, param, RARITY_MULT, rarityKey, rarityOf, size, type Modish } from '../core/mods';
+import { perkText } from './uniques';
 
 const n = (v: number) => (Math.round(v * 10) / 10).toString();
 const FILTER: Record<string, string> = {
@@ -19,8 +17,12 @@ const SEES: Record<string, string> = {
   heat: 'warm things', metal: 'metal', flesh: 'hidden flesh', doors: 'passages', cards: 'memory cards', enemies: 'enemies', veins: 'veins',
 };
 
-/** one line: what it does */
+/** one line: what it does, and a unique's perk after a ✦ */
 export function does(m: Modish): string {
+  const perk = perkText(m);
+  return familyDoes(m) + (perk ? ` · ✦ ${perk}` : '');
+}
+function familyDoes(m: Modish): string {
   const d = def(m);
   const p = <T extends number | string | boolean | string[]>(k: string) => param<T>(m, k);
   switch (d.family) {
@@ -70,7 +72,7 @@ export function does(m: Modish): string {
     }
     case 'power':
       if (p('slots')) return `slot board · install it: +${n(p<number>('slots'))} slot, used up`;
-      return `power · +${n(p<number>('power'))} power while on · takes a slot`;
+      return `power · +${Math.round(p<number>('power'))} power while on · takes a slot`;
     case 'tool':
       return `tool · drains a vein beside you ×${n(p<number>('drain'))} every ${n(p<number>('cooldown'))} s · loud: wakes ${n(p<number>('noise'))} cells`;
     case 'unique':
@@ -84,12 +86,23 @@ export function does(m: Modish): string {
 export function costs(m: Modish): string {
   const d = def(m);
   const parts = [d.family === 'power' ? 'draws no power' : `uses ${d.power} power`];
+  const word = rarity(m);
+  if (word) parts.unshift(word === 'unique' ? '✦ unique' : word);
   if (size(m) > 1) parts.push(`takes ${size(m)} slots`);
   if (d.warm) parts.push(`warms ${n(d.warm)} s`);
   const loud = param<number>(m, 'loud', 0);
   if (loud) parts.push(`loud: things notice you ${n(loud)} cells farther`);
   if (m.roll) parts.push(`${m.roll.tag}: ${m.roll.key} ×${m.roll.mult}`);
+  const r = rarityOf(m);
+  const k = rarityKey(m);
+  if (RARITY_MULT[r] && k) parts.push(`${r}: ${k} ${BETTER[k] === 'down' ? '−' : '+'}${Math.round((RARITY_MULT[r]! - 1) * 100)}%`);
   return parts.join(' · ');
+}
+
+/** v2 rarity: the rarity word ('' for a common one): fine, rare, unique */
+export function rarity(m: Modish): string {
+  const r = rarityOf(m);
+  return r === 'common' && !perkText(m) ? '' : perkText(m) ? 'unique' : r;
 }
 
 /** the full description: does, costs, flavour */

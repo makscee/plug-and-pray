@@ -4,7 +4,7 @@
 import { does } from '../mods/describe';
 import { dist, itemName, reach, say, spawn, tickHooks } from './game';
 import { DIRS, open } from './grid';
-import { active, def, label, MODS, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn } from './mods';
+import { active, def, label, MODS, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits } from './mods';
 import type { Entity, Game, Inst, Item, Line, Res, Seg } from './types';
 
 export interface VerbDef {
@@ -98,7 +98,7 @@ export function instRef(g: Game, inst: Inst): string {
 function itemButton(it: Item): Line {
   const n = itemName(it);
   // r4 final: the power it uses, on the same line (take, inv)
-  if (it.kind === 'mod') return [{ text: n, cmd: `install ${def(it).name}` }, `  ${def(it).family}${def(it).family === 'power' || !def(it).power ? '' : ` · ${def(it).power}p`}`];
+  if (it.kind === 'mod') return [{ text: n, cmd: `install ${def(it).name}` }, `  ${it.rarity === 'unique' ? '✦ unique ' : ''}${def(it).family}${def(it).family === 'power' || !def(it).power ? '' : ` · ${def(it).power}p`}`];
   if (it.kind === 'card') return [{ text: n, cmd: `read card` }];
   return [n];
 }
@@ -213,7 +213,7 @@ verb('install', {
     if (!it || it.kind !== 'mod') return say(g, 'no such module in your inventory. ', [{ text: 'inv', cmd: 'inv' }]);
     if (slotsUsed(g) + size(it) > p.slots) return say(g, size(it) > 1 ? `${def(it).name} takes ${size(it)} slots, ${p.slots - slotsUsed(g)} free. remove something, swap it in, or buy a slot at a printer.` : `no free slot (${p.slots}). remove something, swap it in, or buy a slot at a printer.`);
     p.inv.splice(k, 1);
-    const inst: Inst = { uid: g.nextId++, mod: it.mod, roll: it.roll, on: false, readyAt: 0, data: {} };
+    const inst: Inst = { uid: g.nextId++, mod: it.mod, ...traits(it), on: false, readyAt: 0, data: {} };
     p.installed.push(inst);
     if (!g.stats.mods.includes(it.mod)) g.stats.mods.push(it.mod);
     g.events.push({ type: 'install', data: inst.uid });
@@ -229,7 +229,7 @@ verb('remove', {
     if (!inst) return say(g, 'nothing installed by that name.');
     switchOff(g, inst);
     g.player.installed = g.player.installed.filter((i) => i !== inst);
-    addItem(g, { kind: 'mod', mod: inst.mod, roll: inst.roll });
+    addItem(g, { kind: 'mod', mod: inst.mod, ...traits(inst) });
     g.events.push({ type: 'remove', data: inst.uid });
     say(g, `removed ${label(inst)}.`);
   },

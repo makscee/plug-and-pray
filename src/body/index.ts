@@ -3,7 +3,7 @@
 // saved setups and the clock of hours' foresight. Keys and windows live in ./input.ts and ./views.ts.
 
 import { dist, say, tickHooks } from '../core/game';
-import { active, def, label, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn } from '../core/mods';
+import { active, def, label, param, powerMax, powerUsed, size, slotsUsed, switchOff, switchOn, traits } from '../core/mods';
 import { Cell, DIRS, cell, clear, dirAngle, setCell } from '../core/grid';
 import { VERBS, addItem, findInst, findItem, instRef, verb } from '../core/verbs';
 import type { Entity, Game, Inst } from '../core/types';
@@ -162,13 +162,13 @@ export function useSetup(g: Game, name: string): string[] | null {
       if (!out) break;
       switchOff(g, out);
       p.installed = p.installed.filter((i) => i !== out);
-      addItem(g, { kind: 'mod', mod: out.mod, roll: out.roll });
+      addItem(g, { kind: 'mod', mod: out.mod, ...traits(out) });
       g.events.push({ type: 'remove', data: out.uid });
     }
     if (slotsUsed(g) + size({ mod: m }) > p.slots) break;
     const [it] = p.inv.splice(k, 1);
     if (it.kind !== 'mod') continue;
-    const inst: Inst = { uid: g.nextId++, mod: it.mod, roll: it.roll, on: false, readyAt: 0, data: {} };
+    const inst: Inst = { uid: g.nextId++, mod: it.mod, ...traits(it), on: false, readyAt: 0, data: {} };
     p.installed.push(inst);
     if (!g.stats.mods.includes(it.mod)) g.stats.mods.push(it.mod);
     g.events.push({ type: 'install', data: inst.uid });
@@ -412,7 +412,7 @@ verb('swap', {
     for (const r of room.remove ? [room.remove, ...(room.more ?? [])] : []) {
       switchOff(g, r);
       p.installed = p.installed.filter((i) => i !== r);
-      addItem(g, { kind: 'mod', mod: r.mod, roll: r.roll });
+      addItem(g, { kind: 'mod', mod: r.mod, ...traits(r) });
       g.events.push({ type: 'remove', data: r.uid });
       did.push(`${label(r)} out`);
     }
