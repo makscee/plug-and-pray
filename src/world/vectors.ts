@@ -24,7 +24,10 @@ export interface Plan {
 }
 
 const plans = new Map<number, Plan>();
-/** the seed's fixed places: one shard in each zone past the cradle (about 2.5, 4.5 and 6.5 chunks out) on
+/** how far out (chunks) shards 1, 2, 3 lie; the Engine 1.7 past shard 3 */
+export const SHARD_AT = [2.2, 4, 5.8];
+/** the seed's fixed places: one shard in each zone past the cradle (about 2.2, 4 and 5.8 chunks out: r2 pace, a
+ *  human run in 25-30 min) on
  *  different bearings, the Engine one or two chunks past shard 3 */
 export function plan(seed: number): Plan {
   let p = plans.get(seed);
@@ -42,14 +45,14 @@ export function plan(seed: number): Plan {
   };
   const a2 = a0 + 2.1 + r() * 0.6;
   const a3 = a0 + 4.2 + r() * 0.6;
-  const s3 = inZone(3, 6.5, a3);
+  const s3 = inZone(3, SHARD_AT[2], a3);
   // r1 pace: the Engine lies one to two chunks past shard 3 on its bearing (it was across the map: a 4-10 min dead walk)
-  let engine = at(8.2, a3);
-  for (const d of [8.2, 8.6, 9, 9.6]) {
+  let engine = at(SHARD_AT[2] + 1.7, a3);
+  for (const d of [1.7, 2.1, 2.5, 3.1].map((k) => SHARD_AT[2] + k)) {
     engine = at(d, a3);
     if (engine[0] !== s3[0] || engine[1] !== s3[1]) break;
   }
-  p = { shards: [inZone(1, 2.5, a0), inZone(2, 4.5, a2), s3], engine };
+  p = { shards: [inZone(1, SHARD_AT[0], a0), inZone(2, SHARD_AT[1], a2), s3], engine };
   plans.set(seed, p);
   return p;
 }

@@ -2,7 +2,10 @@
 // An elite or a pack of PACK+ within WARN cells that has not noticed you yet gets one line, with the
 // way it lies and a button to switch to your battle setup. Once per encounter: an elite is warned of
 // again only after you were 16+ cells from its post (src/fight/index.ts).
+// Playtest r2 pace: and when an elite turns to you within TURN cells, a line with how hard it hits and
+// how much it takes, and whether you have a weapon on; the HUD flashes it (src/fight/ui.ts, `turned`).
 import { dist, ENEMIES, say, tickHooks } from '../core/game';
+import { active } from '../core/mods';
 import type { Entity, Game, Line } from '../core/types';
 import { setupsOf } from '../body';
 
@@ -24,9 +27,38 @@ function warn(g: Game, text: string, at: Entity): void {
   g.events.push({ type: 'warn', at: [at.x, at.y] });
 }
 
+export const TURN = 10;
+/** the last elite that turned to you: the HUD's line, and when */
+export const turned = new WeakMap<Game, { text: string; at: number }>();
+
+function turns(g: Game, e: Entity): void {
+  const d = e.enemy!.data;
+  const kind = ENEMIES[e.enemy!.type];
+  const hits = +(kind.damage * ((d.mult as number) ?? 1)).toFixed(1);
+  const hp = Math.ceil(e.enemy!.hp);
+  const armed = active(g, 'weapon').length > 0;
+  const text = `${kind.name} turns to you. it hits ${hits}, it has ${hp} hp`;
+  const line: Line = [`⚠ ${text}.${armed ? ' ' : ' you have no weapon on! '}`];
+  line.push(setupsOf(g).battle ? { text: 'setup battle', cmd: 'setup battle' } : { text: 'unstuck', cmd: 'unstuck' });
+  say(g, line);
+  turned.set(g, { text: armed ? text : `${text} · no weapon on`, at: g.t });
+  g.events.push({ type: 'warn', at: [e.x, e.y] });
+}
+
 tickHooks.push((g) => {
   const p = g.player;
   if (g.ended) return;
+  // an elite that noticed you: told once per time it turns (and not again within 20 s)
+  for (const e of g.ents) {
+    const d = e.enemy?.data;
+    if (!d?.elite) continue;
+    if (!d.noticed) d.turned = false;
+    else if (!d.turned && dist(e, p) <= TURN && g.t >= ((d.turnedAt as number) ?? -99) + 20) {
+      d.turned = true;
+      d.turnedAt = g.t;
+      turns(g, e);
+    }
+  }
   const near = g.ents.filter((e) => e.enemy && !e.enemy.data.noticed && !ENEMIES[e.enemy.type]?.hidden && dist(e, p) <= WARN);
   for (const e of near) {
     const d = e.enemy!.data;

@@ -5,7 +5,7 @@ import { does } from '../mods/describe';
 import { dist, itemName, reach, say, spawn } from './game';
 import { DIRS, open } from './grid';
 import { active, def, label, MODS, param, powerMax, powerUsed, switchOff, switchOn } from './mods';
-import type { Game, Inst, Item, Line } from './types';
+import type { Entity, Game, Inst, Item, Line } from './types';
 
 export interface VerbDef {
   help: string;
@@ -204,6 +204,41 @@ export const way = {
     const ax = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n';
     return [ax, Math.max(1, Math.min(9, Math.round(Math.max(Math.abs(dx), Math.abs(dy)))))];
   },
+  /** the longest straight first leg (up to 9) that stays on a shortest way over open floor, else `leg`
+   * (playtest r2 pace: the pathfinder's staircase gave 1-cell legs that turned back on themselves) */
+  long(g: Game, x: number, y: number): [string, number] {
+    const [sx, sy, tx, ty] = [Math.floor(g.player.x), Math.floor(g.player.y), Math.floor(x), Math.floor(y)];
+    if (sx === tx && sy === ty) return way.leg(g, x, y);
+    // steps to the target over open floor, from the target out (bounded around both ends)
+    const pad = 12;
+    const [x0, x1, y0, y1] = [Math.min(sx, tx) - pad, Math.max(sx, tx) + pad, Math.min(sy, ty) - pad, Math.max(sy, ty) + pad];
+    const steps = new Map<string, number>([[tx + ',' + ty, 0]]);
+    let ring: [number, number][] = [[tx, ty]];
+    for (let d = 1; ring.length && !steps.has(sx + ',' + sy) && d < 120; d++) {
+      const next: [number, number][] = [];
+      for (const [cx, cy] of ring)
+        for (const [ex, ey] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const [nx, ny] = [cx + ex, cy + ey];
+          const k = nx + ',' + ny;
+          if (steps.has(k) || nx < x0 || nx > x1 || ny < y0 || ny > y1) continue;
+          if (!(nx === sx && ny === sy) && !open(g, nx + 0.5, ny + 0.5)) continue;
+          steps.set(k, d);
+          next.push([nx, ny]);
+        }
+      ring = next;
+    }
+    const total = steps.get(sx + ',' + sy);
+    if (total === undefined) return way.leg(g, x, y);
+    let best: [string, number] | null = null;
+    for (const dir of ['n', 'e', 's', 'w']) {
+      const [ex, ey] = DIRS[dir];
+      let n = 0;
+      // each step one nearer: still a shortest way
+      while (n < 9 && steps.get(sx + ex * (n + 1) + ',' + (sy + ey * (n + 1))) === total - n - 1) n++;
+      if (n && (!best || n > best[1])) best = [dir, n];
+    }
+    return best ?? way.leg(g, x, y);
+  },
 };
 
 verb('listen', {
@@ -212,10 +247,13 @@ verb('listen', {
     const p = g.player;
     // a pack is told once, by its nearest (playtest r1: a lone mite and a swarm sounded the same)
     const pack = (e: { x: number; y: number }) => g.ents.filter((o) => o.enemy && dist(o, e) < 2.5).length;
+    // things lying together are told once too, and a prop is heard only if it is an altar (r2 pace)
+    const lying = (e: { x: number; y: number }) => g.ents.filter((o) => o.kind === 'item' && dist(o, e) < 2).length;
+    const heard = (e: Entity) => e.kind !== 'prop' || !!e.data?.altar;
     const near = g.ents
-      .filter((e) => dist(e, p) < 10)
+      .filter((e) => dist(e, p) < 10 && heard(e))
       .sort((a, b) => dist(a, p) - dist(b, p))
-      .filter((e, k, all) => !e.enemy || pack(e) < 3 || !all.slice(0, k).some((o) => o.enemy && dist(o, e) < 2.5));
+      .filter((e, k, all) => (e.enemy ? pack(e) < 3 || !all.slice(0, k).some((o) => o.enemy && dist(o, e) < 2.5) : e.kind !== 'item' || !all.slice(0, k).some((o) => o.kind === 'item' && dist(o, e) < 2)));
     if (!near.length) return say(g, 'only the slow drip of something warm.');
     // compass words and cells, and a button for the next move (tuning #1328: "to the right" of a
     // facing you cannot see told a blind player nothing; crawl and go take compass words)
@@ -226,11 +264,17 @@ verb('listen', {
       const how = r < 1.6 ? 'within reach' : `${Math.round(r)} cells`;
       const ang = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
       const side = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(ang / 45) % 8];
-      const what = e.enemy ? (e.enemy.data.elite ? 'something large, keeping time' : pack(e) >= 3 ? `a swarm, ${pack(e)} or so` : 'something moving') : e.kind === 'printer' ? 'a machine humming' : 'something lying still';
-      // the first open leg of a path there, not a straight axis into a wall (playtest r1)
-      const [ax, n] = way.leg(g, e.x, e.y);
-      const cmd = r < 1.6 && e.kind === 'item' ? 'take' : goes ? `go ${ax} ${n}` : `crawl ${ax}`;
-      say(g, [`${what}, ${how}${r < 1.6 ? '' : ', ' + side}.  `, { text: cmd, cmd }]);
+      // machines and altars have a sound of their own, so they are named
+      const n = e.kind === 'item' ? lying(e) : 1;
+      const what = e.enemy
+        ? e.enemy.data.elite ? 'something large, keeping time' : pack(e) >= 3 ? `a swarm, ${pack(e)} or so` : 'something moving'
+        : e.kind === 'printer' ? (e.data?.shop ? 'a reliquary humming' : 'a printer humming')
+        : e.kind === 'prop' ? 'an altar, breathing slow'
+        : n > 1 ? `things lying still ×${n}` : 'something lying still';
+      // the longest first leg along a way there, not a straight axis into a wall (playtest r1, r2)
+      const [ax, steps] = way.long(g, e.x, e.y);
+      const cmd = r < 1.6 ? (e.kind === 'item' ? 'take' : '') : goes ? `go ${ax} ${steps}` : `crawl ${ax}`;
+      say(g, [`${what}, ${how}${r < 1.6 ? '' : ', ' + side}.  `, ...(cmd ? [{ text: cmd, cmd }] : [])]);
     }
   },
 });
