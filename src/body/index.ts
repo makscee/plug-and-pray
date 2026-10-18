@@ -151,6 +151,29 @@ export function useSetup(g: Game, name: string): string[] | null {
   }
   const errs: string[] = [];
   const isPower = (i: { mod: string }) => def(i).family === 'power';
+  // what it wants and you only carry goes in, out with what it does not want (off first) when slots are
+  // full (playtest r2 pace: `setup travel` with the psalm carried switched everything off)
+  const p = g.player;
+  for (const m of [...left]) {
+    const k = p.inv.findIndex((it) => it.kind === 'mod' && it.mod === m);
+    if (k < 0) continue;
+    if (p.installed.length >= p.slots) {
+      const out = p.installed.filter((i) => !keep.has(i.uid) && !isPower(i)).sort((a, b) => Number(a.on) - Number(b.on))[0];
+      if (!out) break;
+      switchOff(g, out);
+      p.installed = p.installed.filter((i) => i !== out);
+      addItem(g, { kind: 'mod', mod: out.mod, roll: out.roll });
+      g.events.push({ type: 'remove', data: out.uid });
+    }
+    const [it] = p.inv.splice(k, 1);
+    if (it.kind !== 'mod') continue;
+    const inst: Inst = { uid: g.nextId++, mod: it.mod, roll: it.roll, on: false, readyAt: 0, data: {} };
+    p.installed.push(inst);
+    if (!g.stats.mods.includes(it.mod)) g.stats.mods.push(it.mod);
+    g.events.push({ type: 'install', data: inst.uid });
+    keep.add(inst.uid);
+    left.splice(left.indexOf(m), 1);
+  }
   for (const i of g.player.installed) if (!keep.has(i.uid) && i.on && !isPower(i)) switchOff(g, i);
   for (const i of g.player.installed) if (keep.has(i.uid) && isPower(i)) switchOn(g, i);
   for (const i of g.player.installed) {
@@ -159,7 +182,7 @@ export function useSetup(g: Game, name: string): string[] | null {
     if (err) errs.push(`${label(i)}: ${err}`);
   }
   for (const i of g.player.installed) if (!keep.has(i.uid) && i.on && isPower(i) && powerUsed(g) <= powerMax(g) - param<number>(i, 'power', 0)) switchOff(g, i);
-  for (const m of left) errs.push(`${m.replace(/-/g, ' ')} is not installed`);
+  for (const m of left) errs.push(`${m.replace(/-/g, ' ')} is ${p.inv.some((it) => it.kind === 'mod' && it.mod === m) ? 'carried, no slot gives way' : 'not carried'}`);
   return errs;
 }
 
@@ -173,7 +196,7 @@ verb('save', {
 });
 
 verb('setup', {
-  help: 'setup battle: turn on exactly that saved set',
+  help: 'setup battle: turn on exactly that saved set, installing what you carry of it',
   run(g, [name]) {
     const all = Object.keys(setupsOf(g));
     if (!name) {
