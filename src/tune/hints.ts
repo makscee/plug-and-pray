@@ -145,7 +145,8 @@ const hintLines = (g: Game) => {
   if (g.floor) return [];
   const shop = cradleShop(g);
   return [
-    toward(g, 'pinhole-eye', 'an eye glints, waiting for a socket: your first sight'),
+    // v2r3 ux: "your first sight" only while you have none
+    toward(g, 'pinhole-eye', g.player.installed.some((i) => def(i).family === 'camera') ? 'a spare eye glints, waiting for a socket' : 'an eye glints, waiting for a socket: your first sight'),
     // v2r1 ux: "ticks, waiting for a card" read as a machine you needed a card for; it is a pickup, with the card
     toward(g, 'card-reader', 'a card reader and a memory card lie together (take both, then read the card)'),
     // v2r3 fun: only once your first eye is found (its eye stays behind glass till then, src/world/printer.ts)

@@ -49,8 +49,10 @@ export function engaged(g: Game, range = 9, hidden = false): Entity[] {
 mapHooks.draw.push((g, ctx, ox, oy, px) => {
   const p = g.player;
   for (const e of g.ents) {
-    if (!e.enemy || ENEMIES[e.enemy.type]?.hidden || dist(e, p) > 9 || !clear(g, p.x, p.y, e.x, e.y)) continue;
-    const r = Math.max(2, px * 0.7);
+    // v2r3 ux: a woken keeper always shows within view range, walls or not (the bell-ringer was off the map window)
+    const boss = !!e.enemy?.data.boss && !!e.enemy.data.noticed && dist(e, p) <= 16;
+    if (!e.enemy || (!boss && (ENEMIES[e.enemy.type]?.hidden || dist(e, p) > 9 || !clear(g, p.x, p.y, e.x, e.y)))) continue;
+    const r = boss ? Math.max(4, px * 1.1) : Math.max(2, px * 0.7);
     ctx.fillStyle = '#000';
     ctx.fillRect((e.x - ox) * px - r - 1, (e.y - oy) * px - r - 1, r * 2 + 2, r * 2 + 2);
     ctx.fillStyle = e.enemy.data.noticed ? '#ff3a28' : '#a04030';

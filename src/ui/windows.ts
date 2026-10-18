@@ -147,18 +147,21 @@ function free(el: HTMLElement, skip?: (o: HTMLElement) => boolean): [number, num
 
 const moveTo = (el: HTMLElement, [x, y]: [number, number]) => ([el.style.left, el.style.top] = [x + 'px', y + 'px']);
 
-/** how much a window must stay open: an eye that is on, under 1 (v2r1 ux: by how readable it is: a colour
+/** how much a window must stay open: the map 0.05; an eye that is on, under 1 (v2r1 ux: by how readable it is: a colour
  * eye, sharper first, 0.2-0.3; a grey one 0.35; a layer eye (heat, sonar, 1-bit, edge) 0.6, 0.55 while it is
  * the only one showing its hidden layer; installing a heat eye docked the only readable view); 1 the map,
- * 2 an on module with buttons, 3 an on module that only reads (never above an eye), 4 one that is off */
+ * 1.8 a weapon, 2 an on module with buttons, 3 an on module that only reads (never above an eye), 4 one that is off */
 export function rank(el: HTMLElement): number {
   if (el.dataset.state === 'off') return 4;
+  // v2r3 ux: the map outranks every eye (taking the pilgrim scope docked the map spool); then the base eye, then
+  // layer eyes, then weapons, then the rest
+  if (el.querySelector('canvas.map')) return 0.05;
   if (el.classList.contains('fam-camera')) {
+    if (el.dataset.base) return 0.1;
     const eye = Number(el.dataset.eye ?? 3);
-    return eye < 2 ? 0.1 + eye * 0.2 : eye === 2 ? 0.35 : el.dataset.layer ? 0.55 : 0.6;
+    return eye < 2 ? 0.2 + eye * 0.2 : eye === 2 ? 0.45 : el.dataset.layer ? 0.55 : 0.6;
   }
-  // v2r2 ux: in a boss fight the map outranks everything (it docked at 1280x720 in the furnace keeper's room)
-  if (el.querySelector('canvas.map')) return document.body.classList.contains('boss-on') ? 0.05 : 1;
+  if (el.classList.contains('fam-weapon')) return 1.8;
   return el.querySelector('.foot button') ? 2 : 3;
 }
 
@@ -167,7 +170,7 @@ export function rank(el: HTMLElement): number {
 export function eff(el: HTMLElement): number {
   const r = rank(el);
   if (r >= 1) return r;
-  return modWins().some((o) => o !== el && !o.classList.contains('min') && rank(o) < r) ? 1.5 : r;
+  return modWins().some((o) => o !== el && !o.classList.contains('min') && o.classList.contains('fam-camera') && rank(o) < r) ? 1.5 : r;
 }
 
 /** room is short: the game docked a window that has an eye, the map or buttons. Then windows that are
@@ -318,7 +321,9 @@ function dock(): void {
     };
     // no room left: over an open module window at the side (never over another chip, the console or the middle)
     const chips = [...document.querySelectorAll<HTMLElement>('.win.min, .win-console')].filter((o) => o !== m && !o.dataset.tidy).map((o) => o.getBoundingClientRect());
-    const spot = find([...rects(m), band]) ?? find([...chips, band, column]);
+    // v2r3 ux: never over the map window (a third chip row sat on its bottom border at 1280x720)
+    const maps = modWins().filter((o) => !o.classList.contains('min') && o.querySelector('canvas.map')).map((o) => o.getBoundingClientRect());
+    const spot = find([...rects(m), band]) ?? find([...chips, ...maps, band, column]) ?? find([...chips, band, column]);
     moveTo(m, spot ?? [16, innerHeight - h - 6]);
     delete m.dataset.tidy;
   }
@@ -348,8 +353,9 @@ function layout(all: boolean): void {
   // by rank (eyes that are on, the map, modules with buttons, text, off), then biggest first
   const area = (w: HTMLElement) => w.offsetWidth * w.offsetHeight;
   // r4: the map before a second eye: he asked to always see it, and tidy docked it at 1280x720
-  const best = Math.min(...ws.filter((w) => rank(w) < 1).map(rank));
-  const order = (w: HTMLElement) => (rank(w) < 1 && rank(w) > best ? 1.5 : rank(w));
+  const eyes = (w: HTMLElement) => w.classList.contains('fam-camera') && rank(w) < 1;
+  const best = Math.min(...ws.filter(eyes).map(rank));
+  const order = (w: HTMLElement) => (eyes(w) && rank(w) > best ? 1.5 : rank(w));
   ws.sort((a, b) => order(a) - order(b) || area(b) - area(a));
   for (const w of ws) {
     delete w.dataset.tidy;

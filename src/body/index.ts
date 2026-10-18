@@ -470,6 +470,7 @@ verb('swap', {
     const room = makeRoom(g, it as { mod: string }, it === inst, true);
     if (typeof room === 'string') return say(g, room);
     const did: string[] = [];
+    const inBag = new Set(p.inv);
     for (const r of room.remove ? [room.remove, ...(room.more ?? [])] : []) {
       switchOff(g, r);
       p.installed = p.installed.filter((i) => i !== r);
@@ -487,6 +488,12 @@ verb('swap', {
       return say(g, err ?? `${label(inst)} on${why}`);
     }
     const before = new Set(p.installed);
+    // v2r3 ux: what came out takes the bag spot of what went in
+    const back = p.inv.filter((o) => !inBag.has(o) && o.kind === 'mod');
+    if (back.length && k >= 0) {
+      p.inv = p.inv.filter((o) => !back.includes(o));
+      p.inv.splice(Math.min(k, p.inv.length), 0, ...back);
+    }
     oneInstall.run(g, words);
     const added = p.installed.find((i) => !before.has(i));
     if (added) say(g, `${label(added)} ${added.on ? 'on' : 'in, off'}${why}`);
@@ -495,3 +502,24 @@ verb('swap', {
 
 // playtest r3: `uninstall` is what a new player types for remove
 if (VERBS.remove && !VERBS.uninstall) VERBS.uninstall = { ...VERBS.remove, help: 'the same as remove' };
+
+// the power hint says "turn off X and turn on Y"; typed, that was "turn: unknown". `turn` reads it
+if (!VERBS.turn)
+  verb('turn', {
+    help: 'turn off censer and turn on carrion eye: the same as off and on',
+    run(g, args) {
+      let mode = '';
+      let name: string[] = [];
+      const flush = () => {
+        if (mode && name.length) VERBS[mode]?.run(g, name);
+        name = [];
+      };
+      for (const w of args) {
+        if (w === 'and' || w === 'turn') flush();
+        else if ((w === 'on' || w === 'off') && !name.length) mode = w;
+        else name.push(w);
+      }
+      flush();
+      if (!mode) say(g, 'turn what? turn off censer, or turn on carrion eye. (face turns you)');
+    },
+  });

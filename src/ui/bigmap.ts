@@ -9,6 +9,7 @@ import { verb } from '../core/verbs';
 import { detailOf, mapView, walksOnClick } from '../world/mind';
 import type { View } from './views';
 import { frameHooks } from './index';
+import { TOP } from './windows';
 import './flow.css';
 
 let open: { root: HTMLElement; view: View; inst: Inst; g: Game } | null = null;
@@ -26,17 +27,23 @@ export function closeBigMap(): void {
   open = null;
 }
 
-export function toggleBigMap(g: Game): void {
+/** v2r3 fight: floors 1-2 keepers come up on a map even with no map module (one floor-1 kit in 80 had one): a
+ *  plain spool's view of what you have seen, for that fight only */
+const keeperMaps = new WeakMap<Game, Inst>();
+const keeperMap = (g: Game): Inst => keeperMaps.get(g) ?? (keeperMaps.set(g, { uid: -1, mod: 'map-spool', on: true, readyAt: 0, data: {} } as Inst), keeperMaps.get(g)!);
+
+export function toggleBigMap(g: Game, keeper = false): void {
   if (open) return closeBigMap();
-  const inst = bestMap(g);
+  const inst = bestMap(g) ?? (keeper ? keeperMap(g) : undefined);
   if (!inst) return say(g, 'no map is on: install one (the map spool) and switch it on.');
   const span = Math.round(param<number>(inst, 'span', 33));
-  const px = () => Math.max(8, Math.min(12, Math.floor((innerHeight - 150) / span)));
+  // v2r3 ux: it stops above the console's last three lines (floor 1's keeper pop hid all but one)
+  const px = () => Math.max(8, Math.min(12, Math.floor((Math.min(innerHeight - 16, consoleCut()) - TOP - 70) / span)));
   const root = document.createElement('div');
   root.id = 'bigmap';
   const head = document.createElement('header');
   const name = document.createElement('b');
-  name.textContent = label(inst);
+  name.textContent = inst.uid < 0 ? "the keeper's room" : label(inst);
   const how = document.createElement('span');
   how.textContent = ` · ${span} cells · ${walksOnClick(g, inst) ? 'click a cell to walk there' : 'it takes no clicks'} · esc closes`;
   const x = document.createElement('button');
@@ -55,9 +62,25 @@ export function toggleBigMap(g: Game): void {
 frameHooks.push((g, dt) => {
   if (!open) return;
   // a new run, or the map taken out or switched off: it closes
-  if (open.g !== g || !open.inst.on || !g.player.installed.includes(open.inst)) return closeBigMap();
+  if (open.g !== g || (open.inst.uid >= 0 && (!open.inst.on || !g.player.installed.includes(open.inst)))) return closeBigMap();
   open.view.update(g, dt);
+  // centred, unless that would cover the console's last three lines: then it rises (never above the goal line)
+  const h = open.root.offsetHeight;
+  const top = Math.max(TOP, Math.min((innerHeight - h) / 2, consoleCut() - h));
+  if (open.root.style.top !== top + 'px') {
+    open.root.style.top = top + 'px';
+    open.root.style.transform = 'translateX(-50%)';
+  }
 });
+
+/** the y the big map keeps above: three lines up from the console output's bottom (the screen's bottom with no console) */
+function consoleCut(): number {
+  const out = document.querySelector<HTMLElement>('.win-console:not(.min) .out');
+  const r = out?.getBoundingClientRect();
+  if (!out || !r?.height) return innerHeight;
+  const line = parseFloat(getComputedStyle(out).lineHeight) || 20;
+  return r.bottom - 3.5 * line - 4;
+}
 
 if (typeof window !== 'undefined')
   addEventListener(
