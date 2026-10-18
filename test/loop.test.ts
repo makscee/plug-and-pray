@@ -89,13 +89,33 @@ describe('v2r2 fun: picks and installs keep legs, the map and a better eye', () 
     inst(g, 'psalm-of-roads');
     inst(g, 'map-spool');
     inst(g, 'spark-finger');
+    // (v2r4 run: a second swarm weapon on, so the spark finger is not the last)
+    g.player.slots = 4;
+    inst(g, 'censer-flail');
     const room = makeRoom(g, { mod: 'nail-psalm' }, false);
     expect(typeof room).not.toBe('string');
     if (typeof room !== 'string') expect(room.remove?.mod).toBe('spark-finger');
     // with only legs and the map to give, it waits in the bag
-    g.player.installed = g.player.installed.filter((i) => i.mod !== 'spark-finger');
+    g.player.installed = g.player.installed.filter((i) => i.mod !== 'spark-finger' && i.mod !== 'censer-flail');
     g.player.slots = 2;
     expect(typeof makeRoom(g, { mod: 'nail-psalm' }, false)).toBe('string');
+  });
+
+  it('v2r4 run: an aimed weapon never takes out your last weapon for swarms; another swarm weapon may', () => {
+    const g = newGame(1);
+    g.player.slots = 3;
+    g.player.core = 20;
+    inst(g, 'stepper-relay');
+    inst(g, 'map-spool');
+    inst(g, 'choir-bell');
+    expect(typeof makeRoom(g, { mod: 'nail-psalm' }, false)).toBe('string');
+    const room = makeRoom(g, { mod: 'censer-flail' }, false);
+    expect(typeof room !== 'string' && room.remove?.mod).toBe('choir-bell');
+    // with a second one on, the weaker gives way
+    g.player.slots = 4;
+    inst(g, 'spark-finger');
+    const r2 = makeRoom(g, { mod: 'nail-psalm' }, false);
+    expect(typeof r2 !== 'string' && r2.remove?.mod).toBe('spark-finger');
   });
 
   it('an eye takes out a weaker eye, never a better one; a weaker eye asks', () => {
