@@ -12,6 +12,7 @@ import { cell, Cell, veinOf } from '../core/grid';
 import { MODS } from '../core/mods';
 import { know, markAt, thinWall } from '../sight/know';
 import { mechanic } from './cardText';
+import { foeText } from './foeText';
 import type { Game } from '../core/types';
 import { mapHooks } from '../world/mind';
 import { walks } from '../mods/gait';
@@ -60,7 +61,7 @@ export function onScreen(c: HTMLCanvasElement, x: number, y: number): [number, n
 export const inOpen = (o: [number, number, number, number], x: number, y: number, m = 0) => x >= o[0] + m && x <= o[2] - m && y >= o[1] + m && y <= o[3] - m;
 
 const LEGEND = ['legend: arrow you · ◆ where the hints point · hatched: seen through a wall (it may hide things) · ? something a radar marked · chevron: a thin wall to dig through',
-  'legend: arrow you · ◆ where the hints point · green ◇ a set piece\'s finds · dots: piles in their ore\'s colour · small square a module · teal printer or reliquary · red enemy · hatched: seen through a wall (it may hide things) · coloured spots: what radars marked (orange vein, gold cache, red life, white stairs, violet guard), a dashed ring where it may be'];
+  'legend: arrow you · ◆ where the hints point · green ◇ a set piece\'s finds · dots: piles in their ore\'s colour · small square a module · teal printer or reliquary · foes: dot mite, diamond lamp, square heavy, triangle trick (gold ring: elite) · hatched: seen through a wall (it may hide things) · coloured spots: what radars marked (orange vein, gold cache, red life, white stairs, violet guard), a dashed ring where it may be'];
 /** per map canvas: where its top-left cell is and how big a cell draws, for the hover */
 const at = new WeakMap<HTMLCanvasElement, { g: Game; ox: number; oy: number; px: number }>();
 
@@ -168,7 +169,7 @@ export function infoAt(g: Game, x: number, y: number): string[] {
   const k = know(g, x, y);
   const e = k === 'seen' || k === 'scanned' ? g.ents.find((e) => here(e) && (e.kind === 'printer' || e.kind === 'item' || (e.enemy && !ENEMIES[e.enemy.type]?.hidden))) : undefined;
   if (e?.kind === 'printer') return e.data?.shop ? ['reliquary', 'buys, sells, rerolls and recycles modules.'] : ['printer', 'prints a module for ore: print <family>.'];
-  if (e?.enemy) return [ENEMIES[e.enemy.type]?.name ?? 'something moving', `${Math.max(0, e.enemy.hp).toFixed(1)} hp${e.enemy.data.noticed ? ' · it has seen you' : ' · it has not seen you'}`];
+  if (e?.enemy) return [ENEMIES[e.enemy.type]?.name ?? 'something moving', `${Math.max(0, e.enemy.hp).toFixed(1)} hp${e.enemy.data.noticed ? ' · it has seen you' : ' · it has not seen you'}`, foeText(e.enemy.type).what, 'click: the foe window shows it'];
   if (e?.item && !e.data?.mimic) return [itemName(e.item), e.item.kind === 'mod' ? mechanic(e.item) : e.item.kind === 'card' ? 'a memory card: a card reader reads it.' : 'walk over it to pick it up.'];
   const m = markAt(g, x, y);
   if (m) return [m.what, ...(m.info ? [m.info] : []), `marked by the ${MODS[m.by]?.name ?? m.by}${m.ttl ? `, ${Math.round(g.t - m.at)} s ago` : ''}${m.r ? `; somewhere within ${Math.round(m.r)} cells` : ''}.`];
