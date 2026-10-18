@@ -16,6 +16,12 @@ export class Console {
   win: windows.Win;
   bar: HTMLElement;
   barKey = '';
+  /** you just did something: the next draw shows the end, wherever the reader had scrolled */
+  follow = false;
+  /** the output's height at the last draw: a smaller window re-pins to the end */
+  seenH = 0;
+  /** the last line printed, as printed: a key step's echo grows in place (`> go n ×3`) */
+  lastSig = '';
 
   constructor(g: Game) {
     this.g = g;
@@ -40,6 +46,8 @@ export class Console {
         if (v.trim()) this.history.push(v);
         this.hpos = this.history.length;
         this.send(v);
+      } else if (!this.input.value && !e.ctrlKey && /^Arrow/.test(e.key)) {
+        // an empty line: the arrows walk (body/input.ts takes them first); nothing to do here
       } else if (e.key === 'ArrowUp' && this.history.length) {
         this.hpos = Math.max(0, this.hpos - 1);
         this.input.value = this.history[this.hpos];
@@ -59,6 +67,7 @@ export class Console {
   /** run a command as if typed; `a; b` runs both (the boot text's install all) */
   send(cmd: string): void {
     for (const c of cmd.split(';')) exec(this.g, c);
+    this.follow = true;
     this.draw();
   }
 
@@ -70,13 +79,24 @@ export class Console {
       o.replaceChildren();
       this.shown = 0;
     }
+    // follow new lines when the reader is at the bottom, or just did something (a typed or clicked
+    // command); scrolled up to read, they stay put. A window that got shorter re-pins to the end
+    const atEnd = o.scrollHeight - o.scrollTop - o.clientHeight < 24 || this.follow || (this.seenH > 0 && o.clientHeight !== this.seenH);
+    let grew = false;
+    // the last line changed in place (a key step's echo counting up): draw it again
+    if (this.shown && this.shown <= log.length && sig(log[this.shown - 1]) !== this.lastSig && o.lastElementChild) {
+      o.lastElementChild.replaceWith(line(log[this.shown - 1], (c) => this.send(c)));
+      grew = true;
+    }
     if (this.shown < log.length) {
-      // follow new lines only when the reader is already at the bottom; scrolled up, they stay put
-      const atEnd = o.scrollHeight - o.scrollTop - o.clientHeight < 24;
       for (; this.shown < log.length; this.shown++) o.append(line(log[this.shown], (c) => this.send(c)));
       while (o.childElementCount > KEEP) o.firstElementChild!.remove();
-      if (atEnd) o.scrollTop = o.scrollHeight;
+      grew = true;
     }
+    if (this.shown) this.lastSig = sig(log[this.shown - 1]);
+    if ((grew || this.follow || o.clientHeight !== this.seenH) && atEnd) o.scrollTop = o.scrollHeight;
+    this.follow = false;
+    this.seenH = o.clientHeight;
     this.drawBar();
   }
 
@@ -105,6 +125,8 @@ export class Console {
     );
   }
 }
+
+const sig = (l: Line) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('');
 
 function line(l: Line, send: (cmd: string) => void): HTMLElement {
   const el = document.createElement('div');

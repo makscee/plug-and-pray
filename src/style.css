@@ -169,3 +169,12 @@ canvas.map { cursor: crosshair; }
 .map-legend { margin: 4px 0 0; font-size: 16px; color: var(--dim); max-width: 264px; }
 .map-legend i { font-style: normal; }
 @media (max-height: 799px) { .win-console .out { height: 160px; } }
+/* playtest r2 (ux): the setup that is on, a panel cut short fades, a bigger hit on the power dot */
+.win.panel .setups button.on { color: var(--bg); background: var(--acc); padding: 0 4px; text-decoration: none; }
+.win.panel .body.more { -webkit-mask-image: linear-gradient(#000 calc(100% - 18px), #0000); mask-image: linear-gradient(#000 calc(100% - 18px), #0000); }
+.win .dot { position: relative; }
+.win .dot::after { content: ''; position: absolute; inset: -6px; }
+/* the HUD keeps its left edge, so the fight line grows to the right without moving the hp bar */
+.hpbar { left: clamp(8px, calc(50% - 252px), calc(100% - 900px)); transform: none; }
+/* a nearby name keeps a few letters; its buttons wrap under it instead */
+.win.panel .row .name { min-width: 88px; }

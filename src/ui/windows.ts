@@ -3,6 +3,8 @@
 // No window buries another (playtest r1): a new one goes to the first free spot left of the panel
 // column, or, with none, opens minimised (its title bar only) in a dock along the bottom; a click on
 // the title brings it back, a double-click on any module title minimises it. `tidy` lays them all out.
+// When room is short the windows dock by rank (playtest r2): eyes that are on, then the map, then on
+// modules with buttons, then text-only ones, then what is off. A window only ever docks a lower one.
 
 export interface Win {
   id: string;
@@ -87,9 +89,10 @@ export function open(id: string, title: string, at?: [number, number]): Win {
       if (!overlaps(el) && inside(el)) return;
       put(el);
     };
+    el.dataset.fresh = '1';
     queueMicrotask(place);
     setTimeout(place, 300);
-    setTimeout(place, 1200);
+    setTimeout(() => (place(), delete el.dataset.fresh), 1200);
   }
   const w = { id, el, title: t, body, foot, dot };
   wins.set(id, w);
@@ -132,20 +135,115 @@ function free(el: HTMLElement, skip?: (o: HTMLElement) => boolean): [number, num
 
 const moveTo = (el: HTMLElement, [x, y]: [number, number]) => ([el.style.left, el.style.top] = [x + 'px', y + 'px']);
 
-/** a free spot; with none, lay the module windows out again; what still finds none goes to the dock */
+/** how much a window must stay open: 0 an eye that is on and the only one showing its hidden layer,
+ * 0.5 any other eye that is on, 1 the map, 2 an on module with buttons, 3 an on module that only
+ * reads, 4 one that is off */
+export function rank(el: HTMLElement): number {
+  if (el.dataset.state === 'off') return 4;
+  if (el.classList.contains('fam-camera')) return el.dataset.layer ? 0 : 0.5;
+  if (el.querySelector('canvas.map')) return 1;
+  return el.querySelector('.foot button') ? 2 : 3;
+}
+
+/** room is short: the game docked a window that has an eye, the map or buttons. Then windows that are
+ * off or only read stay docked too, even where they would fit */
+const short = () => modWins().some((w) => w.classList.contains('min') && !w.dataset.hand && rank(w) < 3);
+
+/** a spot for `el`, docking open module windows that rank below it (lowest first, only those in the
+ * way); `self`: with none, `el` docks itself. Windows you dragged are never moved */
+function room(el: HTMLElement, self: boolean): boolean {
+  const spot = free(el);
+  if (spot) return moveTo(el, spot), true;
+  const r = rank(el);
+  const lower = modWins()
+    // a layer eye just installed or just showing its layer may also dock an older one of rank 0
+    .filter((o) => o !== el && !o.classList.contains('min') && !o.dataset.moved && (rank(o) > r || (r === 0 && !!el.dataset.fresh && rank(o) === 0)))
+    .sort((a, b) => rank(b) - rank(a) || a.offsetWidth * a.offsetHeight - b.offsetWidth * b.offsetHeight);
+  const gone: HTMLElement[] = [];
+  for (const o of lower) {
+    gone.push(o);
+    const at = free(el, (x) => gone.includes(x));
+    if (!at) continue;
+    moveTo(el, at);
+    const a = el.getBoundingClientRect();
+    for (const x of gone) if (hit(a.left, a.top, a.width, a.height, x.getBoundingClientRect(), 8)) minimise(x);
+    return true;
+  }
+  if (self) minimise(el);
+  return false;
+}
+
+/** a free spot; else the module windows laid out again by rank, if that keeps every open one open;
+ * else room made by docking lower-ranked windows; else the dock */
 function put(el: HTMLElement): void {
   // measured at the left edge: near the right one a window shrinks to fit what is left of the screen
   moveTo(el, [0, TOP]);
+  if (rank(el) >= 3 && short()) return minimise(el);
   const spot = free(el);
-  if (spot) moveTo(el, spot);
-  else layout(false);
+  if (spot) {
+    moveTo(el, spot);
+    return;
+  }
+  const ws = modWins();
+  const was = ws.map((w) => [w, w.style.left, w.style.top, w.classList.contains('min'), w.dataset.was] as const);
+  layout(false);
+  if (!el.classList.contains('min') && was.every(([w, , , min]) => min || !w.classList.contains('min'))) return;
+  // the layout would dock something that was open: put everything back, and make room by rank instead
+  for (const [w, l, t, min, at] of was) {
+    [w.style.left, w.style.top] = [l, t];
+    w.classList.toggle('min', min);
+    if (at === undefined) delete w.dataset.was;
+    else w.dataset.was = at;
+  }
+  moveTo(el, [0, TOP]);
+  room(el, true);
+  dock();
 }
 
-/** a window that grew (a zoomed map): to a free spot if it now covers another and one exists */
-export function refit(el: HTMLElement): void {
-  if (el.classList.contains('min') || (!overlaps(el) && inside(el))) return;
-  const spot = free(el);
-  if (spot) moveTo(el, spot);
+/** a docked module window that now outranks an open one (switched on): back out, if it can */
+export function promote(el: HTMLElement): void {
+  if (!el.classList.contains('min') || el.dataset.hand || el.dataset.moved) return;
+  const r = rank(el);
+  if (r >= 3 && short()) return;
+  if (!modWins().some((o) => !o.classList.contains('min') && (rank(o) > r || (r === 0 && !!el.dataset.fresh))) && !free(el)) return;
+  const was = el.dataset.was;
+  el.classList.remove('min');
+  moveTo(el, [0, TOP]);
+  if (room(el, false)) {
+    el.style.zIndex = String(++top);
+    dock();
+  } else {
+    minimise(el);
+    if (was !== undefined) el.dataset.was = was;
+  }
+}
+
+/** an eye just showed something hidden: its window opens even if docked (by hand too), docking lower
+ * windows if it must, and comes to the front */
+export function reveal(el: HTMLElement): void {
+  delete el.dataset.hand;
+  delete el.dataset.moved;
+  el.dataset.fresh = '1';
+  promote(el);
+  delete el.dataset.fresh;
+  el.style.zIndex = String(++top);
+}
+
+/** the docked module windows the game docked (not you), best rank first, back out where they can */
+export function refill(): void {
+  const auto = modWins().filter((w) => w.classList.contains('min') && !w.dataset.hand && !w.dataset.moved);
+  for (const w of auto.sort((a, b) => rank(a) - rank(b))) promote(w);
+}
+
+/** a window that grew (a zoomed map): to a free spot if it now covers another, or room made by docking
+ * lower-ranked windows; false when neither (the caller undoes the growth) */
+export function refit(el: HTMLElement): boolean {
+  if (el.classList.contains('min') || (!overlaps(el) && inside(el))) return true;
+  const was: [number, number] = [el.offsetLeft, el.offsetTop];
+  moveTo(el, [0, TOP]);
+  if (room(el, false)) return true;
+  moveTo(el, was);
+  return false;
 }
 
 /** title bar only, in the dock row along the bottom */
@@ -163,8 +261,11 @@ export function restore(el: HTMLElement): void {
   const [x, y] = (el.dataset.was ?? '').split(',');
   if (x && y) [el.style.left, el.style.top] = [x, y];
   if (overlaps(el) || !inside(el)) {
-    // no room: it takes the first spot clear of the console and panels, and docks the module windows there
-    const spot = free(el) ?? free(el, (o) => o.classList.contains('mod-win') && !o.classList.contains('min'));
+    // no room: it takes the first spot clear of the console and panels, docking lower-ranked module
+    // windows there, or, asked by hand with none of those, any module windows
+    const r = rank(el);
+    const open = (o: HTMLElement) => o.classList.contains('mod-win') && !o.classList.contains('min');
+    const spot = free(el) ?? free(el, (o) => open(o) && rank(o) > r) ?? free(el, open);
     if (spot) moveTo(el, spot);
     else clamp(el);
     const a = el.getBoundingClientRect();
@@ -215,9 +316,9 @@ function layout(all: boolean): void {
     delete w.dataset.moved;
     delete w.dataset.hand;
   }
-  // eyes first (they are how you see), then the map, then biggest first
-  const area = (w: HTMLElement) => w.offsetWidth * w.offsetHeight + (w.classList.contains('fam-camera') ? 1e7 : w.querySelector('canvas.map') ? 5e6 : 0);
-  ws.sort((a, b) => area(b) - area(a));
+  // by rank (eyes that are on, the map, modules with buttons, text, off), then biggest first
+  const area = (w: HTMLElement) => w.offsetWidth * w.offsetHeight;
+  ws.sort((a, b) => rank(a) - rank(b) || area(b) - area(a));
   for (const w of ws) {
     delete w.dataset.tidy;
     const spot = free(w);
@@ -227,6 +328,7 @@ function layout(all: boolean): void {
       w.classList.add('min');
     }
   }
+  if (short()) for (const w of ws) if (rank(w) >= 3 && !w.classList.contains('min')) minimise(w);
   dock();
 }
 
@@ -260,6 +362,7 @@ if (typeof window !== 'undefined')
       homeConsole();
       if (modWins().some((w) => !w.classList.contains('min') && (!inside(w) || overlaps(w)))) layout(false);
       else dock();
+      refill();
     }, 150);
   });
 export function close(id: string): void {
@@ -267,6 +370,8 @@ export function close(id: string): void {
   wins.get(id)?.el.remove();
   wins.delete(id);
   if (docked) dock();
+  // a window gone leaves room for one the game docked
+  else if (/^m\d+$/.test(id)) refill();
 }
 
 export function ids(): string[] {

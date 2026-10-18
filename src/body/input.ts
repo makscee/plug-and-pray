@@ -1,5 +1,6 @@
-// Keys and mouse for the gaits. The console keeps typing: while it has focus, keys are text;
-// Esc gives them back to movement and Enter takes them to the console again.
+// Keys and mouse for the gaits. The console keeps typing: while it has focus, keys are text (but the
+// arrows walk while its line is empty); Esc gives them back to movement and Enter takes them to the
+// console again. Key steps print quietly: one echo that counts up, and a wall said once.
 // Arrow keys walk one cell with any legs: the servo gait steps, the stepper relay types `go n` (as its
 // buttons do), with neither you crawl. WASD: the gyro heart walks free; without one, WASD are arrows.
 // Q and E turn a quarter. T tidies the windows, P pauses, 1-4 switch to saved setups 1-4.
@@ -8,20 +9,20 @@
 // mouse turns you; Esc lets it go. Without a lock, dragging on the eye turns you too.
 
 import { gyroMove, gyroTurn, hasGyro, saveSetup, servoStep, setupsOf } from './index';
-import { VERBS } from '../core/verbs';
+import { exec, VERBS } from '../core/verbs';
 import { active, param } from '../core/mods';
 import { walk } from '../mods/gait';
 import { frameHooks } from '../ui';
 import { tidy } from '../ui/windows';
 import { togglePause } from '../ui/pause';
-import type { Game } from '../core/types';
+import type { Game, Line } from '../core/types';
 import './views';
 import { clean } from '../tune/start';
 
 const ARROWS: Record<string, string> = { ArrowUp: 'n', ArrowRight: 'e', ArrowDown: 's', ArrowLeft: 'w' };
 const WASD: Record<string, string> = { w: 'n', a: 'w', s: 's', d: 'e' };
 const held = new Set<string>();
-const thaw = () => (window as unknown as { thaw: { g: Game; send(c: string): void } }).thaw;
+const thaw = () => (window as unknown as { thaw: { g: Game; send(c: string): void; screen?: { con: { follow: boolean } } } }).thaw;
 const typing = (t: EventTarget | null) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
 const consoleInput = () => document.querySelector<HTMLInputElement>('.win-console input');
 const wakeAgain = () => document.querySelector<HTMLButtonElement>('.dead button, .thaw-card button')?.click();
@@ -38,7 +39,36 @@ export function keyStep(g: Game, d: string): void {
     walk(g, d, 1);
     return;
   }
-  thaw().send(goes ? `go ${d}` : `crawl ${d}`);
+  quietStep(g, goes ? `go ${d}` : `crawl ${d}`);
+}
+
+const text = (l: Line) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('');
+/** what the last key step that went nowhere printed, per game */
+const bumped = new WeakMap<Game, string>();
+
+/** a key's `go n`: echoed once, then counted on that line (`> go n ×4`) while nothing else prints; the
+ * same wall twice says nothing new, so it says nothing (playtest r2: ten steps flooded the console) */
+export function quietStep(g: Game, cmd: string): void {
+  const echo = '> ' + cmd;
+  const last = g.log[g.log.length - 1];
+  const head = last?.length === 1 && typeof last[0] !== 'string' && !last[0].cmd ? last[0].text : '';
+  const n = head === echo ? 1 : head.startsWith(echo + ' ×') ? Number(head.slice(echo.length + 2)) : 0;
+  const p = g.player;
+  const before = [p.path.length, p.path[p.path.length - 1]?.join()].join();
+  const at = g.log.length;
+  exec(g, cmd);
+  const moved = [p.path.length, p.path[p.path.length - 1]?.join()].join() !== before;
+  const said = g.log.slice(at + 1).map(text).join('\n');
+  if (!moved && said && bumped.get(g) === said) g.log.length = at;
+  else if (n && g.log.length === at + 1) {
+    // only the echo: count it on the line above instead
+    g.log.length = at;
+    g.log[at - 1] = [{ text: `${echo} ×${n + 1}`, cmd: '' }];
+  }
+  if (!moved && said) bumped.set(g, said);
+  else if (moved) bumped.delete(g);
+  const con = thaw()?.screen?.con;
+  if (con) con.follow = true;
 }
 
 /** a quarter turn: -1 left (Q), 1 right (E) */
@@ -62,6 +92,14 @@ addEventListener(
       }
     }
     if (typing(e.target)) {
+      // an empty console line: the arrows walk; with text (or ctrl) they are the history
+      const d = ARROWS[e.key];
+      if (d && g && !g.ended && !(e.target as HTMLInputElement).value && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        keyStep(g, d);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       if (e.key === 'Escape') {
         (e.target as HTMLElement).blur();
         e.preventDefault();
