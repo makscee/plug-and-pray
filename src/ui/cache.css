@@ -1,5 +1,5 @@
 /* the kit cache's choice card (src/ui/cache.ts): five tiles across, over the middle of the screen */
-.kit-card { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 9001; width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 96px); overflow-y: auto; box-sizing: border-box; padding: 10px 14px 12px; background: #0d0a09f4; border: 2px solid var(--loot); box-shadow: 0 0 24px #e8bf5a40, 0 8px 24px #000c; animation: kitcard 0.35s ease-out both; }
+.kit-card { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 9003; width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 96px); overflow-y: auto; box-sizing: border-box; padding: 10px 14px 12px; background: #0d0a09f4; border: 2px solid var(--loot); box-shadow: 0 0 24px #e8bf5a40, 0 8px 24px #000c; animation: kitcard 0.35s ease-out both; }
 /* v2r4 ux: drawn again after a pick: no slide, so nothing moves under the pointer */
 .kit-card.again { animation: none; }
 @keyframes kitcard { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translateX(-50%); } }

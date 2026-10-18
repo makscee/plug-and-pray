@@ -7,6 +7,7 @@
 import { frameHooks } from '.';
 import { def, label, rarityOf, size } from '../core/mods';
 import type { Game, Item } from '../core/types';
+import { VERBS } from '../core/verbs';
 import { boneOf, cacheNear, cardHidden, costOf, fitOf, FREE, freeLeft, hideCard, SCRAP } from '../world/cache';
 import { floorOf, FLOORS, KIT } from '../world/floors';
 import { img } from './icons';
@@ -27,6 +28,15 @@ const firstOffer = new WeakMap<object, Item[]>();
  *  the take buttons stay where they were and "scrap the rest" never moves up under the pointer */
 const tallest = new WeakMap<object, { rule: number; row: number }>();
 
+/** v2r6 newcomer: `cache` typed during the floor's banner showed the kit dimmed under it: asked for, the card
+ *  comes at once, above the banner (src/ui/cache.css) */
+const asked = new WeakMap<Game, number>();
+const cacheVerb = VERBS.cache;
+if (cacheVerb) {
+  const run = cacheVerb.run;
+  cacheVerb.run = (g, a) => (asked.set(g, floorOf(g)), run(g, a));
+}
+
 function el_(tag: string, cls: string, text = ''): HTMLElement {
   const e = document.createElement(tag);
   e.className = cls;
@@ -45,7 +55,7 @@ frameHooks.push((g) => {
   if (!l || l.f !== f0) landed.set(g, (l = { f: f0, at: l ? performance.now() : -BANNER }));
   // never over a fight: it comes back when nothing is after you
   const fight = g.ents.some((e) => e.enemy?.data.noticed && Math.hypot(e.x - g.player.x, e.y - g.player.y) < 7);
-  const show = !!c && !cardHidden(g) && !fight && (f0 > 0 ? performance.now() - l.at > BANNER : legs);
+  const show = !!c && !cardHidden(g) && !fight && (f0 > 0 ? performance.now() - l.at > BANNER || asked.get(g) === f0 : legs);
   if (!show) {
     el?.remove();
     el = null;

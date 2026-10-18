@@ -487,6 +487,11 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
       }
     if (short > 0) {
       const blind = !seeing && p.installed.some((i) => i.on && param<string>(i, 'what', '') === 'map');
+      // v2r6 newcomer: "only your map is left" while a weapon was still on: name what is, the map stays
+      // (never the legs: a weapon first, else any other module)
+      const others = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && def(i).family !== 'gait' && param<string>(i, 'what', '') !== 'map');
+      const other = others.find(weapon) ?? others[0];
+      if (blind && other) return `not enough power for ${def(it).name}: switch off your ${def(other).name} by hand (your map stays on: it is all you see).`;
       return blind ? `not enough power for ${def(it).name}: only your map is left to switch off, and that would blind you. switch something off by hand.` : `not enough power for ${def(it).name}, and nothing lighter to switch off.`;
     }
   }

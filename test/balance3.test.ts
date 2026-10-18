@@ -46,7 +46,9 @@ describe('v2-balance3: swap in keeps your sight', () => {
     g.player.inv.push({ kind: 'mod', mod: 'frost-coat' });
     exec(g, 'swap in frost coat');
     expect(map.on).toBe(true);
-    expect(text(g)).toContain('would blind you');
+    // v2r6 newcomer: a weapon is still on, so it names that, never "only your map is left"
+    expect(text(g)).toContain('switch off your spark finger by hand');
+    expect(text(g)).not.toContain('only your map');
   });
 
   it('an eye may still take the map\'s power', () => {

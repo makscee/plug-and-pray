@@ -9,7 +9,8 @@ import { CHUNK, Cell, cell, chunkHook, setCell, veinOf } from '../core/grid';
 import { dist, itemName, say, spawn, tickHooks } from '../core/game';
 import { active, label, param } from '../core/mods';
 import { hash, rng, type Rng } from '../core/rng';
-import { goThere, verb } from '../core/verbs';
+import { goThere, verb, VERBS } from '../core/verbs';
+import { nicheIn } from '../mods/gait';
 import type { Chunk, Entity, Game, Inst, Line } from '../core/types';
 import { eyeRange } from '../mods/sense';
 import { generate, rooms } from './gen';
@@ -335,6 +336,15 @@ function open(g: Game, s: Secret, how: string): void {
   g.events.push({ type: 'dig', at: [s.x + 0.5, s.y + 0.5] }, { type: 'reveal', at: [px + 0.5, py + 0.5], data: 'hollow' });
   say(g, [`${how} a niche no door ever reached. in it: ${got}. `, { text: 'go in', cmd: `go ${sideOf(g, s)} 2` }]);
 }
+
+// v2r6 newcomer: `go in` at an opened niche does what its link does (src/mods/gait.ts)
+nicheIn.run = (g) => {
+  const p = g.player;
+  const s = secrets(g).find((s) => s.done && Math.hypot(s.x + 0.5 - p.x, s.y + 0.5 - p.y) <= 1.6 && (Math.floor(p.x) !== s.x || Math.floor(p.y) !== s.y));
+  if (!s) return false;
+  VERBS.go.run(g, [sideOf(g, s), s.eye ? '1' : '2']);
+  return true;
+};
 
 /** a hollow wall beside you (n e s w), found or not */
 export const hollowBeside = (g: Game): Secret | undefined => {
