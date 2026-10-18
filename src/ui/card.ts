@@ -9,8 +9,11 @@ import './card.css';
 
 let el: HTMLElement | null = null;
 /** what the card shows and where: the item, the anchor's key, pinned or only hovered */
-let cur: { m: Modish; key: string; anchor: HTMLElement; pinned: boolean } | null = null;
+type Cur = { m: Modish; key: string; anchor: HTMLElement; pinned: boolean };
+let cur: Cur | null = null;
 let html = '';
+/** v3r1 floor 1: the pinned card, kept while another item's hover card shows; back when the hover ends */
+let held: Cur | null = null;
 const items = new WeakMap<HTMLElement, () => Modish | null | undefined>();
 let n = 0;
 
@@ -36,11 +39,23 @@ export function attach(anchor: HTMLElement, key: string, item: () => Modish | nu
   anchor.dataset.card = key;
   items.set(anchor, item);
   anchor.addEventListener('pointerenter', (e) => {
-    if (e.pointerType === 'touch' || cur?.pinned || document.body.classList.contains('dragging')) return;
+    if (e.pointerType === 'touch' || document.body.classList.contains('dragging')) return;
+    // v3r1 floor 1 (a pinned card hid every other item's): hovering another item shows it, the pin comes back after
+    if (cur?.pinned) {
+      // the pinned item itself (or its tile drawn again under the mouse) keeps the pin
+      if (cur.anchor === anchor || cur.key === key) return;
+      held = cur;
+    }
     show(anchor, false);
   });
   anchor.addEventListener('pointerleave', () => {
-    if (cur && !cur.pinned && cur.anchor === anchor) hide();
+    if (!cur || cur.pinned || (cur.anchor !== anchor && cur.key !== key)) return;
+    if (held) {
+      cur = held;
+      held = null;
+      return draw();
+    }
+    hide();
   });
   anchor.addEventListener('click', (e) => {
     // a button inside the anchor (take, pick) does its own thing
@@ -52,12 +67,14 @@ export function attach(anchor: HTMLElement, key: string, item: () => Modish | nu
 function show(anchor: HTMLElement, pinned: boolean): void {
   const m = items.get(anchor)?.();
   if (!m) return;
+  if (pinned) held = null;
   cur = { m, key: anchor.dataset.card!, anchor, pinned };
   draw();
 }
 
 export function hide(): void {
   cur = null;
+  held = null;
   if (el) el.hidden = true;
 }
 
@@ -79,11 +96,15 @@ function draw(): void {
   }
   el.classList.toggle('pinned', cur.pinned);
   el.hidden = false;
-  place(el, cur.anchor.getBoundingClientRect());
+  place(el, cur.anchor, cur.key.startsWith('kit:'));
 }
 
-/** next to the item: left of it (the panels sit on the right), else right, else below or above; never off-screen */
-function place(c: HTMLElement, r: DOMRect): void {
+/** next to the item: left of it (the panels sit on the right), else right, else below or above; never off-screen.
+ *  v3r1 floor 1: beside the item's whole window, so it never covers the window's other tiles or the bag's
+ *  install / recycle / drop buttons; a kit tile's card goes below or above the kit, clear of the tiles beside it */
+function place(c: HTMLElement, anchor: HTMLElement, upDown: boolean): void {
+  const r = anchor.getBoundingClientRect();
+  const box = anchor.closest('.win')?.getBoundingClientRect() ?? r;
   const w = c.offsetWidth;
   const h = c.offsetHeight;
   const gap = 8;
@@ -91,8 +112,12 @@ function place(c: HTMLElement, r: DOMRect): void {
   const H = innerHeight;
   let x: number;
   let y: number;
-  if (r.left - gap - w >= 4) [x, y] = [r.left - gap - w, r.top];
-  else if (r.right + gap + w <= W - 4) [x, y] = [r.right + gap, r.top];
+  // a kit tile: under the whole kit card (clear of its take / scrap / later buttons), else above it
+  const kit = anchor.closest('.kit-card')?.getBoundingClientRect() ?? r;
+  if (upDown && kit.bottom + gap + h <= H - 4) [x, y] = [r.left + r.width / 2 - w / 2, kit.bottom + gap];
+  else if (upDown && kit.top - gap - h >= 4) [x, y] = [r.left + r.width / 2 - w / 2, kit.top - gap - h];
+  else if (box.left - gap - w >= 4) [x, y] = [box.left - gap - w, r.top];
+  else if (box.right + gap + w <= W - 4) [x, y] = [box.right + gap, r.top];
   else if (r.bottom + gap + h <= H - 4) [x, y] = [r.left, r.bottom + gap];
   else [x, y] = [r.left, r.top - gap - h];
   x = Math.max(4, Math.min(W - w - 4, x));
@@ -109,7 +134,14 @@ function tick(): void {
   if (!cur.anchor.isConnected) {
     const again = document.querySelector<HTMLElement>(`[data-card="${CSS.escape(cur.key)}"]`);
     const m = again && items.get(again)?.();
-    if (!again || !m || (!cur.pinned && !again.matches(':hover'))) return hide();
+    if (!again || !m || (!cur.pinned && !again.matches(':hover'))) {
+      if (held && !cur.pinned) {
+        cur = held;
+        held = null;
+        return;
+      }
+      return hide();
+    }
     cur.anchor = again;
     cur.m = m;
   } else {

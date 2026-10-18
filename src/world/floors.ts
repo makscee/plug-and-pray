@@ -11,7 +11,7 @@
 import { CHUNK, Cell, cell, chunkHook, ensure } from '../core/grid';
 import { dist, ENEMIES, say, spawn, tickHooks } from '../core/game';
 import { hash } from '../core/rng';
-import { verb } from '../core/verbs';
+import { goThere, verb } from '../core/verbs';
 import type { Entity, Game, Line } from '../core/types';
 import { offer } from '../end/timeline';
 
@@ -209,6 +209,8 @@ export function onBossDown(g: Game, f = floorOf(g)): void {
   const st = stairsOf(g, f);
   if (st) st.data!.open = true;
   const [x, y] = stairsAt(g.seed, f);
+  // v3r1 floor 1: the HUD says descend the moment it opens, so the way down counts as found (no eye needed)
+  g.seen.add(`${Math.floor(st?.x ?? x)},${Math.floor(st?.y ?? y)}`);
   if (!g.vectors.some((v) => v.what === 'way down' && v.x === x && v.y === y)) g.vectors.push({ card: 'boss', x, y, what: 'way down', found: false });
   const name = STAIRS[FLOORS[f].stairs!].name;
   say(g, `THE WAY DOWN IS OPEN.`, [`${name} unseals behind where it stood. `, { text: 'descend', cmd: 'descend' }, ' when you stand at it.']);
@@ -279,7 +281,12 @@ verb('descend', {
   whenFail: (g) => {
     const st = stairsOf(g);
     if (floorOf(g) === LAST) return 'descend: there is no further down. the heart is here.';
-    if (!st || !g.seen.has(`${Math.floor(st.x)},${Math.floor(st.y)}`)) return 'descend: you have not found the way down yet.';
+    if (!st || (!st.data?.open && !g.seen.has(`${Math.floor(st.x)},${Math.floor(st.y)}`))) return 'descend: you have not found the way down yet.';
+    // v3r1 floor 1: an open way down is a click away
+    if (st.data?.open) {
+      const [far, go] = goThere(g, st.x, st.y);
+      return ['descend: you are not at the stairs. they lie ' + far + ': ', go, ', then descend.'];
+    }
     return 'descend: you are not at the stairs.';
   },
   run(g) {

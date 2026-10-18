@@ -391,6 +391,9 @@ export function homeConsole(): void {
 
 /** T, or `tidy`: the console back on screen, every module window laid out again */
 export function tidy(): void {
+  // v3r1 floor 1 (a console dragged right sat over modules and inventory after T): T takes it home too
+  const con = document.querySelector<HTMLElement>('.win-console');
+  if (con) delete con.dataset.moved;
   homeConsole();
   layout(true);
   mapBack();

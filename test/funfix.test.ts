@@ -166,7 +166,8 @@ describe('v2r3 fun: legs parity', () => {
 });
 
 describe('v2r3 fun: swap in turns weapons off last', () => {
-  it('an eye takes power from the map before the weapons, never the last weapon', () => {
+  // v3r1 floor 1: an eye never takes the map; a spare weapon gives way instead, never the last one
+  it('an eye takes power from a spare weapon, never the map, never the last weapon', () => {
     const g = newGame(1);
     g.player.slots = 6;
     g.player.core = 4;
@@ -174,10 +175,13 @@ describe('v2r3 fun: swap in turns weapons off last', () => {
     inst(g, 'map-spool');
     inst(g, 'spark-finger');
     inst(g, 'choir-bell');
+    // 2 short and only one spare weapon (1): refused, the map stays
+    expect(typeof makeRoom(g, { mod: 'bat-psalter' }, false, true)).toBe('string');
+    g.player.core = 5;
     const room = makeRoom(g, { mod: 'bat-psalter' }, false, true);
     expect(typeof room).not.toBe('string');
     if (typeof room === 'string') return;
-    expect(room.off.map((i) => i.mod)).toEqual(['map-spool', 'spark-finger'].slice(0, room.off.length));
+    expect(room.off.map((i) => i.mod)).toEqual(['spark-finger']);
     expect(room.off.filter((i) => MODS[i.mod].family === 'weapon').length).toBeLessThanOrEqual(1);
     // one weapon and nothing else to give: it stays on
     const h = newGame(1);
