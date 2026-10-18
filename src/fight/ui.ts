@@ -6,7 +6,6 @@ import { engaged } from '../sight/foes';
 import { frameHooks } from '../ui';
 import { pips } from '../ui/panels';
 import { hpText } from './report';
-import { fanfares } from './shard';
 import { turned } from './warn';
 import { armed, foesNear } from './unarmed';
 import { clean } from '../tune/start';
@@ -42,11 +41,12 @@ frameHooks.push((g) => {
   const fight = fightLine(g);
   // Maks 10-18: no weapon on with foes near is a red tag that stays until you arm
   const bare = !armed(g) && foesNear(g, 8);
-  const key = `${text} ${su}/${p.slots} ${pu}/${pm} ${fight} ${bare}`;
+  const key = `${text} ${su}/${p.slots} ${pu}/${pm} ${fight} ${bare} ${g.floor}`;
   if (b.dataset.text !== key) {
     b.dataset.text = key;
     // hp, then the two resources every choice spends: slots and power
-    b.innerHTML = `<span class="hud-k">hp</span> <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
+    // v2 floors: which floor, out of a fight
+    b.innerHTML = (fight ? '' : `<span class="hud-k">floor</span> ${(g.floor ?? 0) + 1}/5<span class="sep">·</span>`) + `<span class="hud-k">hp</span> <i><b style="width:${(Math.max(0, p.hp) / p.maxHp) * 100}%"></b></i> ${text}` +
       (bare ? '<span class="sep">·</span><span class="hud-tag">NO WEAPON</span>' : '') +
       // in a fight slots and power give way to the fight line (r2: it ran off the edge at 1280 px)
       (fight ? '' : `<span class="sep">·</span><span class="hud-k">slots</span> ${su}/${p.slots} ${pips(su, p.slots)}<span class="sep">·</span><span class="hud-k">power</span> ${pu}/${pm} ${pips(pu, pm)}`) +
@@ -125,27 +125,6 @@ export function weaponLine(g: Game, r: number): string {
   if (aims.length) parts.push(soon(aims) <= 0.05 ? 'shoot ready' : `shoot ${soon(aims).toFixed(1)}s`);
   return parts.join(' · ');
 }
-
-// the shard fanfare (src/fight/shard.ts): a big line and a gold pulse
-let seenShard = 0;
-let shardGame: unknown = null;
-frameHooks.push((g) => {
-  const f = fanfares.get(g);
-  if (shardGame !== g) {
-    shardGame = g;
-    seenShard = f?.n ?? 0;
-  }
-  if (!f || f.n <= seenShard) return;
-  seenShard = f.n;
-  document.querySelector('.shard-fanfare')?.remove();
-  const el = document.createElement('div');
-  el.className = 'shard-fanfare';
-  // playtest r3: mid-fight it covered the elite still hitting you; then it is a slim line at the top
-  if (g.ents.some((e) => e.kind === 'enemy' && Math.hypot(e.x - g.player.x, e.y - g.player.y) < 8)) el.classList.add('live');
-  el.innerHTML = `<div class="shard-pulse"></div><p>SCRIPTURE SHARD ${f.n} of 3</p>`;
-  document.body.append(el);
-  setTimeout(() => el.remove(), 4200);
-});
 
 // an elite turning to you (src/fight/warn.ts): a red line under the HUD for 4 s
 let seenTurn = -1;

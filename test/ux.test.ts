@@ -11,7 +11,7 @@ describe('ux (playtest r1)', () => {
   it('help states the goal and the keys; help <verb> tells that verb; conjure stays hidden', () => {
     const g = newGame(1);
     exec(g, 'help');
-    expect(text(g)).toContain('Thaw Engine');
+    expect(text(g)).toContain('four floors');
     expect(text(g)).toContain('q e turn');
     expect(text(g)).not.toContain('conjure');
     const n = g.log.length;

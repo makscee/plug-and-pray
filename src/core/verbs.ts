@@ -130,8 +130,8 @@ verb('help', {
     say(
       g,
       ['help <verb> tells one: ', { text: 'help go', cmd: 'help go' }],
-      'the goal: three elites guard three shards of scripture, in the nave, the ossuary and the furnace.',
-      'read them with a card reader: together they point to the Thaw Engine. reach it and wake the god.',
+      'the goal: go down. four floors, each with a keeper in the room before its stairs: kill it, then descend.',
+      'under the furnace lies the heart. kill its keeper and the god thaws. a memory card points the way down.',
       'keys: arrows or wasd walk · q e turn · t tidies windows · p pauses · 1-4 setups · esc leaves the console, enter comes back',
     );
   },
@@ -318,9 +318,11 @@ verb('listen', {
     const pack = (e: { x: number; y: number }) => g.ents.filter((o) => o.enemy && dist(o, e) < 2.5).length;
     // things lying together are told once too, and a prop is heard only if it is an altar (r2 pace)
     const lying = (e: { x: number; y: number }) => g.ents.filter((o) => o.kind === 'item' && dist(o, e) < 2).length;
-    const heard = (e: Entity) => e.kind !== 'prop' || !!e.data?.altar;
+    const heard = (e: Entity) => e.kind !== 'prop' || !!e.data?.altar || !!e.data?.stairs;
+    // v2 floors: the choir nave echoes, so you hear farther there
+    const far = g.floor === 1 ? 16 : 10;
     const near = g.ents
-      .filter((e) => dist(e, p) < 10 && heard(e))
+      .filter((e) => dist(e, p) < far && heard(e))
       .sort((a, b) => dist(a, p) - dist(b, p))
       .filter((e, k, all) => (e.enemy ? pack(e) < 3 || !all.slice(0, k).some((o) => o.enemy && dist(o, e) < 2.5) : e.kind !== 'item' || !all.slice(0, k).some((o) => o.kind === 'item' && dist(o, e) < 2)));
     if (!near.length) return say(g, 'only the slow drip of something warm.');
@@ -338,6 +340,7 @@ verb('listen', {
       const what = e.enemy
         ? e.enemy.data.elite ? 'something large, keeping time' : pack(e) >= 3 ? `a swarm, ${pack(e)} or so` : 'something moving'
         : e.kind === 'printer' ? (e.data?.shop ? 'a reliquary humming' : 'a printer humming')
+        : e.data?.stairs ? 'wind rising from below: the way down'
         : e.kind === 'prop' ? 'an altar, breathing slow'
         : n > 1 ? `things lying still ×${n}` : 'something lying still';
       // the longest first leg along a way there, not a straight axis into a wall (playtest r1, r2)

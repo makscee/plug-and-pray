@@ -39,6 +39,7 @@ export const LEASH = 7;
 export function newGame(seed: number): Game {
   const g: Game = {
     seed,
+    floor: 0,
     t: 0,
     player: { x: 8.5, y: 8.5, dir: 0, hp: START_HP, maxHp: START_HP, slots: 3, core: 4, installed: [], inv: [], path: [], pace: 2.5, move: null, hurtAt: -99 },
     ents: [],
@@ -236,7 +237,6 @@ export function tick(g: Game, dt: number): void {
   const p = g.player;
   movePlayer(g, dt);
   ensure(g, p.x, p.y);
-  g.stats.far = Math.max(g.stats.far, Math.round(Math.hypot(p.x - 8.5, p.y - 8.5)));
   tickMods(g, dt);
   for (const e of [...g.ents]) {
     if (!e.enemy || dist(e, p) > CHUNK * 1.5) continue;

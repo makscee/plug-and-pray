@@ -63,7 +63,7 @@ describe('module pass', () => {
   it('the ossuary is dark: colour eyes see as far as your light, sonar and outlines see their range', () => {
     const g = rigged('dawn-eye', 'bat-psalter', 'lattice-eye', 'ember-iris');
     expect(eyeRange(g, inst(g, 'dawn-eye'))).toBe(9);
-    g.player.x = 4 * 16 + 8.5; // zone 2
+    g.player.x = 32 * 16 + 8.5; // floor 3, the ossuary
     expect(eyeRange(g, inst(g, 'dawn-eye'))).toBeLessThan(4);
     expect(eyeRange(g, inst(g, 'bat-psalter'))).toBe(10);
     expect(eyeRange(g, inst(g, 'lattice-eye'))).toBe(11);
@@ -71,7 +71,7 @@ describe('module pass', () => {
     exec(g, 'install cold star');
     run(g, 2.5);
     expect(eyeRange(g, inst(g, 'dawn-eye'))).toBe(9);
-    g.player.x = 9 * 16 + 8.5; // the furnace washes out heat
+    g.player.x = 48 * 16 + 8.5; // the furnace washes out heat
     expect(eyeRange(g, inst(g, 'ember-iris'))).toBeLessThan(5);
   });
 

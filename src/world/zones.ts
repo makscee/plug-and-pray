@@ -1,10 +1,10 @@
-// Zones: rings of chunks around where you woke, each with its own name, look, foes, loot and hazard.
-// The shards lie one per zone (1, 2, 3) and each is guarded by that zone's elite; the Engine lies in the
-// furnace. Deeper zones hit harder (`FOE`), hold better loot and carry a hazard a module answers:
-//   0 the cradle      mites, a seraph. learn to walk and bite.
-//   1 the choir nave  swarms and seraph lines, mimics; the choir warden guards shard 1. want: a second weapon or a ranged one, a body module, a slot.
-//   2 the ossuary     walkers and the hum; COLD: you do not mend without a lamp on (and light draws them). the bone abbot guards shard 2. want: armour, a lamp, power.
-//   3 the furnace     furnace seraphs, walkers, hum packs; HEAT sears 0.15 hp/s unless something keeps it off. the furnace saint guards shard 3 and the engine.
+// Zones are the floors now (v2, src/world/floors.ts): zone n is floor n, each with its own name, look, foes,
+// loot and hazard. `zoneAt` and `zoneOf` keep working and return the floor.
+//   0 the cradle      mites, a seraph. learn to walk and bite; thin walls break.
+//   1 the choir nave  swarms and seraph lines, mimics; echoes. want: a ranged weapon, a body module, a slot.
+//   2 the ossuary     walkers and the hum; COLD: you do not mend without a lamp on (and light draws them). want: armour, a lamp, power.
+//   3 the furnace     furnace seraphs, walkers, hum packs; HEAT sears 0.15 hp/s unless something keeps it off.
+//   4 the heart       the final arena.
 // The gate is felt, never a wall: `readiness` is what a careful player (and the sim) waits for.
 import { CHUNK } from '../core/grid';
 import { active, def, param, powerMax, powerUsed, size, slotsUsed } from '../core/mods';
@@ -12,39 +12,17 @@ import { makeRoom } from '../body';
 import { say, tickHooks } from '../core/game';
 import type { Game, Line } from '../core/types';
 import { dpsOf } from './zonemath';
+import { FLOORS, floorOfChunk, type Floor } from './floors';
 
-export interface Zone {
-  id: number;
-  name: string;
-  /** outer edge, in chunks from the start chunk */
-  until: number;
-  /** the sight layer's hint: wall tint and fog (hex), how dark */
-  look: { tint: string; fog: string; dark: number };
-  /** what it says when you cross in */
-  enter: string;
-  /** foes here hit and last this much more */
-  foe: { hp: number; damage: number };
-  /** loot tier this zone rolls up to */
-  tier: number;
-  /** readiness a careful player wants before walking in (the sims' gate) */
-  need: number;
-}
+export type Zone = Floor;
 
-export const ZONES: Zone[] = [
-  { id: 0, name: 'the cradle', until: 1.5, look: { tint: 'c8a070', fog: '100c0a', dark: 0 }, enter: 'the cradle. warm, close, almost kind.', foe: { hp: 1, damage: 1 }, tier: 0, need: 0 },
-  { id: 1, name: 'the choir nave', until: 3.5, look: { tint: 'd0b890', fog: '141018', dark: 0.15 }, enter: 'the choir nave. many small voices, all of them hungry.', foe: { hp: 1.2, damage: 1.15 }, tier: 1, need: 9 },
-  { id: 2, name: 'the ossuary', until: 5.5, look: { tint: '9aa8b0', fog: '080a10', dark: 0.4 }, enter: 'the ossuary. the marrow is cold: without a lamp you will not mend.', foe: { hp: 1.7, damage: 1.45 }, tier: 2, need: 40 },
-  { id: 3, name: 'the furnace', until: Infinity, look: { tint: 'ff7a40', fog: '200804', dark: 0.25 }, enter: 'the furnace. the god\'s heat sears here: keep it off or burn.', foe: { hp: 2, damage: 1.6 }, tier: 2, need: 70 },
-];
+export const ZONES: Zone[] = FLOORS;
 
-/** the zone of a chunk */
-export function zoneOf(cx: number, cy: number): number {
-  const far = Math.hypot(cx, cy);
-  return ZONES.findIndex((z) => far < z.until);
-}
-export const zoneAt = (x: number, y: number): number => zoneOf(Math.floor(x / CHUNK), Math.floor(y / CHUNK));
-/** the zone for a distance in chunks (the old `far` numbers) */
-export const zoneFar = (far: number): number => ZONES.findIndex((z) => far < z.until);
+/** the zone (floor) of a chunk */
+export const zoneOf = (cx: number, _cy?: number): number => floorOfChunk(cx);
+export const zoneAt = (x: number, _y?: number): number => zoneOf(Math.floor(x / CHUNK));
+/** the zone for a distance in chunks (the old `far` numbers: each floor is a band two wide, src/world/floors.ts farOf) */
+export const zoneFar = (far: number): number => Math.max(0, Math.min(ZONES.length - 1, Math.floor(far / 2)));
 
 /** zones where the cold stops your mending unless a lamp is on */
 export const COLD = 2;

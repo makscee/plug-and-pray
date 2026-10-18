@@ -4,7 +4,7 @@ import '../src/world';
 import { newGame } from '../src/core/game';
 import { exec } from '../src/core/verbs';
 import type { Game } from '../src/core/types';
-import { plan } from '../src/world/vectors';
+import { stairsAt } from '../src/world/floors';
 import { opening } from '../src/world/spawn';
 import { chunk } from '../src/core/grid';
 import { OPENERS } from '../src/world/cards';
@@ -31,24 +31,17 @@ describe('r2 hook', () => {
     for (const id of first) expect(OPENERS.map((c) => c.id)).toContain(id);
   });
 
-  it('shard 1 gives the engine a bearing and points to the next shard', () => {
+  it('v2: the first card on a floor points the way down', () => {
     const g = newGame(5);
     reader(g);
-    g.player.inv.push({ kind: 'card', card: 'shard-1' });
+    g.player.inv.push({ kind: 'card', card: 'log-ferry' });
     exec(g, 'read card');
-    expect(text(g)).toMatch(/the engine: about \d+ cells from where you woke, bearing near \d+ \([a-z]+\)/);
-    expect(text(g)).toMatch(/the next shard lies in the ossuary/);
-    const v = g.vectors.find((v) => v.what === 'scripture shard')!;
-    expect(Math.floor(v.x / 16)).toBe(plan(5).shards[1][0]);
-    // shard 2 points to shard 3, on the map and in `vectors`
-    g.player.inv.push({ kind: 'card', card: 'shard-2' });
-    exec(g, 'read card');
-    const v3 = g.vectors.filter((v) => v.what === 'scripture shard').at(-1)!;
-    expect([Math.floor(v3.x / 16), Math.floor(v3.y / 16)]).toEqual(plan(5).shards[2]);
-    expect(text(g)).toMatch(/the next shard lies in the furnace/);
+    const v = g.vectors.find((v) => v.what === 'way down')!;
+    expect([v.x, v.y]).toEqual(stairsAt(5, 0));
+    expect(text(g)).toMatch(/way down, past the floor's keeper/);
   });
 
-  it('r4: the last card reader neither recycles nor drops while shards are unread; it may once all three are read', () => {
+  it('r4: the last card reader neither recycles nor drops while floors are left; it may past the furnace', () => {
     const g = newGame(1);
     g.player.inv.push({ kind: 'mod', mod: 'card-reader' }, { kind: 'card', card: 'log-ferry' });
     exec(g, 'recycle card reader');
@@ -56,7 +49,7 @@ describe('r2 hook', () => {
     exec(g, 'recycle card reader');
     exec(g, 'drop card reader');
     expect(g.player.inv.some((i) => i.kind === 'mod' && i.mod === 'card-reader')).toBe(true);
-    g.cards.push('shard-1', 'shard-2', 'shard-3');
+    g.floor = 3;
     // with a card still unread it asks once first (r2)
     exec(g, 'recycle card reader');
     exec(g, 'recycle card reader');

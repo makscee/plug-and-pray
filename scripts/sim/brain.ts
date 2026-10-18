@@ -2,7 +2,8 @@
 // careful player would. It keeps the best loadout its slots and power allow, buys at printers and altars,
 // reads cards for vectors, fights (auto weapons on their own, aimed ones when a foe stands in a line),
 // steps out of a seraph's line and away from a walker's swing, folds home (`unstuck`) when nearly dead and
-// rests. A "careful" player waits for its gear to match the zone a shard lies in; a "rusher" does not.
+// rests. v2 floors: it explores each floor, takes on the floor's keeper in the room before the stairs and
+// descends; a "careful" player waits for its gear to match the floor below (or PATIENCE s), a "rusher" does not.
 import '../../src/mods';
 import { dist, ENEMIES, newGame, tick } from '../../src/core/game';
 import { CHUNK, Cell, clear } from '../../src/core/grid';
@@ -12,10 +13,13 @@ import type { Entity, Game, Res, Roll } from '../../src/core/types';
 import * as printer from '../../src/world/printer';
 import { offeringOf } from '../../src/end/timeline';
 import * as zones from '../../src/world/zones';
+import * as floors from '../../src/world/floors';
 import * as altar from '../../src/world/altar';
 import { dpsOf } from '../../src/world/zonemath';
 import { startKit } from '../../src/tune/start';
 import { light } from '../../src/sight/lamp';
+import { duel } from './boss';
+import { WARM } from '../../src/mods/sense';
 
 export interface Snap {
   t: number;
@@ -239,6 +243,17 @@ export function play(seed: number, o: Opts): Run {
     for (let k = 0; k < Math.round(s / DT) && !g.ended; k++) tick(g, DT);
   };
   const zoneHere = () => zones.zoneAt(P.x, P.y);
+  /** seconds a careful player spends on a floor before it takes on the keeper anyway */
+  const PATIENCE = 420;
+  /** and at least this long: a person looks round a floor (its cache, its loot, a printer) before its keeper */
+  const MIN_STAY = 150;
+  const RUSH_STAY = 75;
+  /** the readiness of each floor's boss loadout (src/fight/bosses.ts LOADOUTS, what the bosses are balanced for) */
+  const KEEPER_NEED = [32, 55, 80, 150, 300];
+  let floorSince = 0;
+  let floorWas = 0;
+  /** until when it walks at a keeper it could not reach from where it stood */
+  let closeIn = -1;
   const send = (cmd: string) => exec(g, cmd);
 
   /** one decision: a command (then a short wait) or a wait */
@@ -259,6 +274,38 @@ export function play(seed: number, o: Opts): Run {
   const pending = (e: Entity) => !!e.enemy!.data.windup && g.t < Number(e.enemy!.data.windup) && !reacted(e) && e.enemy!.type !== 'mite';
   function decide(): string | number {
     why = '';
+    // v2 floors: a keeper awake and close: the boss sim's player fights it (scripts/sim/boss.ts), a couple of minutes at a time
+    const keeper = g.ents.find((e) => e.enemy?.data.boss && e.enemy.data.noticed && dist(e, P) < 14);
+    // a stand-off (a wall between, neither hurt): walk round to it for a few seconds before the duel again
+    if (keeper && g.t < closeIn) {
+      const c = walkTo({ x: keeper.x, y: keeper.y, zone: zoneHere() });
+      if (c !== 'listen') return c;
+    }
+    if (keeper) {
+      // a cold keeper (bone) never shows on a heat eye, and what no eye shows no weapon finds: another eye first
+      const eyes = active(g, 'camera');
+      if (!WARM.has(keeper.enemy!.type) && eyes.length && eyes.every((i) => param(i, 'filter', 'color') === 'heat')) {
+        const other = [...P.installed.filter((i) => !i.on), ...P.inv].find((i) => 'mod' in i && MODS[i.mod].family === 'camera' && param(i, 'filter', 'color') !== 'heat') as { mod: string } | undefined;
+        if (other) return P.installed.includes(other as any) ? 'on ' + refOf(other) : 'swap in ' + labelOf(other);
+      }
+      P.path = [];
+      if (process.env.DUEL) console.log('duel', g.t.toFixed(0), 'hp', P.hp.toFixed(1), '/', P.maxHp, 'ready', Math.round(zones.readiness(g)), P.installed.filter((i) => i.on).map((i) => i.mod).join(','), 'foes', g.ents.filter((e) => e.enemy && dist(e, P) < 10).map((e) => e.enemy!.type).join(','));
+      const before = keeper.enemy!.hp + P.hp;
+      duel(g, g.floor, seed, { limit: 30, bail: 0, trace: !!process.env.DUELTRACE && g.t > Number(process.env.DUELTRACE) });
+      if (process.env.DUEL) console.log('  ->', g.t.toFixed(0), 'hp', P.hp.toFixed(1), g.ended ?? '', g.ents.filter((e) => e.enemy?.data.boss).map((e) => e.enemy!.type + ':' + e.enemy!.hp.toFixed(0)).join(','));
+      P.path = [];
+      P.faceLock = 0;
+      why = 'keeper';
+      if (g.ents.includes(keeper) && Math.abs(keeper.enemy!.hp + P.hp - before) < 0.01) closeIn = g.t + 4;
+      // broke off nearly dead: fold home and mend (the keeper keeps its wounds)
+      if (!g.ended && P.hp < P.maxHp * 0.3) {
+        (P as any)._homing = g.t + 3.2;
+        run.homes++;
+        restUntilFull = true;
+        return 'unstuck';
+      }
+      return 0.1;
+    }
     const px = Math.floor(P.x);
     const py = Math.floor(P.y);
     for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) seen.add(key(px + dx, py + dy));
@@ -284,6 +331,13 @@ export function play(seed: number, o: Opts): Run {
         restUntilFull = true;
         return 'unstuck';
       }
+    }
+    // v2: nearly dead with a lamp or anything else on you from afar (it ping-ponged out of a seraph's line to death)
+    if (hpFrac < 0.3 && foes.some((e) => e.enemy!.data.noticed) && !close.length && (!(P as any)._homing || g.t > (P as any)._homing + 20)) {
+      (P as any)._homing = g.t + 3.2;
+      run.homes++;
+      restUntilFull = true;
+      return 'unstuck';
     }
     if ((P as any)._homing && g.t < (P as any)._homing) return 0.3;
     // a walker winding up next to you: step away
@@ -441,6 +495,13 @@ export function play(seed: number, o: Opts): Run {
     }
     // take what is in reach
     if (g.ents.some((e) => e.kind === 'item' && dist(e, P) < 1.6)) return 'take';
+    // v2 floors: the stairs open and under you: down
+    if (floors.bossDown(g) && floors.atStairs(g)) return 'descend';
+    // the keeper's room ahead and not yet woken: mend to full first
+    if (!floors.bossWoke(g) && hpFrac < 0.95 && canMend && !foes.length && g.t - P.hurtAt > 2 && bossReady() && dist(P, { x: floors.bossAt(g.seed, g.floor)[0], y: floors.bossAt(g.seed, g.floor)[1] }) < 14) {
+      why = 'mend before the keeper';
+      return 2;
+    }
     // install / remove toward the best loadout
     const zt = targetZone();
     // r2 decide: a carried reader reads for a bone; installing it is for when bone runs out
@@ -502,6 +563,12 @@ export function play(seed: number, o: Opts): Run {
   }
 
   const labelOf = (i: { mod: string; roll?: any; rarity?: any; title?: string }) => label(i);
+  /** an installed module's exact words for on/off: "rivet sling 1" when a "cracked rivet sling" would match too */
+  const refOf = (i: { mod: string; roll?: any; rarity?: any; title?: string }) => {
+    const l = labelOf(i);
+    const same = P.installed.filter((o) => labelOf(o) === l);
+    return P.installed.some((o) => labelOf(o) !== l && labelOf(o).includes(l)) || same.length > 1 ? `${l} ${same.indexOf(i as any) + 1}` : l;
+  };
 
   // ---- setups: what each saved setup holds (module ids, sorted), and the last `setup` tried
   let battleUntil = -1;
@@ -531,11 +598,11 @@ export function play(seed: number, o: Opts): Run {
     }
     const isPow = (i: { mod: string }) => MODS[i.mod].family === 'power';
     const off = on.find((i) => !want.has(i) && !isPow(i));
-    if (off) return 'off ' + labelOf(off);
+    if (off) return 'off ' + refOf(off);
     const pw = D.find((i) => !i.on && isPow(i));
-    if (pw) return 'on ' + labelOf(pw);
+    if (pw) return 'on ' + refOf(pw);
     const next = D.find((i) => !i.on && MODS[i.mod].power + powerUsed(g) <= powerMax(g));
-    if (next) return 'on ' + labelOf(next);
+    if (next) return 'on ' + refOf(next);
     return null;
   }
 
@@ -555,18 +622,27 @@ export function play(seed: number, o: Opts): Run {
     return best;
   }
 
-  /** the zone of the next thing to reach: shard k or the engine */
+  /** the floor's goal: its open stairs, else its keeper's room (v2 floors) */
   function nextTarget(): { x: number; y: number; what: string } | null {
-    // the nearest one it is ready for, else the one in the shallowest zone
-    // a shard vector reached while its card still lies there (it fled the elite) is still the target
-    const open = (v: { x: number; y: number; found: boolean }) => !v.found || g.ents.some((e) => e.item?.kind === 'card' && dist(e, v) < 1.6);
-    const vs = g.vectors.filter((v) => open(v) && (v.what === 'scripture shard' || v.what === 'thaw engine'));
-    const ok = vs.filter((v) => ready(zones.zoneAt(v.x, v.y))).sort((a, b) => dist(a, P) - dist(b, P));
-    return ok[0] ?? vs.sort((a, b) => zones.zoneAt(a.x, a.y) - zones.zoneAt(b.x, b.y) || dist(a, P) - dist(b, P))[0] ?? null;
+    const f = g.floor;
+    if (floors.bossDown(g, f)) {
+      if (f >= floors.LAST) return null;
+      const [x, y] = floors.stairsAt(g.seed, f);
+      return { x, y, what: 'stairs' };
+    }
+    const [x, y] = floors.bossAt(g.seed, f);
+    // like a person, it heads for the keeper once it knows where: a card's vector, the room on the map, or the heart (told on arrival)
+    const [sx, sy] = floors.stairsAt(g.seed, f);
+    const [x0, y0, x1, y1] = floors.bossRoom(g.seed, f);
+    const known = f === floors.LAST || g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`) || [[x0, y0], [x1, y0], [x0, y1], [x1, y1], [Math.floor(x), Math.floor(y)]].some(([a, b]) => g.seen.has(`${a},${b}`));
+    return known ? { x, y, what: 'boss' } : null;
   }
+  /** a careful player takes on a keeper once ready for the floor below it, or once it has been on this floor a while */
+  // (a rusher too takes a minute for the floor's cache and what lies near before its keeper)
+  const bossReady = () => (o.style === 'rusher' ? g.t - floorSince > RUSH_STAY : zones.readiness(g) >= KEEPER_NEED[g.floor] && g.t - floorSince > MIN_STAY) || g.t - floorSince > PATIENCE;
   function targetZone(): number {
     const v = nextTarget();
-    return v ? zones.zoneAt(v.x, v.y) : zoneHere();
+    return v?.what === 'stairs' ? Math.min(g.floor + 1, floors.LAST) : zoneHere();
   }
   /** is the loadout up to the zone? the careful player waits until it is */
   function ready(z: number): boolean {
@@ -621,28 +697,23 @@ export function play(seed: number, o: Opts): Run {
   /** where to go next: an item worth taking, a machine with something affordable, the target, or new floor */
   function goal(): { x: number; y: number; ref?: object; explore?: number; zone?: number } | null {
     const v = nextTarget();
-    const zt = v ? zones.zoneAt(v.x, v.y) : 0;
-    const go = v && ready(zt);
-    // the farthest zone the player is willing to wander in now
-    const roam = go ? zt : Math.max(0, Math.min(zones.ZONES.length - 1, bestReadyZone()));
+    const go = !!v && (v.what === 'stairs' || bossReady());
+    // v2 floors: the floor is all there is to wander in
+    const roam = g.floor;
     // heading for a shard it is ready for, it only stops for what lies close to the way
     const near0 = go ? 8 : 24;
     const items = g.ents.filter((e) => e.kind === 'item' && !banned.has(e) && dist(e, P) < near0 && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()));
     const machines = g.ents.filter((e) => (e.kind === 'printer' || e.data?.altar) && !banned.has(e) && dist(e, P) < (go ? 12 : 30) && zones.zoneAt(e.x, e.y) <= Math.max(roam, zoneHere()) && machineOffers(e).some((x) => x.ok));
     // keep going for what it chose a moment ago (two near things must not pull it back and forth)
-    if (cur && g.t < cur.until && !banned.has(cur.ref) && g.ents.includes(cur.ref as Entity) && (items.includes(cur.ref as Entity) || machines.includes(cur.ref as Entity)))
+    // (v2: kept while it stays within twice the radius: a machine just past 12 cells flipped it to and from the keeper)
+    if (cur && g.t < cur.until && !banned.has(cur.ref) && g.ents.includes(cur.ref as Entity) && dist(cur.ref as Entity, P) < 2 * (go ? 12 : 30))
       return { x: (cur.ref as Entity).x, y: (cur.ref as Entity).y, ref: cur.ref, zone: roam };
     const near = [...items, ...machines].sort((a, b) => dist(a, P) - dist(b, P))[0];
     if (near) cur = { ref: near, until: g.t + 20 };
     if (near) return { x: near.x, y: near.y, ref: near, zone: roam };
-    if (go) return { x: v!.x, y: v!.y, ref: v as object, zone: zt };
+    if (go) return { x: v!.x, y: v!.y, ref: undefined, zone: roam };
     // no vector yet, or not ready: explore new floor inside the roam zone
     return { x: P.x, y: P.y, explore: roam, zone: roam };
-  }
-  function bestReadyZone(): number {
-    let z = 0;
-    for (let k = 0; k < zones.ZONES.length; k++) if (o.style === 'rusher' || zones.readiness(g) >= zones.ZONES[k].need) z = k;
-    return z;
   }
 
   function walkTo(t: ReturnType<typeof goal>): string | number {
@@ -683,7 +754,8 @@ export function play(seed: number, o: Opts): Run {
         if (seen.has(key(x, y))) continue;
         const z = zones.zoneAt(x + 0.5, y + 0.5);
         if (z > t.explore) continue;
-        const c = d.get(key(x, y))! + 0.3 * Math.hypot(x - 8, y - 8) * (z < t.explore ? 1 : 0.2);
+        const [hx, hy] = floors.origin(g.floor);
+        const c = d.get(key(x, y))! + 0.3 * Math.hypot(x - hx, y - hy) * (z < t.explore ? 1 : 0.2);
         if (c < best) {
           best = c;
           target = [x, y];
@@ -730,7 +802,7 @@ export function play(seed: number, o: Opts): Run {
   const snap = () => {
     const r = resAll(g);
     run.resPeak = Math.max(run.resPeak, r);
-    run.snaps.push({ t: Math.round(g.t), zone: zoneHere(), hp: Math.round(P.hp), maxHp: P.maxHp, power: powerMax(g), slots: P.slots, dps: +dpsOf(active(g, 'weapon')).toFixed(2), armour: active(g, 'body').reduce((s, i) => s + param<number>(i, 'armour', 0), 0), res: r, mods: P.installed.length + P.inv.filter((i) => i.kind === 'mod').length, ready: Math.round(zones.readiness(g)), at: Math.floor(P.x) + ',' + Math.floor(P.y), goal: (() => { const v = nextTarget(); return v ? `${v.what} ${Math.round(v.x)},${Math.round(v.y)} z${zones.zoneAt(v.x, v.y)}` : '-'; })() });
+    run.snaps.push({ t: Math.round(g.t), zone: zoneHere(), hp: Math.round(P.hp), maxHp: P.maxHp, power: powerMax(g), slots: P.slots, dps: +dpsOf(active(g, 'weapon')).toFixed(2), armour: active(g, 'body').reduce((s, i) => s + param<number>(i, 'armour', 0), 0), res: r, mods: P.installed.length + P.inv.filter((i) => i.kind === 'mod').length, ready: Math.round(zones.readiness(g)), at: Math.floor(P.x) + ',' + Math.floor(P.y), goal: (() => { const v = nextTarget(); return v ? `${v.what} ${Math.round(v.x)},${Math.round(v.y)} f${g.floor}` : '-'; })() });
   };
 
   let last = '';
@@ -765,8 +837,13 @@ export function play(seed: number, o: Opts): Run {
       deepest = zoneHere();
       run.loadouts['z' + deepest] = onNow();
     }
-    for (const i of [...P.inv, ...P.installed]) if ('mod' in i && i.mod === 'thaw-engine') mark('engine found');
-    g.cards.forEach((c) => (c.startsWith('shard') ? mark('shard ' + c) : mark('card ' + c)));
+    if (g.floor !== floorWas) {
+      floorWas = g.floor;
+      floorSince = g.t;
+      mark('floor ' + (g.floor + 1));
+    }
+    for (let f = 0; f <= floors.LAST; f++) if (floors.bossDown(g, f)) mark('boss ' + (f + 1));
+    g.cards.forEach((c) => mark('card ' + c));
     if (P.installed.some((i) => i.mod === 'card-reader')) mark('reader');
     for (const v of g.vectors) mark('vector ' + v.what);
     for (const k of zones.ZONES.slice(1).map((z) => z.need)) if (zones.readiness(g) >= k) mark('ready ' + k);

@@ -24,8 +24,9 @@ const wear = (g: Game, ...mods: string[]) => {
   }
   for (const i of g.player.installed) i.readyAt = g.t - 1;
 };
-const world = (g: Game, r = 4) => {
-  for (let cy = -r; cy <= r; cy++) for (let cx = -r; cx <= r; cx++) chunk(g, cx, cy);
+/** v2: the cradle's and the nave's 5x5 chunks (src/world/floors.ts) */
+const world = (g: Game, r = 2) => {
+  for (const ox of [0, 16]) for (let cy = -r; cy <= r; cy++) for (let cx = -r; cx <= r; cx++) chunk(g, ox + cx, cy);
   return secrets(g);
 };
 /** stand on the floor in front of a wall secret, facing it */

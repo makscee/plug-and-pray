@@ -3,33 +3,28 @@ import '../src/mods';
 import { newGame, tick } from '../src/core/game';
 import { chunk } from '../src/core/grid';
 import { exec } from '../src/core/verbs';
-import { plan } from '../src/world/vectors';
+import { origin } from '../src/world/floors';
 import { zoneOf, zoneAt, ZONES } from '../src/world/zones';
 import { MAX_CORE } from '../src/world/altar';
 
 describe('zones', () => {
-  it('rings out from where you woke, one shard per zone past the cradle, the engine in the furnace', () => {
-    expect([zoneOf(0, 0), zoneOf(1, 1), zoneOf(2, 0), zoneOf(4, 0), zoneOf(6, 0)]).toEqual([0, 0, 1, 2, 3]);
-    for (let seed = 1; seed <= 30; seed++) {
-      const p = plan(seed);
-      expect(p.shards.map(([cx, cy]) => zoneOf(cx, cy))).toEqual([1, 2, 3]);
-      expect(zoneOf(...p.engine)).toBe(3);
-    }
+  it('v2: the zones are the floors, side by side on the grid', () => {
+    expect([zoneOf(0, 0), zoneOf(2, 2), zoneOf(-2, 1), zoneOf(16, 0), zoneOf(33, -2), zoneOf(48, 0), zoneOf(64, -1)]).toEqual([0, 0, 0, 1, 2, 3, 4]);
+    expect(zoneAt(origin(3)[0], origin(3)[1])).toBe(3);
+    expect(ZONES.map((z) => z.name)).toEqual(['the cradle', 'the choir nave', 'the ossuary', 'the furnace', 'the heart']);
   });
 
-  it('chunks carry their zone, and an elite guards each shard', () => {
+  it('chunks carry their zone', () => {
     const g = newGame(3);
-    const p = plan(3);
-    const c = chunk(g, ...p.shards[1]);
-    expect(c.zone).toBe(2);
-    expect(g.ents.some((e) => e.enemy?.type === 'abbot' && e.enemy.data.elite)).toBe(true);
+    expect(chunk(g, 33, 1).zone).toBe(2);
     expect(ZONES[2].name).toBe('the ossuary');
   });
 
   it('the ossuary is cold: no mending without a lamp', () => {
     const g = newGame(1);
     const P = g.player;
-    [P.x, P.y] = [4 * 16 + 8.5, 8.5];
+    g.floor = 2;
+    [P.x, P.y] = origin(2);
     expect(zoneAt(P.x, P.y)).toBe(2);
     P.hp = 5;
     for (let k = 0; k < 100; k++) tick(g, 0.1);

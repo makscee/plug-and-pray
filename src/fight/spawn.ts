@@ -5,19 +5,20 @@ import { CHUNK, Cell, chunkHook } from '../core/grid';
 import { spawn, spawnEnemy } from '../core/game';
 import { hash, rng, type Rng } from '../core/rng';
 import { lootMod } from '../world/spawn';
-import { plan } from '../world/vectors';
 import type { Chunk, Entity, Game } from '../core/types';
 import { ZONES, zoneAt, zoneFar } from '../world/zones';
+import { farOf, floorOfChunk, isArrival, origin, stairsChunk } from '../world/floors';
 
 /** cells closer than this to where you wake hold no enemy (mites sense 6) */
 const CALM = 7.5;
 
 function floorCell(r: Rng, c: Chunk, elites: Entity[] = []): [number, number] | null {
   const cells: number[] = [];
+  const [hx, hy] = origin(floorOfChunk(c.cx));
   for (let k = 0; k < c.cells.length; k++) {
     const x = k % CHUNK;
     const y = (k / CHUNK) | 0;
-    const calm = Math.hypot(c.cx * CHUNK + x + 0.5 - 8.5, c.cy * CHUNK + y + 0.5 - 8.5) < CALM;
+    const calm = Math.hypot(c.cx * CHUNK + x + 0.5 - hx, c.cy * CHUNK + y + 0.5 - hy) < CALM;
     const wx = c.cx * CHUNK + x + 0.5;
     const wy = c.cy * CHUNK + y + 0.5;
     const guarded = elites.some((e) => Math.hypot(e.x - wx, e.y - wy) < 6);
@@ -34,13 +35,15 @@ function floorCell(r: Rng, c: Chunk, elites: Entity[] = []): [number, number] | 
 export function table(far: number): [string, number, number][] {
   if (far === 0) return [['mite', 1, 2]]; // the start chunk's conduits
   const z = zoneFar(far);
+  if (z >= ZONES.length - 1) return []; // the heart: its keeper alone (src/world/floors.ts)
   if (z === 0) return [['mite', 0.85, 2], ['mite', 0.35, 2], ['seraph', 0.25, 1]];
   // r1 pace: the nave's first ring (by the cradle's border) holds pairs, not threes: a step, not a cliff
-  if (z === 1) return far < 2.5 ? [['mite', 0.8, 2], ['mite', 0.15, 2], ['seraph', 0.2, 1], ['mimic', 0.1, 1]] : [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
+  if (z === 1) return far < 2.8 ? [['mite', 0.8, 2], ['mite', 0.15, 2], ['seraph', 0.2, 1], ['mimic', 0.1, 1]] : [['mite', 0.8, 3], ['mite', 0.35, 3], ['seraph', 0.3, 1], ['mimic', 0.1, 1]];
   // r1 pace: a touch lighter than it was, so the furnace (below) is the hardest zone
   if (z === 2) return [['mite', 0.55, 3], ['walker', 0.5, 1], ['seraph', 0.3, 1], ['hum', 0.3, 1], ['mimic', 0.15, 1]];
   // r1 pace: the furnace is the hardest zone: hum packs and more mimics on top of its lamps and walkers
-  return [['mite', 0.65, 4], ['mite', 0.3, 3], ['walker', 0.55, 1], ['pyre', 0.4, 1], ['hum', 0.25, 2], ['mimic', 0.3, 1]];
+  // v2 floors: the whole furnace floor is crossed now (it was a stretch to the engine): a little lighter
+  return [['mite', 0.6, 3], ['mite', 0.3, 3], ['walker', 0.5, 1], ['pyre', 0.4, 1], ['hum', 0.2, 2], ['mimic', 0.2, 1]];
 }
 
 /** a foe made for its zone: hp scaled here, its damage by `FOE.damage` in the hurt hook */
@@ -55,11 +58,12 @@ export function foe(g: Game, type: string, x: number, y: number): Entity {
 }
 
 export function fillFoes(g: Game, c: Chunk): void {
-  // the engine's chunk holds only its own gauntlet (src/world/vectors.ts)
-  const [ex, ey] = plan(g.seed).engine;
-  if (c.cx === ex && c.cy === ey) return;
+  // the boss room holds only its boss (src/world/floors.ts); you land on a new floor in quiet
+  const f = floorOfChunk(c.cx);
+  const [sx, sy] = stairsChunk(g.seed, f);
+  if ((c.cx === sx && c.cy === sy) || (f > 0 && isArrival(c.cx, c.cy))) return;
   const r = rng(hash(g.seed, 23, c.cx, c.cy));
-  const far = Math.hypot(c.cx, c.cy);
+  const far = farOf(c.cx, c.cy);
   for (const [type, p, n] of table(far)) {
     if (!r.chance(p)) continue;
     const at = floorCell(r, c, g.ents.filter((e) => e.enemy?.data.elite));

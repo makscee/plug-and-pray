@@ -7,6 +7,7 @@
 // auto: which kinds, range: cells) and lists them with a go button. `mark name` adds your spot.
 
 import { CHUNK, cell, chunkHook, open, veinOf } from '../core/grid';
+import { origin } from '../world/floors';
 import { cells, dist, ENEMIES, say, spawn, tickHooks } from '../core/game';
 import { active, families, family, param, working } from '../core/mods';
 import { hash, rng } from '../core/rng';
@@ -198,7 +199,7 @@ tickHooks.push((g) => {
     const auto = param<string[]>(inst, 'auto', []);
     const range = param<number>(inst, 'range', 8);
     const p = g.player;
-    if (auto.includes('start')) note(inst, g, { key: 'start', name: 'where you woke', x: 8.5, y: 8.5, auto: true });
+    if (auto.includes('start')) note(inst, g, { key: 'start', name: g.floor ? 'where you landed' : 'where you woke', x: origin(g.floor)[0], y: origin(g.floor)[1], auto: true });
     for (const e of g.ents) {
       if (dist(e, p) > range) continue;
       const k = kindOf(e);
@@ -341,6 +342,6 @@ chunkHook((g, c) => {
     const [x, y] = fs[r.int(0, fs.length - 1)];
     spawn(g, { kind: 'item', x: c.cx * CHUNK + x + 0.5, y: c.cy * CHUNK + y + 0.5, item: { kind: 'mod', mod } });
   };
-  if (c.cx === 0 && c.cy === -1) put('wayfinder-moth');
+  // v2: the wayfinder moth (click the map to walk) is the choir nave's kit now (src/world/floors.ts KIT)
   if (c.cx === -1 && c.cy === 1) put('waystone-log');
 });

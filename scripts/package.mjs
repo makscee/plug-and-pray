@@ -10,10 +10,7 @@ import { chromium } from 'playwright';
 const OUT = 'submission';
 // the stagings say "staged: ..." in the console; a screenshot shows the console as a player would see it
 const CLEAN = "js:thaw.g.log.splice(0, thaw.g.log.length, ...thaw.g.log.filter((l) => !JSON.stringify(l).includes('staged'))), thaw.screen.con.shown = 1e9";
-// r4: a good ending for the shot ("spring"): resources to give the engine, and the shard banner gone
-const HAUL = "js:thaw.g.player.inv.push({ kind: 'res', res: 'bone', n: 40 }, { kind: 'res', res: 'copper', n: 35 }, { kind: 'res', res: 'glass', n: 20 }, { kind: 'res', res: 'ichor', n: 15 })";
-const NOBANNER = "js:document.querySelectorAll('.shard-fanfare').forEach((e) => e.remove())";
-const ENGINE = "js:thaw.g.player.slots++, thaw.g.player.inv.push({ kind: 'mod', mod: 'thaw-engine' })";
+// r4: a good ending for the shot: ?scene=end stages resources to give the heart
 
 /** file, query, steps; the steps after the page loads, as look.mjs takes them */
 const SHOTS = [
@@ -22,7 +19,7 @@ const SHOTS = [
   ['2-pinhole.png', '?seed=1&still', ['take', 'install pinhole', 1.5, 'crawl e', 2.5, 'crawl n', 2.5, 'take', 'install stepper', 1.2, 'go e 3', 2.2]],
   ['3-deep.png', '?seed=1&scene=world-deep&still', [1.5, CLEAN, 'go e 2', 1.5]],
   ['4-fight.png', '?seed=1&scene=fight', [1.5, CLEAN, 'click:button[data-cmd=shoot]', 1.2]],
-  ['5-thaw.png', '?seed=1&scene=world-engine&still', [1, CLEAN, 'take thaw', ENGINE, HAUL, NOBANNER, 'install thaw engine', 1.2, 0.8, 4, 4, 2, NOBANNER]],
+  ['5-thaw.png', '?seed=1&scene=end&still', [1, CLEAN, 1.2, 0.8, 4, 4, 2]],
 ];
 
 if (!existsSync('dist/index.html')) throw new Error('package: no dist/, run npm run build first');

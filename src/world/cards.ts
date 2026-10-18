@@ -1,4 +1,5 @@
-// Memory cards: last logs of machines that came down before you, and three shards of scripture.
+// Memory cards: last logs of machines that came down before you (the first on each floor points the way
+// down, src/world/vectors.ts), and three shards of scripture (v2: no longer placed).
 // Lines stay under 44 characters. No years: the god keeps no calendar.
 
 export interface Card {
@@ -12,7 +13,7 @@ export const LOGS: Card[] = [
   { id: 'log-surveyor', lines: ['unit 7, surveyor. descent day 3.', 'the walls are warm here. they flex.', 'i logged a heartbeat. one. it took an hour.', 'i left a cache ahead. go and see.'] },
   { id: 'log-cantor', lines: ['this is cantor. my lamp drew them.', 'they sing when they come. three voices.', 'i am turning the lamp off now.', 'i will sit in the dark and listen.'] },
   { id: 'log-ferry', lines: ['ferry-12 to anyone.', 'i carried glass for the printers.', 'the printers ate it and gave me eyes.', 'more of them lie the way i point.'] },
-  { id: 'log-abbot', lines: ['the abbot machine, last entry.', 'we were sent to wake it. we failed.', 'the engine is not lost. it is waiting.', 'the scripture knows. i only half do.'] },
+  { id: 'log-abbot', lines: ['the abbot machine, last entry.', 'we were sent to wake it. we failed.', 'the heart is not lost. it is waiting.', 'the keepers know. they hold the stairs.'] },
   { id: 'log-leech', lines: ['drill-4. veins run copper here.', 'every time i bleed one, something hears.', 'i stopped counting what hears.', 'the rich seam is where i point.'] },
   { id: 'log-blind', lines: ['i lost my eye in the ribbed hall.', 'i mapped the rest by touch.', 'the map is good. the map is all i have.', 'take it. it is where this points.'] },
   { id: 'log-pilgrim', lines: ['pilgrim, of the second descent.', 'we walked toward the cold for weeks.', 'the cold is the heart. it is not dead.', 'it is only very, very still.'] },

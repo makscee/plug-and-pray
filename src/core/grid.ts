@@ -30,7 +30,7 @@ export function chunk(g: Game, cx: number, cy: number): Chunk {
   if (!gen) throw new Error('no generator: import src/world');
   c = gen(g.seed, cx, cy);
   g.chunks.set(k, c);
-  for (const f of onChunk) f(g, c);
+  if (!c.rock) for (const f of onChunk) f(g, c);
   return c;
 }
 

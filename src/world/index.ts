@@ -12,3 +12,4 @@ import './stage';
 import './events';
 import './secrets';
 import './finds';
+import './bosswire';

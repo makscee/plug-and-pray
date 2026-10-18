@@ -161,9 +161,11 @@ describe('v2 unique perks', () => {
   it('the kiln heart gives more power deeper', () => {
     const g = armed(uniqueItem('kiln-heart'));
     const at0 = powerMax(g);
-    g.player.x = CHUNK * 4.5;
+    // v2: floor 3, the ossuary (src/world/floors.ts)
+    g.floor = 2;
+    g.player.x = CHUNK * 32 + 8.5;
     g.player.y = 8.5;
-    chunk(g, 4, 0);
+    chunk(g, 32, 0);
     run(g, 0.1);
     expect(powerMax(g)).toBe(at0 + 2);
   });

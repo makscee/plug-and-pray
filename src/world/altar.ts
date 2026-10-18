@@ -9,6 +9,7 @@ import { def, label, MODS } from '../core/mods';
 import { findInst } from '../core/verbs';
 import type { Chunk, Entity, Game, Inst, Line, Res } from '../core/types';
 import { spot } from './gen';
+import { farOf, floorOfChunk, isArrival, stairsChunk } from './floors';
 import { affords, fmt, type Cost } from './printer';
 import { BETTER, rollMult } from './spawn';
 
@@ -206,7 +207,9 @@ verb('temper', {
 });
 
 chunkHook((g: Game, c: Chunk) => {
-  const far = Math.hypot(c.cx, c.cy);
+  const far = farOf(c.cx, c.cy);
+  const [sx, sy] = stairsChunk(g.seed, floorOfChunk(c.cx));
+  if ((c.cx === sx && c.cy === sy) || isArrival(c.cx, c.cy)) return;
   const r = rng(hash(g.seed, 71, c.cx, c.cy));
   if (!((c.cx === 1 && c.cy === 1) || (far >= 2 && r.chance(far >= 3.5 ? 0.35 : 0.2)))) return; // r1 econ: deep, more altars to spend at (temper)
   const [x, y] = spot(g.seed, c.cx, c.cy, 7, c);
