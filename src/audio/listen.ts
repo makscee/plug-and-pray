@@ -30,6 +30,9 @@ const STRIDE = { step: 1, drag: 0.5, free: 0.8 };
 /** `walked` while standing still */
 const START = 99;
 
+/** game time of the last walk in the big view (WASD there moves the body, not player.move); src/body/fps.ts sets it */
+export const fpsWalked = new WeakMap<Game, number>();
+
 export function listen(e: Ear, g: Game): Play[] {
   const p = g.player;
   const out: Play[] = [];
@@ -46,8 +49,10 @@ export function listen(e: Ear, g: Game): Play[] {
   e.y = p.y;
   if (moved > 3) e.walked = 0; // a jump, not a walk
   else if (moved > 0) {
-    const kind = p.move ? 'free' : p.pace <= 1 ? 'drag' : 'step';
-    const arrived = !p.move && !p.path.length; // the last cell: the step that set off for it already sounded
+    // v6 (Maks: no step sound walking by hand in the big view): a WASD walk there is free too, never arriving
+    const free = !!p.move || (fpsWalked.get(g) ?? -99) > g.t - 0.2;
+    const kind = free ? 'free' : p.pace <= 1 ? 'drag' : 'step';
+    const arrived = !free && !p.path.length; // the last cell: the step that set off for it already sounded
     e.walked = e.walked >= START ? STRIDE[kind] : e.walked + moved;
     if (e.walked >= STRIDE[kind] - 1e-6 && !arrived) {
       e.walked = Math.max(0, e.walked - STRIDE[kind]);
