@@ -56,7 +56,7 @@ function familyDoes(m: Modish): string {
       if (p('pilot')) return `pilot · walks you to a spot: goto, a waypoint's go, or a click on a surveyor's map, ${n(p<number>('pace'))} cells/s, plans ${n(p<number>('plan'))} cells${p('avoid') ? ', around enemies' : ''}`;
       if (p('go')) return 'legs · walk cells: go <dir> <n>, or the n e s w buttons';
       if (p('keys')) return `legs · arrow keys, ${n(p<number>('pace'))} cells/s`;
-      if (p('free')) return `legs · free walking, wasd + mouse, ${n(p<number>('speed'))} cells/s`;
+      if (p('free')) return `legs · free walking, wasd, q/e turn, ${n(p<number>('speed'))} cells/s`;
       if (p('dig')) return `digger · dig: eats the wall in front, every ${n(p<number>('cooldown'))} s`;
       return 'legs';
     case 'weapon':
@@ -79,6 +79,7 @@ function familyDoes(m: Modish): string {
       if (w === 'reader') return 'reader · reads memory cards: read card';
       if (w === 'ledger') return `ledger · kills pay out ${n(p<number>('tithe') || 1)}× as often`;
       if (w === 'compass') return 'compass · points to what the cards promised';
+      if (w === 'reins') return `reins · tab takes them: the mouse looks, a click shoots, wasd walks the way you look${p<number>('big') >= 2 ? ' · shift dashes, hits marked' : ''}`;
       if (w === 'clock') return `clock · shows where enemies will be ${n(p<number>('ahead'))} s ahead, ${n(p<number>('range'))} cells`;
       return 'mind · ' + w;
     }

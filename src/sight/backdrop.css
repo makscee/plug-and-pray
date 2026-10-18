@@ -1,0 +1,26 @@
+/* v2-view: the screen behind the windows (src/sight/backdrop.ts) */
+#backdrop { position: fixed; inset: 0; z-index: 0; background: #000; overflow: hidden; }
+#backdrop canvas.bd-base, #backdrop canvas.bd-layer { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+#backdrop canvas[hidden] { display: none; }
+#backdrop .bd-map { position: absolute; inset: 0; }
+#backdrop .bd-map[hidden] { display: none; }
+#backdrop .bd-map canvas.map { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); cursor: crosshair; image-rendering: pixelated; }
+#backdrop canvas.bd-over { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* what the screen is, and the reins' mode: top left, out of the way */
+#backdrop .bd-tag { position: absolute; left: 12px; top: 8px; max-width: calc(50vw - 260px); padding: 1px 8px; font-size: 17px; line-height: 20px; color: var(--t-meta, #7a6a5a); background: #000a; border: 1px solid #0000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+#backdrop .bd-tag.reins { color: var(--good, #8fd46a); border-color: #3a5a2a; }
+#backdrop .bd-tag.cursor { color: var(--acc, #f0a050); border-color: var(--line); }
+/* the desk lets clicks through to the view; its windows take them */
+#desk { pointer-events: none; z-index: 1; }
+#desk > * { pointer-events: auto; }
+/* the map is the screen: its own window would only repeat it */
+body[data-view='map'] #desk > .win.fam-mind:has(canvas.map) { display: none; }
+/* an eye's window: what it adds to the view */
+.win .eye-role { font-size: 16px; color: var(--t-meta, #7a6a5a); max-width: 230px; }
+.win .eye-role[data-base='true'] { color: var(--good, #8fd46a); }
+/* windows over a picture: a little see-through, the console most */
+#desk > .win { background: #100d0cee; }
+#desk > .win-console { background: #0c0a09c4; width: 480px; }
+@media (max-height: 799px) { .win-console .out { height: 112px; } .win-console .acts { max-height: 88px; } }
+/* the reins taken: their own keys box says so, top left */
+body.big #backdrop .bd-tag { display: none; }

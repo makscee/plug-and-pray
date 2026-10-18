@@ -57,9 +57,9 @@ export const STAIRS: Record<Stairs, { name: string; look: string }> = {
  *  Other slices add their ids here (the FPS eye on 2 and 3, map upgrades on 1...) */
 export const KIT: Record<number, string[]> = {
   0: ['hollow-tap', 'choir-bell', 'frost-coat'],
-  1: ['nail-psalm', 'survey-spool', 'sounding-knell', 'vein-fork', 'plumb-line'],
-  2: ['pilgrim-scope', 'illuminated-atlas', 'pulse-choir', 'bone-glass', 'ember-iris', 'censer', 'bone-lance'],
-  3: ['martyr-scope', 'glass-diorama', 'rime-hood', 'heat-lance'],
+  1: ['nail-psalm', 'dawn-eye', 'survey-spool', 'sounding-knell', 'vein-fork', 'plumb-line'],
+  2: ['saints-reins', 'pilgrim-scope', 'illuminated-atlas', 'pulse-choir', 'bone-glass', 'ember-iris', 'censer', 'bone-lance'],
+  3: ['martyrs-reins', 'martyr-scope', 'glass-diorama', 'rime-hood', 'heat-lance'],
   4: [],
 };
 

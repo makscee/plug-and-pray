@@ -121,9 +121,9 @@ export function fill(g: Game, c: Chunk): void {
   const far = farOf(c.cx, c.cy);
   const o = opening(g.seed);
   if (is(c, o.eye)) {
-    // the first upgrade: a clear colour eye one chunk out (the run starts with the pinhole)
+    // the first eye, one chunk out (v2-view: the run starts blind, with a map and a radar; the dawn eye is floor 2's)
     const [x, y] = cellIn(r, c, g.seed);
-    spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'dawn-eye' } });
+    spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'pinhole-eye' } });
   }
   if (is(c, o.reader)) {
     const [x, y] = cellIn(r, c, g.seed);

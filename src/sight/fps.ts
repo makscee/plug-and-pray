@@ -1,23 +1,20 @@
-// The FPS eye on screen (v2). Its window shows a small wide view and a `go big` button; `big` (key V)
-// fills the screen with it: a low-res wide shot every frame, upscaled crisp (the PS1 look), a crosshair
-// that tells you whether the weapon reaches what is under it, hit markers (mk2), arrows on the edge for
-// bolts coming from outside the view, and a slim HUD (hp, power, weapons and their cooldowns, the dash,
-// a boss bar). Everything else folds away; the console stays as a slim overlay (style: fps.css).
+// The reins on screen (v2-view). Your eye's view is the screen already (src/sight/backdrop.ts); with the reins
+// taken (Tab) this lays over it: a crosshair that tells you whether the weapon reaches what is under it, hit
+// markers (mk2), arrows on the edge for bolts coming from outside the view, and a slim HUD (hp, power, weapons
+// and their cooldowns, the dash, a boss bar). The windows fold away; the console stays as a slim overlay (fps.css).
 // Enemy bolts (src/fight/bolts.ts) glow in every colour eye, big or small (placeHooks).
 import * as THREE from 'three';
 import './fps.css';
-import { families, MODS, param, powerMax, powerUsed } from '../core/mods';
-import type { Game, Inst } from '../core/types';
+import { MODS, powerMax, powerUsed } from '../core/mods';
+import type { Game } from '../core/types';
 import { addItem, exec } from '../core/verbs';
 import { frameHooks } from '../ui';
-import { VIEWS, view, type MakeView } from '../ui/views';
-import { eyeRange } from '../mods/sense';
-import { firstSight } from './codex';
-import { see, shoot, placeHooks, type Mode } from './scene';
+import { placeHooks, type Mode } from './scene';
+import { fovAcross, plan } from './layers';
 import { engaged } from './foes';
 import { boltWarn, shots, type ShotData } from '../fight/shots';
 import { eaten, hpText, lastBlow } from '../fight/report';
-import { bigOn, bossOf, dash, fps, fpsEye, fpsFire, fpsMove, fpsTurn, lunge, mark, nameOf, ray, weaponState } from '../body/fps';
+import { bigOn, bossOf, dash, fps, fpsFire, fpsMove, fpsTurn, lunge, mark, nameOf, ray, weaponState } from '../body/fps';
 
 // ---- bolts: a hot core and a soft halo, never fogged, so a bolt reads in the dark from across a room
 
@@ -77,110 +74,16 @@ placeHooks.push((g, group, mode: Mode) => {
   }
 });
 
-// ---- the picture: a wide shot, auto-gain, and a light ordered dither (mk1 coarser: fewer colours)
-
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16 - 0.5);
-
-/** shoot the wide view for `inst` at w×h and grade it in place; returns the pixels */
-export function wideShot(g: Game, inst: Inst, w: number, h: number): Uint8Array {
-  const range = eyeRange(g, inst);
-  const px = shoot(g, { res: h, w, fov: param<number>(inst, 'fov', 90), range, mode: 'color', filter: 'color' });
-  see(g, range);
-  if (firstSight(g, inst, range)) inst.data.flashAt = g.t;
-  grade(px, w, h, param<number>(inst, 'big', 1) >= 2 ? 32 : 12);
-  return px;
-}
-
-/** auto-gain (a dark room reads dim but whole), then `levels` per channel with a 4x4 dither */
-export function grade(px: Uint8Array, w: number, h: number, levels: number): void {
-  const n = w * h;
-  const hist = new Uint32Array(256);
-  for (let i = 0; i < n; i++) hist[(px[i * 4] * 0.3 + px[i * 4 + 1] * 0.59 + px[i * 4 + 2] * 0.11) | 0]++;
-  let c = 0, top = 255;
-  for (let v = 255; v >= 0; v--) if ((c += hist[v]) > n * 0.08) { top = v; break; }
-  const gain = Math.max(1, Math.min(2.5, 200 / Math.max(1, top)));
-  const step = 255 / (levels - 1);
-  for (let i = 0; i < n; i++) {
-    const b = BAYER[(((i / w) | 0) & 3) * 4 + ((i % w) & 3)];
-    for (let k = 0; k < 3; k++) {
-      const v = Math.min(255, px[i * 4 + k] * gain);
-      px[i * 4 + k] = Math.max(0, Math.min(255, Math.round(v / step + b * 0.7) * step));
-    }
-    px[i * 4 + 3] = 255;
-  }
-}
-
-// ---- the scope's own window: a small wide view and the button to go big
-
-const makeScope: MakeView = (el, inst) => {
-  const W = 128, H = 72;
-  const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
-  canvas.className = 'eye scope';
-  const label = document.createElement('div');
-  label.className = 'facing';
-  const hint = document.createElement('div');
-  hint.className = 'scope-hint';
-  hint.textContent = 'v: go big · mouse turns, click shoots';
-  el.append(label, canvas, hint);
-  const ctx = canvas.getContext('2d')!;
-  const img = ctx.createImageData(W, H);
-  let next = 0;
-  return {
-    update(g) {
-      const warm = inst.on && g.t >= inst.readyAt;
-      const f = !inst.on ? 'off' : !warm ? 'warming up…' : bigOn(g) ? 'big: it fills your sight' : `mk${param<number>(inst, 'big', 1)} · ${Math.round(param<number>(inst, 'fov', 90))}° wide`;
-      if (label.textContent !== f) label.textContent = f;
-      if (!warm) {
-        // static, as every eye shows while it warms or sits off
-        const px = img.data;
-        for (let i = 0; i < W * H; i++) {
-          const v = Math.random() < 0.5 ? 0 : (inst.on ? 120 : 30) * Math.random();
-          px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v;
-          px[i * 4 + 3] = 255;
-        }
-        ctx.putImageData(img, 0, 0);
-        return;
-      }
-      // while big, the big view draws: this one rests
-      if (bigOn(g) || g.t < next) return;
-      next = g.t + 1 / 12;
-      img.data.set(wideShot(g, inst, W, H));
-      ctx.putImageData(img, 0, 0);
-    },
-  };
-};
-
-/** wrap the camera family: scopes get their own window and a `go big` button; other eyes rest while big
- *  (called once the camera view is registered, src/sight/index.ts) */
-export function wrapCamera(): void {
-  const base = VIEWS.camera;
-  if (!base) return;
-  view('camera', (el, inst, g) => {
-    if (param<number>(inst, 'big', 0) > 0) return makeScope(el, inst, g);
-    const v = base(el, inst, g);
-    return { update: (g, dt) => (bigOn(g) ? undefined : v.update(g, dt)), dispose: v.dispose };
-  });
-  const fam = families.camera;
-  if (!fam) return;
-  const buttons = fam.buttons;
-  fam.buttons = (g, inst) => (param<number>(inst, 'big', 0) > 0 ? [{ label: bigOn(g) ? 'small' : 'go big (v)', cmd: 'big' }] : buttons?.(g, inst) ?? []);
-}
-
 // ---- the big view
 
-interface Big { root: HTMLElement; pic: HTMLCanvasElement; ctx: CanvasRenderingContext2D; img: ImageData; over: HTMLCanvasElement; oc: CanvasRenderingContext2D; hud: HTMLElement; boss: HTMLElement; warn: HTMLElement; lock: HTMLElement; w: number; h: number }
+interface Big { root: HTMLElement; over: HTMLCanvasElement; oc: CanvasRenderingContext2D; hud: HTMLElement; boss: HTMLElement; warn: HTMLElement; lock: HTMLElement }
 let big: Big | null = null;
 
-function make(w: number, h: number): Big {
+function make(): Big {
   big?.root.remove();
   const root = document.createElement('div');
   root.id = 'bigview';
-  const pic = document.createElement('canvas');
-  pic.width = w;
-  pic.height = h;
-  pic.className = 'eye big-pic';
+  root.hidden = true;
   const over = document.createElement('canvas');
   over.className = 'big-over';
   const hud = document.createElement('div');
@@ -195,15 +98,14 @@ function make(w: number, h: number): Big {
   const keys = document.createElement('div');
   keys.className = 'big-keys';
   // v2r1 ux: the keys were small grey text; Esc frees the mouse first, then leaves (src/body/input.ts)
-  keys.innerHTML = 'wasd walk · click shoot · f lunge<b class="dashkey"> · shift dash</b><br>esc frees the mouse · esc again: small<br>[ ] mouse speed · v small';
+  keys.innerHTML = '<b class="reins-on">◉ reins taken</b><br>wasd walk · click shoot · f lunge<b class="dashkey"> · shift dash</b><br>tab or esc: the cursor back<br>[ ] mouse speed';
   // v2r1 ux + pace: no map in big view; your map window's picture, in the corner
   const map = document.createElement('canvas');
   map.className = 'big-map';
   map.width = map.height = 168;
-  root.append(pic, over, boss, warn, lock, keys, map, hud);
+  root.append(over, boss, warn, lock, keys, map, hud);
   document.body.append(root);
-  const ctx = pic.getContext('2d')!;
-  return { root, pic, ctx, img: ctx.createImageData(w, h), over, oc: over.getContext('2d')!, hud, boss, warn, lock, w, h };
+  return { root, over, oc: over.getContext('2d')!, hud, boss, warn, lock };
 }
 
 /** the last big frame's cost in ms (the test hook reads it) */
@@ -214,21 +116,18 @@ frameHooks.push((g) => {
   document.body.classList.toggle('big', on);
   // dead or done: the mouse is yours again for the card
   if (g.ended && document.pointerLockElement?.id === 'bigview') document.exitPointerLock?.();
+  // made at once (hidden), so a key or a click can lock the pointer to it in the same gesture (src/body/input.ts)
+  if (!big || !big.root.isConnected) big = make();
   if (!on) {
-    if (big) big.root.hidden = true;
-    if (document.pointerLockElement && big?.root.contains(document.pointerLockElement)) document.exitPointerLock?.();
+    big.root.hidden = true;
+    if (document.pointerLockElement && big.root.contains(document.pointerLockElement)) document.exitPointerLock?.();
     return;
   }
-  const inst = fpsEye(g)!;
-  const w = Math.round(param<number>(inst, 'wide', 192));
-  const h = Math.round(param<number>(inst, 'res', 108));
-  if (!big || !big.root.isConnected || big.w !== w || big.h !== h) big = make(w, h);
   big.root.hidden = false;
   const t0 = performance.now();
-  big.img.data.set(wideShot(g, inst, w, h));
-  big.ctx.putImageData(big.img, 0, 0);
   big.root.dataset.mk = String(mark(g));
-  overlay(g, big, inst);
+  const eye = plan(g).base;
+  overlay(g, big, eye ? fovAcross(eye) : 90);
   hud(g, big);
   miniMap(big);
   big.lock.hidden = document.pointerLockElement === big.root;
@@ -251,13 +150,13 @@ function miniMap(b: Big): void {
 /** how far under the crosshair the name of what is under it sits (px) */
 const LABEL_Y = 56;
 /** crosshair, hit markers, the shot's flash and arrows for bolts coming from outside the view */
-function overlay(g: Game, b: Big, inst: Inst): void {
+function overlay(g: Game, b: Big, fov: number): void {
   const W = innerWidth, H = innerHeight;
   if (b.over.width !== W || b.over.height !== H) [b.over.width, b.over.height] = [W, H];
   const c = b.oc;
   c.clearRect(0, 0, W, H);
   const s = fps(g);
-  const mk = param<number>(inst, 'big', 1);
+  const mk = mark(g);
   const [cx, cy] = [W / 2, H / 2];
   const ws = weaponState(g);
   const reach = Math.max(0, ...ws.map((x) => x.range));
@@ -335,7 +234,7 @@ function overlay(g: Game, b: Big, inst: Inst): void {
   }
   // bolts coming at you from outside the view: a red chevron on that edge
   const p = g.player;
-  const half = (param<number>(inst, 'fov', 90) / 2) * (Math.PI / 180);
+  const half = (fov / 2) * (Math.PI / 180);
   for (const sh of shots(g)) {
     const d = sh.data as unknown as ShotData;
     if (!d.foe) continue;
@@ -411,17 +310,17 @@ const tg = () => (globalThis as unknown as { thaw: { g: Game } }).thaw.g;
   },
 };
 
-/** ?fps (?fps=2 for the mk2): a scope and a ranged weapon on, and the big view up */
+/** ?fps (?fps=2 for the mk2): the reins, a scope and a ranged weapon on, and the reins taken */
 let staged = false;
 frameHooks.push((g) => {
   const q = new URLSearchParams(globalThis.location?.search ?? '');
   if (staged || !q.has('fps')) return;
   staged = true;
-  const id = q.get('fps') === '2' ? 'martyr-scope' : 'pilgrim-scope';
+  const two = q.get('fps') === '2';
   const p = g.player;
   p.slots = Math.max(p.slots, 8);
   p.core = Math.max(p.core, 12);
-  for (const m of [id, 'nail-psalm', 'spark-finger', 'map-spool']) {
+  for (const m of [two ? 'martyr-scope' : 'pilgrim-scope', two ? 'martyrs-reins' : 'saints-reins', 'nail-psalm', 'spark-finger', 'map-spool']) {
     if (!p.inv.some((it) => it.kind === 'mod' && it.mod === m)) addItem(g, { kind: 'mod', mod: m });
     exec(g, `install ${MODS[m].name}`);
   }

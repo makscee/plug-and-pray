@@ -33,7 +33,7 @@ const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e9);
 function boot(g: Game): void {
   startKit(g);
   const inst = (name: string) => ({ text: `install ${name}`, cmd: `install ${name}` });
-  const kit = ['pinhole eye', 'map spool', 'stepper relay', 'spark finger'];
+  const kit = ['map spool', 'thread bell', 'stepper relay', 'spark finger'];
   // the install links last, so a short console still shows them (playtest r1)
   say(
     g,

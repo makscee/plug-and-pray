@@ -113,7 +113,7 @@ function toCell(g: Game, x: number, y: number, sound: string, act = 'take'): Lin
 }
 
 /** what the wake hint points at (the map marks them too, while they lie there) */
-export const HINTED = ['dawn-eye', 'card-reader'];
+export const HINTED = ['pinhole-eye', 'card-reader'];
 
 /** the reliquary by the start, until you have stood at it (playtest r3: its layer eye is the best early
  * hook, and three hint-following runs never found it) */
@@ -126,7 +126,7 @@ const hintLines = (g: Game) => {
   if (g.floor) return [];
   const shop = cradleShop(g);
   return [
-    toward(g, 'dawn-eye', 'the dawn eye glints, waiting for a socket'),
+    toward(g, 'pinhole-eye', 'an eye glints, waiting for a socket: your first sight'),
     // v2r1 ux: "ticks, waiting for a card" read as a machine you needed a card for; it is a pickup, with the card
     toward(g, 'card-reader', 'a card reader and a memory card lie together (take both, then read the card)'),
     shop ? toCell(g, shop.x, shop.y, 'glass doors chime: a reliquary keeps an eye for hidden things', 'buy') : null,
@@ -166,7 +166,7 @@ tickHooks.push((g) => {
 
 // playtest r2: the hint was said once and could not be asked again
 verb('where', {
-  help: 'what to head for next: the dawn eye, the card reader, a card to read, the way down, the nearest vector',
+  help: 'what to head for next: your first eye, the card reader, a card to read, the way down, the nearest vector',
   run(g) {
     const lines = hintLines(g);
     if (lines.length) say(g, 'you hear:', ...lines);
@@ -267,6 +267,16 @@ export function goalLine(g: Game): string {
   const n = `floor ${f + 1}`;
   if (!p.installed.some((i) => def(i).family === 'gait')) return `${n}: install your kit (drag it onto the modules grid, or install all)`;
   if (f === LAST) return bossDown(g) ? 'the heart is still.' : `${n}: the heart. kill its keeper, north, and the god thaws`;
+  // v2-view: the run wakes blind; the first goal is an eye (the ◆ on the map)
+  const held = p.inv.find((i) => i.kind === 'mod' && def(i).family === 'camera');
+  if (!f && !p.installed.some((i) => def(i).family === 'camera')) {
+    if (held && held.kind === 'mod') return `${n}: install the ${label(held)}: your first sight`;
+    const eye = g.ents.find((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === 'pinhole-eye' && !e.data?.mimic);
+    if (eye) {
+      const w = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(eye.x - p.x, -(eye.y - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8].toUpperCase();
+      return `${n}: you have no eye. find one: the ◆ on the map, ${cells(Math.round(Math.hypot(eye.x - p.x, eye.y - p.y)))} ${w} (where)`;
+    }
+  }
   const [sx, sy] = stairsAt(g.seed, f);
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(sx - p.x, -(sy - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8].toUpperCase();
   const name = STAIRS[FLOORS[f].stairs!].name;

@@ -1,5 +1,6 @@
-// Accessible start (Maks's playtests 10-18): a run wakes holding a pinhole eye, the stepper relay, the
-// map spool and the spark finger in its inventory; you install them yourself ("make modules in inventory
+// Accessible start (Maks's playtests 10-18): a run wakes holding the thread bell (a radar for hearts), the
+// stepper relay, the map spool and the spark finger in its inventory, and no eye (v2-view, Maks 10-18 ~10:50:
+// "on the very start you only have a map"): the first eye, the pinhole, lies one chunk out (src/world/spawn.ts); you install them yourself ("make modules in inventory
 // initially and I have to click to install"), with slots and power for all four and two to spare. `unstuck` gets you out of any corner: the nearest open cell, or home to the start chamber.
 
 import { dist, say, tickHooks } from '../core/game';
@@ -8,14 +9,14 @@ import type { Game } from '../core/types';
 import { verb } from '../core/verbs';
 import { bossAt, origin } from '../world/floors';
 
-export const KIT = ['pinhole-eye', 'stepper-relay', 'map-spool', 'spark-finger'];
+export const KIT = ['thread-bell', 'stepper-relay', 'map-spool', 'spark-finger'];
 
 /** the starting kit, in the inventory: the player installs it */
 export function startKit(g: Game): void {
   const p = g.player;
   p.slots = 6;
   p.inv.push({ kind: 'res', res: 'copper', n: 2 }); // r1 econ: copper from the start, so the first reliquary is a choice
-  p.core = 4; // module pass: the kit draws 3 of 4 (the pinhole is free); the first colour eye already asks for a choice
+  p.core = 4; // module pass: the kit draws 3 of 4 (the thread bell, like the pinhole after it, is free); the first colour eye already asks for a choice
   for (const mod of KIT) {
     p.inv.push({ kind: 'mod', mod });
     g.stats.mods.push(mod);
