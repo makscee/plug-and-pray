@@ -32,7 +32,7 @@ Deadline: the Compo closes Sunday 22:00 UTC (Monday 01:00 MSK); uploads until 23
 1. Log in, open the LD60 event page, **Create Entry** (or Join).
 2. Event: **Compo**. **Name** `Plug and Pray`.
 3. **Body**: paste `ld-page.md` without its first line; put the itch URL in its HTML5 line. Upload the five PNGs into the body, and one as the cover.
-4. **Links**: **HTML5 (web)** = the itch page URL; **Source Code** = https://github.com/makscee/thaw. Platform: Web.
+4. **Links**: **HTML5 (web)** = the itch page URL; **Source Code** = https://github.com/makscee/plug-and-pray. Platform: Web.
 5. **Grading / opt-outs**: tick **Graphics** and **Audio**. Leave Overall, Fun, Innovation, Theme and Mood in.
 6. Tick the Compo confirmations (made solo, in 48 hours, source included), then **Publish**.
 7. Back on itch, add the LD entry link to the description.

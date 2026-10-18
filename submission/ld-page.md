@@ -25,9 +25,9 @@ Desktop browser, sound on.
 ## Links
 
 - **HTML5 (web):** <the itch.io page URL>
-- **Source Code:** https://github.com/makscee/thaw
+- **Source Code:** https://github.com/makscee/plug-and-pray
 
-The same build also plays on GitHub Pages: https://makscee.github.io/thaw/
+The same build also plays on GitHub Pages: https://makscee.github.io/plug-and-pray/
 
 ## Opt-outs
 

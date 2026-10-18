@@ -6,7 +6,7 @@ You are an old machine waking blind inside a dead god's body, an endless machine
 
 - Design: [DESIGN.md](DESIGN.md)
 - Build plan: [PLAN.md](PLAN.md)
-- Play: https://makscee.github.io/thaw/ (the GitHub Pages build of `main`)
+- Play: https://makscee.github.io/plug-and-pray/ (the GitHub Pages build of `main`)
 
 ## Run
 

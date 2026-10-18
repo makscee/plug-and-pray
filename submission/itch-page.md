@@ -16,4 +16,4 @@ Four floors down to the god's heart, each with its own trick and its own keeper.
 Made solo in 48 hours for the Ludum Dare 60 Compo, theme "Old Tech".
 
 - Ludum Dare page: <the LD entry URL>
-- Source Code: https://github.com/makscee/thaw (MIT)
+- Source Code: https://github.com/makscee/plug-and-pray (MIT)
