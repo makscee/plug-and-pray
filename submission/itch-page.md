@@ -1,4 +1,4 @@
-# thaw
+# Plug and Pray
 
 You are an old machine waking blind inside a dead god's body. At first you have only a map: you click it and walk, and a radar sweeps for heartbeats.
 

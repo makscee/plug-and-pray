@@ -18,7 +18,7 @@ Deadline: the Compo closes Sunday 22:00 UTC (Monday 01:00 MSK); uploads until 23
 ## 1. itch.io (first, so the LD page can link it)
 
 1. itch.io, Dashboard, **Create new project**.
-2. **Title** `thaw`. **Short description**: `An old machine wakes blind inside a dead god. Every eye, leg and weapon is a module you find.`
+2. **Title** `Plug and Pray`. **Short description**: `An old machine wakes blind inside a dead god. Every eye, leg and weapon is a module you find.`
 3. **Kind of project**: HTML. **Pricing**: No payments (or $0 or donate).
 4. **Uploads**: upload `thaw.zip`, tick **This file will be played in the browser**.
 5. **Embed options**: viewport 1280 x 720; tick **Fullscreen button**; leave mobile friendly off.
@@ -30,7 +30,7 @@ Deadline: the Compo closes Sunday 22:00 UTC (Monday 01:00 MSK); uploads until 23
 ## 2. Ludum Dare (ldjam.com)
 
 1. Log in, open the LD60 event page, **Create Entry** (or Join).
-2. Event: **Compo**. **Name** `thaw`.
+2. Event: **Compo**. **Name** `Plug and Pray`.
 3. **Body**: paste `ld-page.md` without its first line; put the itch URL in its HTML5 line. Upload the five PNGs into the body, and one as the cover.
 4. **Links**: **HTML5 (web)** = the itch page URL; **Source Code** = https://github.com/makscee/thaw. Platform: Web.
 5. **Grading / opt-outs**: tick **Graphics** and **Audio**. Leave Overall, Fun, Innovation, Theme and Mood in.
