@@ -46,7 +46,7 @@ const F_STAIRS = (f: number) => (FLOORS[f].stairs ? STAIRS[FLOORS[f].stairs!] : 
 
 /** the stairs' sign on the map, centred at (x, y), cell size px */
 function sign(ctx: CanvasRenderingContext2D, style: Stairs, open: boolean, x: number, y: number, px: number): void {
-  const r = Math.max(5, px * 0.9);
+  const r = Math.max(7, px * 1.3);
   const ink = open ? '#f0e0a0' : '#e04030';
   ctx.save();
   ctx.lineWidth = Math.max(1.5, px * 0.18);

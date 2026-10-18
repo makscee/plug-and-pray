@@ -110,6 +110,8 @@ export const cradleShop = (g: Game): Entity | undefined =>
 
 /** the wake hint's lines: the dawn eye, the card reader (named as the map names them) and the cradle's reliquary, while they lie out there */
 const hintLines = (g: Game) => {
+  // v2 floors: the wake hint is the cradle's; deeper, a dawn eye lying about is only loot
+  if (g.floor) return [];
   const shop = cradleShop(g);
   return [
     toward(g, 'dawn-eye', 'the dawn eye glints, waiting for a socket'),

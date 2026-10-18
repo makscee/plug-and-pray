@@ -231,7 +231,7 @@ tickHooks.push((g) => {
   // how far you went: the floors count, so the drone deepens floor by floor
   const [ox, oy] = origin(f);
   g.stats.far = Math.max(g.stats.far, Math.round(f * 40 + Math.hypot(p.x - ox, p.y - oy)));
-  if (s.woke.has(f) || !inRoom(g.seed, f, p.x, p.y)) return;
+  if (s.woke.has(f) || s.down.has(f) || !inRoom(g.seed, f, p.x, p.y)) return;
   s.woke.add(f);
   const [bx, by] = bossAt(g.seed, f);
   spawnBoss(g, f, bx, by);

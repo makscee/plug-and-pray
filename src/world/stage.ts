@@ -95,7 +95,7 @@ const STAGES: Record<string, (g: Game) => void> = {
     chunk(g, cx, cy);
     const [x, y] = stairsAt(g.seed, f);
     const [mx, my] = bossAt(g.seed, f);
-    const k = 2.2 / Math.hypot(mx - x, my - y);
+    const k = 1.6 / Math.hypot(mx - x, my - y);
     goTo(g, Math.floor(x + (mx - x) * k) + 0.5, Math.floor(y + (my - y) * k) + 0.5);
     g.player.dir = Math.atan2(x - g.player.x, -(y - g.player.y));
     kit(g, ['saints-lens', 'stepper-relay', 'map-spool', 'reliquary-saw']);
