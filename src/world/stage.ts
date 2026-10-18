@@ -8,6 +8,7 @@ import type { Game } from '../core/types';
 import { middle, rooms } from './gen';
 import { engineAt, plan } from './vectors';
 import { clean } from '../tune/start';
+import { opening } from './spawn';
 
 const scene = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('scene');
 const staged = new WeakSet<Game>();
@@ -40,12 +41,13 @@ const STAGES: Record<string, (g: Game) => void> = {
     say(g, ['staged: the first card read. follow the compass. ', { text: 'go n 3', cmd: 'go n 3' }, '  ', { text: 'go e 3', cmd: 'go e 3' }, '  ', { text: 'vectors', cmd: 'vectors' }]);
   },
   'world-printer'(g) {
-    chunk(g, -1, 0);
-    const pr = g.ents.find((e) => e.kind === 'printer' && e.x < 0);
+    const [px, py] = opening(g.seed).printer;
+    chunk(g, px, py);
+    const pr = g.ents.find((e) => e.kind === 'printer' && !e.data?.shop && Math.floor(e.x / CHUNK) === px && Math.floor(e.y / CHUNK) === py);
     if (pr) goTo(g, pr.x, pr.y);
     kit(g, ['vidicon-tube', 'stepper-relay', 'leech-needle']);
     g.player.inv.push({ kind: 'res', res: 'bone', n: 14 }, { kind: 'res', res: 'glass', n: 5 }, { kind: 'res', res: 'copper', n: 7 }, { kind: 'res', res: 'ichor', n: 2 });
-    say(g, 'staged: at the printer west of the start, resources in hand.');
+    say(g, 'staged: at the printer by the start, resources in hand.');
   },
   'world-deep'(g) {
     const [cx, cy] = [5, -3];
@@ -64,6 +66,7 @@ const STAGES: Record<string, (g: Game) => void> = {
     g.player.inv.push({ kind: 'card', card: 'shard-1' }, { kind: 'card', card: 'shard-2' }, { kind: 'card', card: 'shard-3' });
     for (let k = 0; k < 3; k++) exec(g, 'read card');
     goTo(g, ex, ey);
+    g.ents = g.ents.filter((e) => !e.enemy || Math.hypot(e.x - ex, e.y - ey) > 10); // its gauntlet, already beaten
     say(g, ['staged: the engine lies at your feet. ', { text: 'take thaw', cmd: 'take thaw' }, '  ', { text: 'install thaw engine', cmd: 'install thaw engine' }]);
   },
 };

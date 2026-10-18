@@ -13,7 +13,7 @@ import { verb } from '../core/verbs';
 import type { Chunk, Entity, Game, Inst, Line } from '../core/types';
 import { eyeRange } from '../mods/sense';
 import { rooms } from './gen';
-import { lootMod } from './spawn';
+import { lootMod, opening } from './spawn';
 import { bearing } from './vectors';
 import { zoneOf } from './zones';
 
@@ -141,7 +141,8 @@ function hands(r: Rng, c: Chunk, seed: number): Omit<Secret, 'kind' | 'found' | 
 export function hide(seed: number, c: Chunk): Secret | null {
   if (c.cx === 0 && c.cy === 0) return null;
   const r = rng(hash(seed, 91, c.cx, c.cy));
-  const first = c.cx === FIRST[0] && c.cy === FIRST[1];
+  const [fx, fy] = opening(seed).printer;
+  const first = c.cx === fx && c.cy === fy;
   if (!r.chance(CHANCE) && !first) return null;
   const [wh, ws] = WEIGHTS[Math.max(0, zoneOf(c.cx, c.cy))];
   const roll = r();
@@ -150,10 +151,9 @@ export function hide(seed: number, c: Chunk): Secret | null {
   return at ? { kind, ...at, found: false, done: false, salt: r.int(0, 999) } : null;
 }
 
-/** the first reveal is not left to luck: the printer's chunk west of the start always has a scratched
- *  wall, so the first black & white or outline eye has something to read near home (a free carrion eye
- *  beside it cost the sims 7 of 40 thaws: the brain wore it into the dark) */
-export const FIRST = [-1, 0];
+/** the first reveal is not left to luck: the cradle printer's chunk (beside the start, `opening`) always has a
+ *  scratched wall, so the first black & white or outline eye has something to read near home (a free carrion
+ *  eye beside it cost the sims 7 of 40 thaws: the brain wore it into the dark) */
 
 chunkHook((g, c) => {
   const s = hide(g.seed, c);

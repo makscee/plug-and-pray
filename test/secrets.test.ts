@@ -7,6 +7,7 @@ import { Cell, cell, chunk } from '../src/core/grid';
 import type { Game } from '../src/core/types';
 import { hide, secrets, type Secret } from '../src/world/secrets';
 import { generate } from '../src/world/gen';
+import { opening } from '../src/world/spawn';
 import { codexOf, firstSight } from '../src/sight/codex';
 
 const text = (g: Game) => g.log.map((l) => l.map((s) => (typeof s === 'string' ? s : s.text)).join('')).join('\n');
@@ -114,11 +115,12 @@ describe('secrets', () => {
     expect(text(g)).toMatch(/floor plate/);
   });
 
-  it('every seed hides a scratched wall by the printer west of the start', () => {
+  it('every seed hides a scratched wall by the printer beside the start', () => {
     for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
       const g = newGame(seed);
-      chunk(g, -1, 0);
-      const s = secrets(g).find((x) => x.kind === 'script' && Math.floor(x.x / 16) === -1);
+      const [px, py] = opening(seed).printer;
+      chunk(g, px, py);
+      const s = secrets(g).find((x) => x.kind === 'script' && Math.floor(x.x / 16) === px && Math.floor(x.y / 16) === py);
       expect(s).toBeTruthy();
     }
   });

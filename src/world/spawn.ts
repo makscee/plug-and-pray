@@ -1,6 +1,7 @@
 // What a new chunk holds: loot by distance, enemies, printers. The start chamber is fixed:
-// you wake holding an eye, legs, a map and the spark finger (src/tune/start.ts); a halo at your feet,
-// the dawn eye one chunk east, the card reader, a first memory card and an ember cell one chunk south, a printer one chunk west, a reliquary (shop) one chunk north.
+// you wake holding an eye, legs, a map and the spark finger (src/tune/start.ts); a halo at your feet, and in the
+// four chunks around it (which one holds what turns with the seed, `opening`): the dawn eye; the card reader, a
+// first memory card and an ember cell; a printer with a second weapon beside it; a reliquary (shop).
 
 import { CHUNK, chunkHook, Cell } from '../core/grid';
 import { spawn } from '../core/game';
@@ -11,11 +12,17 @@ import { floors, rooms } from './gen';
 import { nextLog } from './vectors';
 import { ZONES, zoneFar } from './zones';
 
-/** a module for a chunk this far out (in chunks): tiers open up with distance; uniques never roll */
+/** the furnace's own kit: tier 2, but it rolls only there, so the last zone still brings modules you have not seen */
+export const FURNACE_KIT = ['heat-lance', 'reliquary-saw', 'heart-shard', 'saints-lens'];
+
+/** a module for a chunk this far out (in chunks): tiers open up with distance; uniques never roll.
+ *  60% of rolls come from the zone's own tier (the furnace: its own kit), so each zone brings new modules */
 export function lootMod(r: Rng, far: number): Item {
-  const maxTier = ZONES[zoneFar(far)].tier;
-  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique');
-  const m = r.pick(pool);
+  const z = zoneFar(far);
+  const maxTier = ZONES[z].tier;
+  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique' && (z === 3 || !FURNACE_KIT.includes(m.id)));
+  const own = pool.filter((m) => (z === 3 ? FURNACE_KIT.includes(m.id) : m.tier === maxTier));
+  const m = r.pick(maxTier >= 1 && own.length && r.chance(0.6) ? own : pool);
   const item: Item = { kind: 'mod', mod: m.id };
   const nums = Object.entries(m.params).filter(([k, v]) => typeof v === 'number' && BETTER[k]);
   if (nums.length && r.chance(0.25)) {
@@ -25,6 +32,22 @@ export function lootMod(r: Rng, far: number): Item {
   }
   return item;
 }
+
+type Room = 'eye' | 'reader' | 'printer' | 'shop';
+/** the four chunks around the start, one per seed-shuffled room: the dawn eye, the reader, the printer, the shop */
+export function opening(seed: number): Record<Room, [number, number]> {
+  const r = rng(hash(seed, 61));
+  const sides: [number, number][] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+  for (let k = sides.length - 1; k > 0; k--) {
+    const j = r.int(0, k);
+    [sides[k], sides[j]] = [sides[j], sides[k]];
+  }
+  return { eye: sides[0], reader: sides[1], printer: sides[2], shop: sides[3] };
+}
+const is = (c: Chunk, [cx, cy]: [number, number]) => c.cx === cx && c.cy === cy;
+
+/** the second weapons the cradle printer keeps beside it (one per seed) */
+export const SECOND = ['rivet-sling', 'choir-bell', 'censer-flail'];
 
 /** which way a number is better: up (damage, range) or down (cooldown, lag). Keys left out never roll:
  *  picture-only ones (res, fps, colors, flicker) and flags (slots, chill) */
@@ -57,26 +80,29 @@ export function fill(g: Game, c: Chunk): void {
   }
   const r = rng(hash(g.seed, 11, c.cx, c.cy));
   const far = Math.hypot(c.cx, c.cy);
-  if (c.cx === 1 && c.cy === 0) {
-    // the first upgrade: a clear colour eye one chunk east (the run starts with the pinhole)
+  const o = opening(g.seed);
+  if (is(c, o.eye)) {
+    // the first upgrade: a clear colour eye one chunk out (the run starts with the pinhole)
     const [x, y] = cellIn(r, c, g.seed);
     spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'dawn-eye' } });
   }
-  if (c.cx === 0 && c.cy === 1) {
+  if (is(c, o.reader)) {
     const [x, y] = cellIn(r, c, g.seed);
     spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'card-reader' } });
     spawn(g, { kind: 'item', x, y, item: { kind: 'card', card: nextLog(g) } });
     // module pass: the first generator lies with the reader, so the first colour eye or second weapon has its power
     spawn(g, { kind: 'item', x: x + 0.3, y, item: { kind: 'mod', mod: 'ember-cell' } });
   }
-  const printer = (c.cx === -1 && c.cy === 0) || (far >= 1.5 && r.chance(0.15));
+  const printer = is(c, o.printer) || (far >= 1.5 && r.chance(0.15));
   if (printer) {
     const [x, y] = cellIn(r, c, g.seed);
     spawn(g, { kind: 'printer', x, y, data: { far, made: 0 } });
+    // r1 pace: a second weapon by the cradle printer on every seed (its own rng: the chunk stays as it was)
+    if (is(c, o.printer)) spawn(g, { kind: 'item', x: x + 0.3, y, item: { kind: 'mod', mod: rng(hash(g.seed, 63)).pick(SECOND) } });
   }
-  // a reliquary (shop printer) one chunk north, then now and then further out; its own rng keeps the rest of the chunk as it was
+  // a reliquary (shop printer) one chunk out, then now and then further out; its own rng keeps the rest of the chunk as it was
   const rs = rng(hash(g.seed, 57, c.cx, c.cy));
-  if ((c.cx === 0 && c.cy === -1) || (far >= 2 && rs.chance(0.1))) {
+  if (is(c, o.shop) || (far >= 2 && rs.chance(0.1))) {
     const [x, y] = cellIn(rs, c, g.seed);
     spawn(g, { kind: 'printer', x, y, data: { far, shop: true } });
   }
