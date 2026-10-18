@@ -16,14 +16,30 @@ export type Layer = 'heat' | 'sonar' | 'edge' | 'glint' | 'script' | 'rest';
 /** filters that can be a base view; the rest (heat, sonar, edge) are layers over one */
 export const BASE_FILTERS = ['color', 'gray', '1bit'];
 
-/** how good a base an eye makes: sharper first, then colour over grey over black & white */
+/** how good a base an eye makes: its sharpness weighed by its tone, colour well over grey over black & white
+ *  (v2r2 ux: a 96 px black & white eye took the base from a 64 px colour one and the screen went to dither; now
+ *  a colour eye of 64 px scores 102 and a 1-bit one of 96 px 58, so black & white is a layer beside any other) */
 export function baseScore(inst: Modish): number {
   const f = param<string>(inst, 'filter', 'color');
   const res = Math.min(180, param<number>(inst, 'res', 32));
   const colors = param<number>(inst, 'colors', 0);
-  const tone = f === 'color' ? (colors && colors <= 8 ? 1.15 : 1.3) : f === 'gray' ? 1 : f === '1bit' ? 0.8 : 0.5;
+  const tone = f === 'color' ? (colors && colors <= 8 ? 1.5 : 1.6) : f === 'gray' ? 1 : f === '1bit' ? 0.6 : 0.5;
   return res * tone;
 }
+
+/** v2r2 ux: three or more layers at once were noise. At most this many draw, by priority; `layers` (key L) turns them */
+export const MAX_LAYERS = 2;
+export const PRIORITY: Layer[] = ['sonar', 'heat', 'edge', 'glint', 'script'];
+const turned = new WeakMap<Game, number>();
+/** the layers that draw now: every layer that adds something, best first, turned by `layers`, at most MAX_LAYERS */
+export function shownLayers(g: Game, layers: Plan['layers']): Plan['layers'] {
+  const all = layers.filter((l) => l.layer !== 'rest').sort((a, b) => PRIORITY.indexOf(a.layer) - PRIORITY.indexOf(b.layer) || a.inst.uid - b.inst.uid);
+  if (all.length <= MAX_LAYERS) return all;
+  const k = (turned.get(g) ?? 0) % all.length;
+  return [...all.slice(k), ...all.slice(0, k)].slice(0, MAX_LAYERS);
+}
+/** the next pair of layers */
+export const turnLayers = (g: Game): void => void turned.set(g, (turned.get(g) ?? 0) + 1);
 
 /** the layer an eye adds when it is not the base */
 export function layerOf(inst: Modish): Layer {
@@ -47,7 +63,9 @@ export interface Plan {
 export function plan(g: Game): Plan {
   const on = g.player.installed.filter((i) => i.on && def(i).family === 'camera');
   const warm = on.filter((i) => g.t >= i.readyAt);
-  const bases = warm.filter((i) => BASE_FILTERS.includes(param<string>(i, 'filter', 'color')));
+  // v2r2 fun: a black & white eye is a layer (scripture) beside any warm colour or grey eye, never the view over it
+  const toned = warm.filter((i) => ['color', 'gray'].includes(param<string>(i, 'filter', 'color')));
+  const bases = toned.length ? toned : warm.filter((i) => BASE_FILTERS.includes(param<string>(i, 'filter', 'color')));
   const pool = bases.length ? bases : warm;
   const base = pool.slice().sort((a, b) => baseScore(b) - baseScore(a) || a.uid - b.uid)[0] ?? null;
   const layers = warm.filter((i) => i !== base).map((inst) => ({ inst, layer: layerOf(inst) }));

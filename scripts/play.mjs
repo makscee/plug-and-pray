@@ -85,7 +85,7 @@ const STEPS = [
   ['install wayfinder moth'], ['install waystone log'], ['install survey spool'], [2, 'document.querySelector(".waypoints")?.innerText.includes("printer")'],
   ['goto 10 10', 'g.player.path.length > 0'], [3, 'Math.floor(g.player.x) === 10 && Math.floor(g.player.y) === 10 && JSON.stringify(g.log).includes("the pilot sets you down")'],
   ['mark den'], [0.5, 'document.querySelector(".waypoints")?.innerText.includes("den")'],
-  [0, '(() => { const c = document.querySelector("canvas.map"); const r = c.getBoundingClientRect(); c.dispatchEvent(new MouseEvent("click", { clientX: r.left + r.width / 2 - r.width * 4 / Number(c.dataset.cells || 37), clientY: r.top + r.height / 2, bubbles: true })); return JSON.stringify(g.log).includes("goto 6 10"); })()'],
+  [0, '(() => { const c = document.querySelector("canvas.map"); const r = c.getBoundingClientRect(); c.dispatchEvent(new MouseEvent("click", { clientX: r.left + r.width / 2 - r.width * 4 / Number(c.dataset.cells || 37), clientY: r.top + (Math.floor(g.player.y) - Number(c.dataset.oy) + 0.5) * r.width / Number(c.dataset.cells || 37), bubbles: true })); return JSON.stringify(g.log).includes("goto 6 10"); })()'],
   [3, 'Math.floor(g.player.x) === 6 && Math.floor(g.player.y) === 10'],
   // finish (#1325): the Thaw Engine ends the run; light, melting windows, the end card, wake again
   [0, '(g.player.slots++, g.player.inv.push({ kind: "mod", mod: "thaw-engine" }), true)'],
@@ -95,8 +95,8 @@ const STEPS = [
   [0, '(document.querySelector(".thaw-card button").click(), true)'],
   [0.5, 'window.thaw.g.ended === null && !document.querySelector(".thaw-end") && window.thaw.g.player.installed.length === 0 && window.thaw.g.player.inv.filter((i) => i.kind === "mod").length === 4 && document.querySelector(".win-console")?.innerText.includes("core ok")'],
   // descriptions, reliquary (shop), recycling (playtest 3)
-  ['conjure pinhole eye'], ['info pinhole', 'JSON.stringify(g.log).includes("eye · 32 px")'],
-  ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("eye · 32 px")'], ['install thread bell'],
+  ['conjure pinhole eye'], ['info pinhole', 'JSON.stringify(g.log).includes("eye · 40 px")'],
+  ['install pinhole eye'], [0.2, 'document.querySelector(".win .does")?.textContent.startsWith("eye · 40 px")'], ['install thread bell'],
   [0, '(g.ents.push({ id: 9998, kind: "printer", x: g.player.x + 0.6, y: g.player.y, data: { far: 0, shop: true } }), ["bone","glass","copper"].forEach(r => g.player.inv.push({ kind: "res", res: r, n: 20 })), g.player.inv.push({ kind: "res", res: "ichor", n: 5 }), true)'],
   [0.2, 'document.querySelector(".panel-near [data-cmd=\'buy 1\']") !== null && JSON.stringify(g.log).includes("reliquary")'],
   ['buy 1', 'g.ents.find(e => e.id === 9998).data.offers[0] === null && g.player.inv.filter(i => i.kind === "mod").length === 4'],

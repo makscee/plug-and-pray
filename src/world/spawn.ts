@@ -3,7 +3,7 @@
 // four chunks around it (which one holds what turns with the seed, `opening`): the dawn eye; the card reader, a
 // first memory card and an ember cell; a printer with a second weapon beside it; a reliquary (shop).
 
-import { CHUNK, chunkHook, Cell } from '../core/grid';
+import { CHUNK, chunk, chunkHook, Cell } from '../core/grid';
 import { spawn } from '../core/game';
 import { BETTER, MODS, rarityKey } from '../core/mods';
 import { hash, rng, type Rng } from '../core/rng';
@@ -12,6 +12,14 @@ import { floors, rooms } from './gen';
 import { nextLog } from './vectors';
 import { ZONES, zoneFar } from './zones';
 import { farOf, floorOfChunk, isArrival, stairsChunk, STRIDE } from './floors';
+
+/** v2r2 ux: the first eye lies two chunks out on the eye's side (the next one over when that is the keeper's room),
+ *  sealed behind a cracked wall (src/world/secrets.ts eyeNiche), so the map-only start lasts a couple of minutes */
+export function eyeChunk(seed: number): [number, number] {
+  const [sx, sy] = opening(seed).eye;
+  const [bx, by] = stairsChunk(seed, 0);
+  return bx === 2 * sx && by === 2 * sy ? [2 * sx + sy, 2 * sy + sx] : [2 * sx, 2 * sy];
+}
 import { placeCache } from './cache';
 
 /** the furnace's own kit: tier 2, but it rolls only there, so the last zone still brings modules you have not seen */
@@ -112,6 +120,8 @@ export function fill(g: Game, c: Chunk): void {
       spawn(g, { kind: 'item', x: ex, y: ey, item: { kind: 'mod', mod: 'halo' } });
     }
     cache(g, c, f);
+    // the first eye's chunk is made now, so the goal and the map can point at it from the start
+    if (f === 0) chunk(g, ...eyeChunk(g.seed));
     return;
   }
   // the boss room holds only its boss (src/world/floors.ts); the heart only its arena
@@ -121,12 +131,14 @@ export function fill(g: Game, c: Chunk): void {
   const far = farOf(c.cx, c.cy);
   const o = opening(g.seed);
   if (is(c, o.eye)) {
-    // the first eye, one chunk out (v2-view: the run starts blind, with a map and a radar; the dawn eye is floor 2's)
-    const [x, y] = cellIn(r, c, g.seed);
-    // the far side of its chunk, so the blind walk to it is a couple of minutes (its own rng: the chunk stays as it was)
+    // v2r2 ux: on the way to the first eye (two chunks out, src/world/secrets.ts), a couple of finds to walk over
+    // (the old first eye's draw is kept, so the chunk stays as it was)
+    cellIn(r, c, g.seed);
     const re = rng(hash(g.seed, 71, c.cx, c.cy));
-    const [ex, ey] = [[x, y], ...Array.from({ length: 5 }, () => cellIn(re, c, g.seed))].reduce((a, b) => (Math.hypot(b[0] - 8.5, b[1] - 8.5) > Math.hypot(a[0] - 8.5, a[1] - 8.5) ? b : a));
-    spawn(g, { kind: 'item', x: ex, y: ey, item: { kind: 'mod', mod: 'pinhole-eye' } });
+    for (const res of ['bone', 'glass'] as const) {
+      const [x, y] = cellIn(re, c, g.seed);
+      spawn(g, { kind: 'item', x, y, item: { kind: 'res', res, n: 2 } });
+    }
   }
   if (is(c, o.reader)) {
     const [x, y] = cellIn(r, c, g.seed);
@@ -150,7 +162,9 @@ export function fill(g: Game, c: Chunk): void {
     const [x, y] = is(c, o.shop) ? shopAt(g.seed, c) : cellIn(rs, c, g.seed);
     spawn(g, { kind: 'printer', x, y, data: { far, shop: true } });
   }
-  if (far >= 1.5 && r.chance(0.18)) {
+  // the first eye's chunk is made with the landing: a card there would come before the reader's opener
+  const [ex, ey] = eyeChunk(g.seed);
+  if (far >= 1.5 && r.chance(0.18) && !(f === 0 && c.cx === ex && c.cy === ey)) {
     const [x, y] = cellIn(r, c, g.seed);
     spawn(g, { kind: 'item', x, y, item: { kind: 'card', card: nextLog(g) } });
   }

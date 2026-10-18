@@ -29,7 +29,7 @@ mods([
   { id: 'ledger', name: 'tithe ledger', family: 'mind', power: 1, warm: 0.5, tier: 0, params: { what: 'ledger', tithe: 2 }, text: 'a clerk of the dead counts every kill: twice as many pay out.' },
   { id: 'clock-of-hours', name: 'clock of hours', family: 'mind', power: 2, warm: 1.5, tier: 1, params: { what: 'clock', range: 8, ahead: 1 }, text: 'it ticks a second ahead of the world.' },
   { id: 'dawn-eye', name: 'dawn eye', family: 'camera', power: 2, warm: 0.5, tier: 0, params: { res: 96, colors: 0, fps: 8, fov: 75, range: 9, filter: 'color' }, text: 'a clear colour eye. honest, but it needs light to see far.' },
-  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 0, warm: 1, tier: 0, params: { res: 32, colors: 4, fps: 3, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
+  { id: 'pinhole-eye', name: 'pinhole eye', family: 'camera', power: 0, warm: 1, tier: 0, params: { res: 40, colors: 5, fps: 3, fov: 60, range: 6, filter: 'gray' }, text: 'a bead of black glass. it remembers light, slowly.' },
   { id: 'vidicon-tube', name: 'vidicon tube', family: 'camera', power: 1, warm: 1.5, tier: 0, params: { res: 64, colors: 4, fps: 4, fov: 70, range: 8, lag: 0.4, filter: 'color' }, text: 'a glass tube that drags its ghosts behind it.' },
   { id: 'saints-lens', name: "saint's lens", family: 'camera', power: 4, warm: 3, tier: 2, params: { size: 2, res: 200, colors: 0, fps: 15, fov: 80, range: 14, filter: 'color' }, text: 'ground from a saint, they say. it sees as he did.' },
   { id: 'stepper-relay', name: 'stepper relay', family: 'gait', power: 1, warm: 0.5, tier: 0, params: { go: true }, text: 'clicks your legs forward one cell at a time. go n 3.' },
@@ -67,7 +67,7 @@ mods([
   // v2 maps (src/world/mind.ts): each draws what your eyes and scanners know, in more detail a tier up.
   // detail 0 three inks, no clicks; 1 veins and finds in their own inks, a click walks you there; 2 a picture
   // for every thing and a note on hover; 3 the known halls in glass, with the things in them
-  { id: 'map-spool', name: 'map spool', family: 'mind', power: 1, warm: 1, tier: 0, params: { what: 'map', span: 33, detail: 0 }, text: 'a reel of tape that remembers what your eyes saw, in three inks. it takes no clicks.' },
+  { id: 'map-spool', name: 'map spool', family: 'mind', power: 1, warm: 1, tier: 0, params: { what: 'map', span: 33, detail: 0 }, text: 'a reel of tape that remembers what your eyes saw. on floor 1 a click on it walks you.' },
   { id: 'survey-spool', name: 'survey spool', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 37, detail: 1, click: true }, text: 'a surveyor\'s reel: veins and finds in their own inks. click it and your legs go there.' },
   { id: 'illuminated-atlas', name: 'illuminated atlas', family: 'mind', power: 2, warm: 1.5, tier: 2, params: { what: 'map', span: 33, detail: 2, click: true }, text: 'a monk\'s map: every thing a little picture, and a note when you point at it.' },
   { id: 'glass-diorama', name: 'glass diorama', family: 'mind', power: 3, warm: 2, tier: 2, params: { what: 'map', span: 23, detail: 3, click: true }, text: 'the halls you know, in glass, small enough to hold, with every thing in them.' },

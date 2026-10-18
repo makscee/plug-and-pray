@@ -133,7 +133,7 @@ verb('help', {
       'the goal: go down. four floors, each with a keeper in the room before its stairs: kill it, then descend.',
       'under the furnace lies the heart. kill its keeper and the god thaws. a memory card points the way down.',
       'drag a module from the inventory onto the modules grid to install it, or onto an installed one to swap the two.',
-      'keys: arrows or wasd walk · q e turn · m big map · t tidies windows · p pauses · 1-4 setups · esc leaves the console, enter comes back',
+      'keys: arrows or wasd walk · q e turn · m big map · l turns the view layers · t tidies windows · p pauses · 1-4 setups · esc leaves the console, enter comes back',
     );
   },
 });

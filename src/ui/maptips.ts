@@ -7,7 +7,7 @@
 
 import { ENEMIES, itemName, say, tickHooks } from '../core/game';
 import { exec, VERBS, way } from '../core/verbs';
-import { cradleShop, firstLeg, HINTED } from '../tune/hints';
+import { cradleShop, eyeHinted, firstLeg, HINTED } from '../tune/hints';
 import { cell, Cell, veinOf } from '../core/grid';
 import { MODS } from '../core/mods';
 import { know, markAt, thinWall } from '../sight/know';
@@ -17,11 +17,13 @@ import { mapHooks } from '../world/mind';
 import { walks } from '../mods/gait';
 
 const ACC = '#f0a050';
-/** the hint targets still lying out there: the dawn eye and the card reader until you hold one */
-function targets(g: Game): { x: number; y: number; name: string }[] {
+/** the hint targets still lying out there: the first eye and the card reader until you hold one (the backdrop's
+ *  chevrons read them too) */
+export function hintTargets(g: Game): { x: number; y: number; name: string }[] {
   const p = g.player;
   const out: { x: number; y: number; name: string }[] = [];
   for (const mod of HINTED) {
+    if (mod === 'pinhole-eye' && !eyeHinted(g)) continue;
     if (p.inv.some((i) => i.kind === 'mod' && i.mod === mod) || p.installed.some((i) => i.mod === mod)) continue;
     const e = g.ents.find((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === mod && !e.data?.mimic);
     if (e) out.push({ x: e.x, y: e.y, name: itemName(e.item!) });
@@ -113,7 +115,7 @@ function hover(c: HTMLCanvasElement): void {
 export function whatAt(g: Game, x: number, y: number, detail = 1): string {
   const p = g.player;
   const here = (e: { x: number; y: number }) => Math.floor(e.x) === x && Math.floor(e.y) === y;
-  const t = targets(g).find(here);
+  const t = hintTargets(g).find(here);
   if (here(p)) return 'you';
   if (t) return `${t.name} (the hints point here)`;
   const m = markAt(g, x, y);
@@ -136,7 +138,7 @@ export function infoAt(g: Game, x: number, y: number): string[] {
   const p = g.player;
   const here = (e: { x: number; y: number }) => Math.floor(e.x) === x && Math.floor(e.y) === y;
   if (here(p)) return ['you', `${Math.max(0, Math.ceil(p.hp * 2) / 2)}/${p.maxHp} hp`];
-  const t = targets(g).find(here);
+  const t = hintTargets(g).find(here);
   if (t) return [t.name, 'the hints point here.'];
   const k = know(g, x, y);
   const e = k === 'seen' || k === 'scanned' ? g.ents.find((e) => here(e) && (e.kind === 'printer' || e.kind === 'item' || (e.enemy && !ENEMIES[e.enemy.type]?.hidden))) : undefined;
@@ -161,7 +163,7 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
   const vec = c.parentElement?.querySelector<HTMLElement>('.map-vectors');
   if (vec && vec.hidden === !!g.vectors.length) vec.hidden = (vec.previousElementSibling as HTMLElement).hidden = !g.vectors.length;
   const [w, h] = [c.width, c.height];
-  for (const t of targets(g)) {
+  for (const t of hintTargets(g)) {
     let x = (t.x - ox) * px;
     let y = (t.y - oy) * px;
     if (x < 0 || y < 0 || x >= w || y >= h) {

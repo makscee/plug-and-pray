@@ -22,7 +22,7 @@ import './variety';
 import { firstSight } from './codex';
 import { clean } from '../tune/start';
 import './fps';
-import { plan, type Layer } from './layers';
+import { plan, shownLayers, type Layer } from './layers';
 import './backdrop';
 
 /** the facing as a compass word, and the turn to its left and right */
@@ -287,7 +287,8 @@ view('camera', (el, inst) => {
       if (label.textContent !== f) label.textContent = f;
       const pl = plan(g);
       const lay = pl.layers.find((l) => l.inst === inst);
-      const r = !warm ? (inst.on ? 'it will be your view once warm' : 'switch it on to see through it') : pl.base === inst ? 'your view: it fills the screen behind the windows' : lay ? ROLE[lay.layer] : '';
+      const hid = lay && lay.layer !== 'rest' && !shownLayers(g, pl.layers).includes(lay);
+      const r = !warm ? (inst.on ? 'it will be your view once warm' : 'switch it on to see through it') : pl.base === inst ? 'your view: it fills the screen behind the windows' : lay ? ROLE[lay.layer] + (hid ? ' (not shown now: L turns the layers)' : '') : '';
       if (role.textContent !== r) role.textContent = r;
       role.dataset.base = String(pl.base === inst);
       // a first sight or a secret found flashes the window gold, gently, a few times (codex.ts, world/secrets.ts)

@@ -6,7 +6,7 @@
 
 import { frameHooks } from '.';
 import { def, label, rarityOf, size } from '../core/mods';
-import type { Game } from '../core/types';
+import type { Game, Item } from '../core/types';
 import { boneOf, cacheNear, cardHidden, costOf, fitOf, FREE, freeLeft, hideCard, SCRAP } from '../world/cache';
 import { floorOf, FLOORS, KIT } from '../world/floors';
 import { img } from './icons';
@@ -20,6 +20,9 @@ const wasNear = new WeakMap<Game, boolean>();
 /** the floor the card last saw, and when (real ms) you came to it: the card waits out the floor's banner (src/ui/floors.ts) */
 const landed = new WeakMap<Game, { f: number; at: number }>();
 const BANNER = 5000;
+/** v2r2 ux: the offer as it first showed, so a pick greys its tile in place and the others keep their spots (a
+ *  second click on the same spot picked a neighbour) */
+const firstOffer = new WeakMap<object, Item[]>();
 
 function el_(tag: string, cls: string, text = ''): HTMLElement {
   const e = document.createElement(tag);
@@ -62,9 +65,18 @@ frameHooks.push((g) => {
     ? `take <b>${free}</b> of ${c!.offer.length} for nothing${c!.taken ? '' : `; every pick after ${FREE} costs bone`}. the rest folds into scrap.`
     : `free picks used. the next costs <b>${cost} bone</b> <span class="${bone >= cost ? 'ok' : 'short'}">(you carry ${bone})</span>.`;
   const row = el_('div', 'kit-row');
-  c!.offer.forEach((it, n) => {
+  if (!firstOffer.has(c!)) firstOffer.set(c!, [...c!.offer]);
+  firstOffer.get(c!)!.forEach((it) => {
     if (it.kind !== 'mod') return;
     const d = def(it);
+    const n = c!.offer.indexOf(it);
+    if (n < 0) {
+      // taken: its spot stays, greyed
+      const gone = el_('div', 'kit-tile kit-taken');
+      gone.append(el_('p', 'name', label(it)), el_('p', 'kit-meta', 'taken'));
+      row.append(gone);
+      return;
+    }
     const tile = el_('div', `kit-tile rar-${rarityOf(it)}`);
     const icon = el_('div', `kit-icon cell rar-${rarityOf(it)}`);
     icon.append(img(it, 3));

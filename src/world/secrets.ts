@@ -13,7 +13,7 @@ import { goThere, verb } from '../core/verbs';
 import type { Chunk, Entity, Game, Inst, Line } from '../core/types';
 import { eyeRange } from '../mods/sense';
 import { generate, rooms } from './gen';
-import { lootMod, opening, shopAt } from './spawn';
+import { eyeChunk, lootMod, opening, shopAt } from './spawn';
 import { bearing } from './vectors';
 import { ZONES, zoneAt, zoneOf } from './zones';
 import { isArrival, stairsChunk, thinAhead } from './floors';
@@ -36,6 +36,8 @@ export interface Secret {
   done: boolean;
   /** a few words picked for it (scripture) */
   salt: number;
+  /** v2r2 ux: the first eye's niche (known from the start: the map's ◆ marks it; it pays only the eye) */
+  eye?: boolean;
 }
 
 /** which eye filters show each kind (and mimics breathing) */
@@ -49,7 +51,7 @@ export function secrets(g: Game): Secret[] {
 }
 
 /** reveals so far this run (codex firsts count elsewhere): for the sims and the end card */
-export const reveals = (g: Game): number => secrets(g).filter((s) => s.found).length + (breathed.get(g)?.size ?? 0);
+export const reveals = (g: Game): number => secrets(g).filter((s) => s.found && !s.eye).length + (breathed.get(g)?.size ?? 0);
 
 // ---- placing: one secret in about half the chunks past the start, the kind weighted by zone
 
@@ -187,7 +189,49 @@ export function cradleEye(seed: number): string {
   return eye === 'bat-psalter' && !cradleHollow(seed, generate(seed, sx, sy)) ? 'carrion-eye' : eye;
 }
 
+/** v2r2 ux: the first eye's niche: a shell over a niche in its chunk (src/world/spawn.ts eyeChunk), in a chamber
+ *  if it can, and no floor touching the niche even on a diagonal (so nothing takes it through the wall). Its own
+ *  rng, so the chunk's other secret stays as it was; null where no wall fits (the eye then lies on the floor) */
+export function eyeNiche(seed: number, c: Chunk): Secret | null {
+  const [ex, ey] = eyeChunk(seed);
+  if (c.cx !== ex || c.cy !== ey) return null;
+  const ok = faces(c, () => true).filter(([x, y, dx, dy]) => {
+    const [wx, wy, px, py] = [x + dx, y + dy, x + 2 * dx, y + 2 * dy];
+    if (px < 1 || py < 1 || px > CHUNK - 2 || py > CHUNK - 2 || !W(c, px, py)) return false;
+    if (F(c, wx + dy, wy + dx) || F(c, wx - dy, wy - dx)) return false;
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if ((px + i !== wx || py + j !== wy) && F(c, px + i, py + j)) return false;
+    return true;
+  });
+  if (!ok.length) return null;
+  const room = inRoom(seed, c);
+  const best = ok.filter(([x, y]) => room(x, y));
+  const r = rng(hash(seed, 98, c.cx, c.cy));
+  const [x, y, dx, dy] = r.pick(best.length ? best : ok);
+  const [ox, oy] = [c.cx * CHUNK, c.cy * CHUNK];
+  return { kind: 'hollow', x: ox + x + dx, y: oy + y + dy, fx: -dx, fy: -dy, trail: [[ox + x + 2 * dx, oy + y + 2 * dy]], found: true, done: false, salt: 0, eye: true };
+}
+
+/** where the first eye's niche is broken from: the floor cell its shell faces, while it is sealed */
+export function sealedEye(g: Game): Secret | undefined {
+  return secrets(g).find((s) => s.eye && !s.done);
+}
+
 chunkHook((g, c) => {
+  // the first eye: in its niche, else on the far side of its chunk
+  const [ex, ey] = eyeChunk(g.seed);
+  if (c.cx === ex && c.cy === ey) {
+    const n = eyeNiche(g.seed, c);
+    if (n) secrets(g).push(n);
+    const [x, y] = n ? n.trail[0] : (() => {
+      const r = rng(hash(g.seed, 71, c.cx, c.cy));
+      const fl: [number, number][] = [];
+      for (let j = 1; j < CHUNK - 1; j++) for (let i = 1; i < CHUNK - 1; i++) if (F(c, i, j)) fl.push([i, j]);
+      const far = fl.sort((a, b) => Math.hypot(b[0] - 8, b[1] - 8) - Math.hypot(a[0] - 8, a[1] - 8)).slice(0, 6);
+      const [i, j] = far.length ? r.pick(far) : [8, 8];
+      return [c.cx * CHUNK + i, c.cy * CHUNK + j];
+    })();
+    spawn(g, { kind: 'item', x: x + 0.5, y: y + 0.5, item: { kind: 'mod', mod: 'pinhole-eye' }, data: n ? { sealed: [n.x + n.fx, n.y + n.fy] } : undefined });
+  }
   const s = hide(g.seed, c);
   if (s) secrets(g).push(s);
   const h = cradleHollow(g.seed, c);
@@ -281,6 +325,11 @@ function open(g: Game, s: Secret, how: string): void {
   const [px, py] = s.trail[0];
   setCell(g, s.x, s.y, Cell.floor);
   setCell(g, px, py, Cell.floor);
+  if (s.eye) {
+    g.events.push({ type: 'dig', at: [s.x + 0.5, s.y + 0.5] }, { type: 'reveal', at: [px + 0.5, py + 0.5], data: 'hollow' });
+    for (const e of g.ents) if (e.data?.sealed) delete e.data.sealed;
+    return say(g, [`the cracked wall gives. in the niche behind it a bead of black glass looks back: an eye. `, { text: 'go in', cmd: `go ${sideOf(g, s)} 1` }, ' then ', { text: 'take', cmd: 'take' }]);
+  }
   const r = rng(hash(g.seed, 94, s.x, s.y));
   const got = pay(g, s, px + 0.5, py + 0.5, [{ kind: 'res', res: r.pick(['copper', 'glass'] as const), n: r.int(2, 3) }, ...(r.chance(0.5) ? [{ kind: 'res' as const, res: 'ichor' as const, n: 1 }] : [])]);
   g.events.push({ type: 'dig', at: [s.x + 0.5, s.y + 0.5] }, { type: 'reveal', at: [px + 0.5, py + 0.5], data: 'hollow' });

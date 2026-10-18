@@ -23,6 +23,8 @@ import { duel } from './boss';
 import { WARM } from '../../src/mods/sense';
 import { bigOn, fps, fpsEye } from '../../src/body/fps';
 import { dealtOf } from '../../src/mods/uniques';
+import { sealedEye } from '../../src/world/secrets';
+import { eyeHinted } from '../../src/tune/hints';
 
 export interface Snap {
   t: number;
@@ -546,6 +548,9 @@ export function play(seed: number, o: Opts): Run {
       } else stall.n = 0;
       Object.assign(stall, { at: g.t, x: P.x, y: P.y });
     }
+    // v2r2 ux: the first eye sealed behind a cracked wall: at its face, break it (the goal line says so)
+    const sealed = eyeFace();
+    if (sealed && Math.floor(P.x) === sealed[0] && Math.floor(P.y) === sealed[1] && active(g, 'weapon').length) return 'break';
     // take what is in reach
     if (g.ents.some((e) => e.kind === 'item' && dist(e, P) < 1.6)) return 'take';
     // v2 floors: the stairs open and under you: down
@@ -771,7 +776,17 @@ export function play(seed: number, o: Opts): Run {
   const afford = (c: Partial<Record<Res, number>>) => Object.entries(c).every(([r, n]) => resOf(g, r as Res) >= (n as number));
 
   /** where to go next: an item worth taking, a machine with something affordable, the target, or new floor */
+  /** the floor cell to break the first eye's niche from, while it is sealed and no eye is worn or carried */
+  function eyeFace(): [number, number] | null {
+    const s = sealedEye(g);
+    if (!s || g.floor || !eyeHinted(g) || [...P.installed, ...P.inv].some((i) => 'mod' in i && MODS[i.mod].family === 'camera')) return null;
+    return [s.x + s.fx, s.y + s.fy];
+  }
+
   function goal(): { x: number; y: number; ref?: object; explore?: number; zone?: number } | null {
+    // v2r2 ux: the goal line's ◆ points at the sealed first eye: walk to its wall
+    const face = eyeFace();
+    if (face && active(g, 'weapon').length) return { x: face[0] + 0.5, y: face[1] + 0.5, zone: g.floor };
     const v = nextTarget();
     const go = !!v && (v.what === 'stairs' || bossReady());
     // v2 floors: the floor is all there is to wander in
@@ -921,6 +936,7 @@ export function play(seed: number, o: Opts): Run {
     for (let f = 0; f <= floors.LAST; f++) if (floors.bossDown(g, f)) mark('boss ' + (f + 1));
     g.cards.forEach((c) => mark('card ' + c));
     if (P.installed.some((i) => i.mod === 'card-reader')) mark('reader');
+    if (P.installed.some((i) => MODS[i.mod].family === 'camera')) mark('eye');
     for (const v of g.vectors) mark('vector ' + v.what);
     for (const k of zones.ZONES.slice(1).map((z) => z.need)) if (zones.readiness(g) >= k) mark('ready ' + k);
     const pw = powerMax(g);
