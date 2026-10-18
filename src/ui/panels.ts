@@ -1,25 +1,55 @@
-// The always-open panels on the right edge: modules (slots and power on top), inventory, and what lies
-// nearby. Each row carries its buttons; a panel redraws only when what it shows changes. They stack
-// down the right edge until the player drags one away.
+// The always-open panels on the right edge: modules (slots and power on top, then a grid of sockets),
+// inventory (a grid of icons), and what lies nearby (rows with icons). Click a cell in a grid: a detail
+// pane under it shows what the thing does and its buttons; double-click installs (or switches on/off).
+// A panel redraws only when what it shows changes. They stack down the right edge until dragged away.
 
 import { dist, itemName, reach } from '../core/game';
 import { Cell, cell, veinOf } from '../core/grid';
 import { def, label, powerMax, powerUsed, working } from '../core/mods';
 import { VERBS } from '../core/verbs';
-import type { Game, Item } from '../core/types';
+import type { Game, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { costs, does } from '../mods/describe';
 import { affords, fmt, offers, PRICES, priceOf, scrapOf, shopNear } from '../world/printer';
-import type { Roll } from '../core/types';
+import { altarNear, offers as altarOffers } from '../world/altar';
+import { img, type Of } from './icons';
 
 type Send = (cmd: string) => void;
-/** a row: text parts (a string, or [text, class]) then buttons ({label, cmd}, or a dim note) */
-type Part = string | [string, string] | [string, string, string] | { label: string; cmd?: string; note?: string };
-/** a module's name part: hover shows what it does */
-const modName = (m: { mod: string; roll?: Roll }): Part => [label(m), 'name modname', `${does(m)}\n${costs(m)}`];
+/** a button: a command, or greyed with a note saying why */
+type Btn = { label: string; cmd?: string; note?: string };
+/** a grid cell: an icon (or an empty socket), what selecting it shows */
+interface GridCell {
+  sel: string;
+  icon?: Of;
+  title: string;
+  /** on / warm / off ring for installed modules */
+  state?: string;
+  badge?: string;
+  /** typed on double-click */
+  dbl?: string;
+  mod?: string;
+  /** greyed: it cannot be installed now */
+  dim?: boolean;
+}
+interface Detail {
+  icon: Of;
+  title: string;
+  lines: string[];
+  buttons: Btn[];
+}
+/** a nearby row: an icon, a name, buttons */
+interface Row {
+  icon?: Of;
+  name: string;
+  tip?: string;
+  buttons: Btn[];
+  dim?: boolean;
+}
 
 const ok = (g: Game, v: string) => !!VERBS[v] && (!VERBS[v].when || VERBS[v].when!(g));
 export const PANEL_W = 260;
+/** grid icon scale: 16 px drawn at ×2 */
+const SCALE = 2;
 
 /** pips for a resource: used of max, red when full */
 export function pips(used: number, max: number): string {
@@ -29,10 +59,14 @@ export function pips(used: number, max: number): string {
   return `<span class="pips${full ? ' full' : ''}">${s}</span>`;
 }
 
+const modLines = (m: { mod: string; roll?: Roll }) => [does(m), costs(m), def(m).text];
+
 export class Panels {
   g: Game;
   send: Send;
   keys = new Map<string, string>();
+  /** the selected cell per panel */
+  sel = new Map<string, string>();
 
   constructor(g: Game, send: Send) {
     this.g = g;
@@ -43,9 +77,11 @@ export class Panels {
 
   frame(): void {
     const g = this.g;
-    this.draw('modules', this.modules(g), this.head(g));
-    this.draw('inv', this.inv(g));
-    this.draw('near', this.near(g));
+    const [mc, md] = this.modules(g);
+    this.grid('modules', mc, md, this.head(g));
+    const [ic, id] = this.inv(g);
+    this.grid('inv', ic, id, '', ic.length ? '' : 'you carry nothing.');
+    this.list('near', this.near(g));
     this.stack();
   }
 
@@ -55,73 +91,120 @@ export class Panels {
       `<div class="res-row"><span>power ${powerUsed(g)}/${powerMax(g)}</span>${pips(powerUsed(g), powerMax(g))}</div>`;
   }
 
-  modules(g: Game): Part[][] {
-    const rows = g.player.installed.map((i): Part[] => {
-      const d = def(i);
+  /** the slots as sockets: installed modules first, then empty sockets up to the slot count */
+  modules(g: Game): [GridCell[], Detail | null] {
+    const p = g.player;
+    const cells: GridCell[] = p.installed.map((i) => {
       const state = !i.on ? 'off' : working(g, i) ? 'on' : 'warm';
-      return [['●', 'st st-' + state], modName(i), [cost(d.power), 'cost'],
-        { label: i.on ? 'off' : 'on', cmd: `${i.on ? 'off' : 'on'} ${label(i)}` }, { label: 'remove', cmd: `remove ${label(i)}` }];
+      return { sel: 'u' + i.uid, icon: { mod: i.mod, roll: i.roll }, title: `${label(i)} · ${state}`, state, mod: i.mod, dbl: `${i.on ? 'off' : 'on'} ${label(i)}` };
     });
-    return rows.length ? rows : [[['no modules. install from the inventory.', 'dim']]];
+    for (let k = p.installed.length; k < p.slots; k++) cells.push({ sel: 'empty' + k, title: 'an empty socket' });
+    const s = this.sel.get('modules');
+    const inst = p.installed.find((i) => 'u' + i.uid === s);
+    if (!inst) return [cells, null];
+    return [cells, {
+      icon: { mod: inst.mod, roll: inst.roll },
+      title: label(inst),
+      lines: [!inst.on ? 'off' : working(g, inst) ? 'on' : 'warming up', ...modLines(inst)],
+      buttons: [{ label: inst.on ? 'off' : 'on', cmd: `${inst.on ? 'off' : 'on'} ${label(inst)}` }, { label: 'remove', cmd: `remove ${label(inst)}` }],
+    }];
   }
 
-  inv(g: Game): Part[][] {
+  inv(g: Game): [GridCell[], Detail | null] {
     const p = g.player;
     const free = p.installed.length < p.slots;
     const spare = powerMax(g) - powerUsed(g);
-    const rows = p.inv.map((it): Part[] => {
-      const drop: Part = { label: 'drop', cmd: `drop ${dropName(it)}` };
+    const seen = new Map<string, number>();
+    const cells: GridCell[] = [];
+    let detail: Detail | null = null;
+    const s = this.sel.get('inv');
+    for (const it of p.inv) {
+      const name = it.kind === 'res' ? it.res : it.kind === 'card' ? 'memory card' : label(it);
+      const n = (seen.get(name) ?? 0) + 1;
+      seen.set(name, n);
+      const sel = `${name}#${n}`;
+      const drop: Btn = { label: 'drop', cmd: `drop ${dropName(it)}` };
+      let c: GridCell;
+      let buttons: Btn[];
+      let lines: string[];
       if (it.kind === 'mod') {
         const d = def(it);
-        const install: Part = !free ? { label: 'install', note: 'no slot' }
-          : d.power > spare ? { label: 'install', cmd: `install ${label(it)}`, note: `stays off: needs ${d.power}` }
+        const install: Btn = !free ? { label: 'install', note: 'no free slot' }
+          : d.power > spare ? { label: 'install', cmd: `install ${label(it)}`, note: `it stays off: needs ${d.power}⚡︎, ${spare} spare` }
           : { label: 'install', cmd: `install ${label(it)}` };
         const scrap = scrapOf(it);
-        const recycle: Part = Object.keys(scrap).length ? { label: 'recycle', cmd: `recycle ${label(it)}`, note: undefined } : { label: 'recycle', note: 'it will not break' };
-        return [modName(it), [cost(d.power), 'cost'], install, { label: '?', cmd: `info ${label(it)}` }, recycle, drop];
+        const recycle: Btn = Object.keys(scrap).length ? { label: 'recycle', cmd: `recycle ${label(it)}`, note: `recycle: ${fmt(scrap)}` } : { label: 'recycle', note: 'it will not break' };
+        buttons = [install, { label: '?', cmd: `info ${label(it)}` }, recycle, drop];
+        lines = modLines(it);
+        c = { sel, icon: it, title: `${label(it)} · ${does(it)}`, mod: it.mod, dbl: install.cmd, dim: !free };
+      } else if (it.kind === 'card') {
+        const scripture = !it.card.startsWith('log');
+        buttons = [ok(g, 'read') ? { label: 'read', cmd: 'read card' } : { label: 'read', note: 'needs a card reader' }, drop];
+        lines = [scripture ? 'a shard of scripture. read it to learn where the engine lies.' : 'a machine\'s last log. read it: it points somewhere.'];
+        c = { sel, icon: it, title: 'memory card', dbl: ok(g, 'read') ? 'read card' : undefined };
+      } else {
+        buttons = [drop];
+        lines = [`${it.n} ${it.res}. printers, reliquaries and altars take it.`];
+        c = { sel, icon: it, title: `${it.res} ×${it.n}`, badge: String(it.n) };
       }
-      if (it.kind === 'card') return [['memory card', 'name'], ok(g, 'read') ? { label: 'read', cmd: 'read card' } : { label: 'read', note: 'needs a card reader' }, drop];
-      return [[`${it.res} ×${it.n}`, 'name'], drop];
-    });
-    return rows.length ? rows : [[['you carry nothing.', 'dim']]];
+      cells.push(c);
+      if (sel === s) detail = { icon: it, title: it.kind === 'res' ? `${it.res} ×${it.n}` : c.title.split(' · ')[0], lines, buttons };
+    }
+    return [cells, detail];
   }
 
-  near(g: Game): Part[][] {
+  near(g: Game): Row[] {
     const p = g.player;
-    const rows: Part[][] = [];
+    const rows: Row[] = [];
     const items = reach(g);
+    if (items.length > 1) rows.push({ name: '', buttons: [{ label: 'take all', cmd: 'take' }] });
     for (const e of items) {
       const it = e.item!;
-      rows.push([it.kind === 'mod' ? modName(it) : [itemName(it), 'name'], ...(it.kind === 'mod' ? [{ label: '?', cmd: `info ${label(it)}` }] : []), { label: 'take', cmd: `take ${itemName(it)}` }]);
+      rows.push({
+        icon: it,
+        name: it.kind === 'mod' ? label(it) : itemName(it),
+        tip: it.kind === 'mod' ? `${does(it)}\n${costs(it)}` : undefined,
+        buttons: [...(it.kind === 'mod' ? [{ label: '?', cmd: `info ${label(it)}` }] : []), { label: 'take', cmd: `take ${itemName(it)}` }],
+      });
     }
-    if (items.length > 1) rows.unshift([['', 'name'], { label: 'take all', cmd: 'take' }]);
     if (g.ents.some((e) => e.kind === 'printer' && !e.data?.shop && dist(e, p) < 1.6))
-      rows.push([['printer', 'name'], { label: 'print slot', cmd: 'print slot' }, { label: 'print module', cmd: 'print module' }]);
+      rows.push({ icon: { thing: 'printer' }, name: 'printer', buttons: [{ label: 'print slot', cmd: 'print slot' }, { label: 'print module', cmd: 'print module' }] });
     const shop = shopNear(g);
     if (shop) {
-      rows.push([['reliquary', 'name'], { label: 'reroll', cmd: 'reroll', note: `reroll: ${fmt(PRICES.reroll)}` }]);
+      rows.push({ icon: { thing: 'shop' }, name: 'reliquary', buttons: [{ label: 'reroll', cmd: 'reroll', note: `reroll: ${fmt(PRICES.reroll)}` }] });
       offers(g, shop).forEach((it, k) => {
-        if (!it || it.kind !== 'mod') return void rows.push([[`${k + 1}. sold`, 'dim']]);
+        if (!it || it.kind !== 'mod') return void rows.push({ name: `${k + 1}. sold`, buttons: [], dim: true });
         const price = priceOf(it);
-        rows.push([modName(it), { label: '?', cmd: `info ${label(it)}` },
-          affords(g, price) ? { label: 'buy', cmd: `buy ${k + 1}`, note: fmt(price) } : { label: 'buy', note: `${fmt(price)}: short` }]);
+        rows.push({
+          icon: it, name: label(it), tip: `${does(it)}\n${costs(it)}`,
+          buttons: [{ label: '?', cmd: `info ${label(it)}` }, affords(g, price) ? { label: 'buy', cmd: `buy ${k + 1}`, note: fmt(price) } : { label: 'buy', note: `${fmt(price)}: short` }],
+        });
       });
+    }
+    const altar = altarNear(g);
+    if (altar) {
+      rows.push({ icon: { thing: 'altar' }, name: 'altar', buttons: [] });
+      for (const [cmd, price] of altarOffers(g, altar))
+        rows.push({ name: '', buttons: [affords(g, price) ? { label: cmd, cmd, note: fmt(price) } : { label: cmd, note: `${fmt(price)}: short` }] });
     }
     const [cx, cy] = [Math.floor(p.x), Math.floor(p.y)];
     for (const [d, dx, dy] of [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]] as const) {
       const c = cell(g, cx + dx, cy + dy);
       const res = c >= Cell.vein ? veinOf(c) : null;
-      if (res) rows.push([[`${res} vein (${d})`, 'name'], ok(g, 'drain') ? { label: 'drain', cmd: 'drain' } : { label: 'drain', note: 'needs a needle' }]);
+      if (res) rows.push({ icon: { vein: res }, name: `${res} vein (${d})`, buttons: [ok(g, 'drain') ? { label: 'drain', cmd: 'drain' } : { label: 'drain', note: 'needs a needle' }] });
     }
-    return rows.length ? rows : [[['nothing here.', 'dim']]];
+    return rows.length ? rows : [{ name: 'nothing here.', buttons: [], dim: true }];
   }
 
-  draw(id: string, rows: Part[][], head = ''): void {
+  /** a grid panel: head, cells, then the selected cell's detail */
+  grid(id: string, cells: GridCell[], detail: Detail | null, head = '', empty = ''): void {
     const w = windows.get(id);
     if (!w) return;
-    const key = head + JSON.stringify(rows);
-    if (this.keys.get(id) === key) return;
-    this.keys.set(id, key);
+    const k = head + JSON.stringify([cells, detail, empty]) + (this.sel.get(id) ?? '');
+    if (this.keys.get(id) === k) return;
+    this.keys.set(id, k);
+    // a selection whose thing is gone clears
+    if (this.sel.has(id) && !cells.some((c) => c.sel === this.sel.get(id))) this.sel.delete(id);
     const els: HTMLElement[] = [];
     if (head) {
       const h = document.createElement('div');
@@ -129,49 +212,135 @@ export class Panels {
       h.innerHTML = head;
       els.push(h);
     }
-    for (const r of rows) {
-      const row = document.createElement('div');
-      row.className = 'row';
-      const notes: string[] = [];
-      for (const part of r) {
-        if (typeof part === 'string' || Array.isArray(part)) {
-          const [text, cls, tip] = typeof part === 'string' ? [part, '', ''] : part;
-          const s = document.createElement('span');
-          s.textContent = text;
-          if (cls) s.className = cls;
-          if (tip) s.title = tip;
-          row.append(s);
-        } else {
-          const b = document.createElement('button');
-          b.textContent = part.label;
-          if (part.cmd) {
-            b.dataset.cmd = part.cmd;
-            b.addEventListener('click', () => this.send(part.cmd!));
-          } else b.disabled = true;
-          if (part.note) b.title = part.note;
-          row.append(b);
-          if (part.note) notes.push(part.note);
-        }
-      }
-      // why a button is greyed (or what it will do) goes on its own line under the row
-      for (const t of notes) {
-        const n = document.createElement('span');
-        n.className = 'dim note';
-        n.textContent = t;
-        row.append(n);
-      }
-      els.push(row);
+    if (empty) {
+      const e = document.createElement('div');
+      e.className = 'dim';
+      e.textContent = empty;
+      els.push(e);
     }
+    const gridEl = document.createElement('div');
+    gridEl.className = 'grid';
+    for (const c of cells) {
+      const b = document.createElement('button');
+      b.className = 'cell' + (c.icon ? '' : ' socket') + (c.state ? ' st-' + c.state : '') + (c.dim ? ' dim' : '') + (this.sel.get(id) === c.sel ? ' sel' : '');
+      b.title = c.title;
+      b.dataset.key = c.sel;
+      if (c.mod) b.dataset.mod = c.mod;
+      if (c.icon) b.append(img(c.icon, SCALE));
+      if (c.badge) {
+        const s = document.createElement('span');
+        s.className = 'badge';
+        s.textContent = c.badge;
+        b.append(s);
+      }
+      if (c.icon) {
+        b.addEventListener('click', () => {
+          if (this.sel.get(id) === c.sel) this.sel.delete(id);
+          else this.sel.set(id, c.sel);
+          this.keys.delete(id);
+          this.frame();
+        });
+        if (c.dbl) b.addEventListener('dblclick', () => this.send(c.dbl!));
+      } else b.disabled = true;
+      gridEl.append(b);
+    }
+    if (cells.length) els.push(gridEl);
+    if (detail) els.push(this.detail(detail));
     w.body.replaceChildren(...els);
   }
 
-  /** the panels stack down the right edge, each under the one above, unless dragged */
+  detail(d: Detail): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'detail';
+    const top = document.createElement('div');
+    top.className = 'dtop';
+    top.append(img(d.icon, 3));
+    const t = document.createElement('span');
+    t.className = 'name';
+    t.textContent = d.title;
+    top.append(t);
+    el.append(top);
+    d.lines.forEach((l, k) => {
+      const p = document.createElement('div');
+      p.className = k === d.lines.length - 1 && d.lines.length > 2 ? 'flavour-line' : 'does';
+      p.textContent = l;
+      el.append(p);
+    });
+    el.append(...this.buttons(d.buttons));
+    return el;
+  }
+
+  /** the buttons in a row, then why any is greyed (or what it costs), each note on its own line */
+  buttons(list: Btn[]): HTMLElement[] {
+    const row = document.createElement('div');
+    row.className = 'btns';
+    const notes: HTMLElement[] = [];
+    for (const part of list) {
+      const b = document.createElement('button');
+      b.textContent = part.label;
+      if (part.cmd) {
+        b.dataset.cmd = part.cmd;
+        b.addEventListener('click', () => this.send(part.cmd!));
+      } else b.disabled = true;
+      if (part.note) {
+        b.title = part.note;
+        const n = document.createElement('span');
+        n.className = 'dim note';
+        n.textContent = part.note;
+        notes.push(n);
+      }
+      row.append(b);
+    }
+    return list.length ? [row, ...notes] : notes;
+  }
+
+  /** a list panel: rows with an icon, a name and buttons */
+  list(id: string, rows: Row[]): void {
+    const w = windows.get(id);
+    if (!w) return;
+    const k = JSON.stringify(rows);
+    if (this.keys.get(id) === k) return;
+    this.keys.set(id, k);
+    w.body.replaceChildren(...rows.map((r) => {
+      const row = document.createElement('div');
+      row.className = 'row' + (r.dim ? ' dim' : '');
+      if (r.icon) row.append(img(r.icon, SCALE));
+      if (r.name) {
+        const s = document.createElement('span');
+        s.className = 'name';
+        s.textContent = r.name;
+        if (r.tip) s.title = r.tip;
+        row.append(s);
+      }
+      row.append(...this.buttons(r.buttons));
+      return row;
+    }));
+  }
+
+  /** the panels stack down the right edge, each under the one above, unless dragged; when they would
+   * run off the bottom, the inventory (then the modules) scroll so nearby still shows */
   stack(): void {
+    const ws = ['modules', 'inv', 'near'].map((id) => windows.get(id)).filter((w) => w && !w.el.dataset.moved) as windows.Win[];
+    const natural = (w: windows.Win) => w.el.offsetHeight - w.body.clientHeight + w.body.scrollHeight;
+    let room = innerHeight - 24 - 8 - (ws.length - 1) * 8;
+    const want = ws.map(natural);
+    const total = want.reduce((a, b) => a + b, 0);
+    const caps = new Map<windows.Win, number>();
+    if (total > room) {
+      // nearby keeps up to 150 px, modules up to its natural height but at most half; inventory takes what is left
+      const near = ws.find((w) => w.id === 'near');
+      const mods = ws.find((w) => w.id === 'modules');
+      const inv = ws.find((w) => w.id === 'inv');
+      if (near) room -= Math.min(natural(near), 150), caps.set(near, 150);
+      if (mods) { const m = Math.min(natural(mods), Math.max(140, room / 2)); caps.set(mods, m); room -= m; }
+      if (inv) caps.set(inv, Math.max(100, room));
+    }
     let y = 24;
-    for (const id of ['modules', 'inv', 'near']) {
-      const w = windows.get(id);
-      if (!w) continue;
-      if (w.el.dataset.moved) continue;
+    for (const w of ws) {
+      const cap = caps.get(w);
+      const chrome = w.el.offsetHeight - w.body.clientHeight;
+      const mh = cap ? Math.max(60, cap - chrome) + 'px' : '';
+      if (w.body.style.maxHeight !== mh) w.body.style.maxHeight = mh;
       w.el.style.left = innerWidth - PANEL_W - 16 + 'px';
       w.el.style.top = y + 'px';
       y += w.el.offsetHeight + 8;
@@ -179,10 +348,8 @@ export class Panels {
   }
 }
 
-/** a module's power draw, as a short tag */
-const cost = (n: number) => (n ? `${n}\u26a1\ufe0e` : '');
-
 /** a word `drop` finds this item by */
 function dropName(it: Item): string {
   return it.kind === 'res' ? it.res : it.kind === 'card' ? 'memory card' : label(it);
 }
+
