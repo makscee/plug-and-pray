@@ -311,10 +311,15 @@ function puffAt(k: number, heat: boolean): THREE.Texture {
   return t;
 }
 
-/** which frame an enemy shows now: 3 a hit flash, 2 striking, else idle 0/1 */
+/** the shot being taken: its eye's last frame (Shot.since) */
+let flashSince = Infinity;
+/** a hit this long ago still flashes on a slow eye's next frame */
+export const FLASH_HOLD = 0.6;
+/** which frame an enemy shows now: 3 a hit flash, 2 striking, else idle 0/1. A slow eye (3-4 fps) shows the
+ *  flash on its next frame after the hit, so a blow is never missed between frames (v2r1 fight) */
 export function frameOf(g: Game, e: Entity): number {
   const d = e.enemy!.data;
-  if (typeof d.hitAt === 'number' && g.t - d.hitAt < 0.15) return 3;
+  if (typeof d.hitAt === 'number' && (g.t - d.hitAt < 0.15 || (d.hitAt > flashSince && g.t - d.hitAt < FLASH_HOLD))) return 3;
   // winding up (a mite rearing, a walker's arm, an elite's move): the attack frame, held (src/fight/index.ts)
   if (typeof d.windup === 'number' && g.t < d.windup) return 2;
   const s = g.t - struckAt(e);
@@ -487,6 +492,8 @@ export interface Shot {
   w?: number;
   /** v2 unique: sees through one wall (the saint's last lens) */
   xray?: boolean;
+  /** this eye's last frame (game time): a foe hit since then shows its hit flash, however slow the eye */
+  since?: number;
 }
 
 const targets = new Map<string, THREE.WebGLRenderTarget>();
@@ -509,7 +516,9 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   const mode = s.mode ?? 'color';
   const p = g.player;
   build(g, p.x, p.y);
+  flashSince = s.since ?? Infinity;
   place(g, mode, !!s.hidden, s.filter, !!s.xray);
+  flashSince = Infinity;
   // the floor grid in the dark zones, on colour eyes only, brighter the darker the zone
   const dark = ZONES[zoneAt(p.x, p.y)]?.look.dark ?? 0;
   grid.visible = mode === 'color' && dark > 0;

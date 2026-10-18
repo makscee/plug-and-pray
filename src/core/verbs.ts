@@ -260,7 +260,8 @@ verb('status', {
   help: 'your body: hp, slots, power',
   run(g) {
     const p = g.player;
-    say(g, `hp ${Math.ceil(p.hp)}/${p.maxHp}   slots ${slotsUsed(g)}/${p.slots}   power ${powerUsed(g)}/${powerMax(g)}`);
+    // hp in halves, as the HUD and the fight log show it (src/fight/report.ts hpText)
+    say(g, `hp ${Math.max(0, Math.ceil(p.hp * 2) / 2)}/${p.maxHp}   slots ${slotsUsed(g)}/${p.slots}   power ${powerUsed(g)}/${powerMax(g)}`);
     for (const i of p.installed) say(g, [{ text: label(i), cmd: `${i.on ? 'off' : 'on'} ${def(i).name}` }, `  ${i.on ? (g.t >= i.readyAt ? 'on' : 'warming') : 'off'}  ${def(i).power}p`]);
   },
 });

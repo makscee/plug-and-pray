@@ -68,3 +68,37 @@ export function tickShots(g: Game, dt: number): void {
 }
 
 tickHooks.push(tickShots);
+
+/** foe shots flying at you within `r` cells that will pass within `wide` cells of you, nearest first */
+export function incoming(g: Game, r = 3, wide = 0.8): Entity[] {
+  const p = g.player;
+  const near = (s: Entity) => Math.hypot(p.x - s.x, p.y - s.y);
+  return shots(g)
+    .filter((s) => {
+      const d = s.data as unknown as ShotData;
+      const [rx, ry] = [p.x - s.x, p.y - s.y];
+      const v = Math.hypot(d.vx, d.vy) || 1;
+      return d.foe && near(s) < r && rx * d.vx + ry * d.vy > 0 && Math.abs(rx * d.vy - ry * d.vx) / v < wide;
+    })
+    .sort((a, b) => near(a) - near(b));
+}
+
+/** the way `at` lies from you, as a compass word */
+export const compass = (g: Game, at: { x: number; y: number }): string => {
+  const deg = ((Math.atan2(at.x - g.player.x, -(at.y - g.player.y)) * 180) / Math.PI + 360) % 360;
+  return ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round(deg / 45) % 8];
+};
+
+/** the way `at` lies from where you face: ahead, right, behind, left (the FPS view's words) */
+export const sideOf = (g: Game, at: { x: number; y: number }): string => {
+  let a = Math.atan2(at.x - g.player.x, -(at.y - g.player.y)) - g.player.dir;
+  a = Math.atan2(Math.sin(a), Math.cos(a));
+  return ['behind', 'the left', 'ahead', 'the right', 'behind'][Math.round((a + Math.PI) / (Math.PI / 2))];
+};
+
+/** the HUD's bolt warning: how many come, from where ('' when none); `facing` names the way from your view */
+export function boltWarn(g: Game, r = 3, facing = false): string {
+  const c = incoming(g, r);
+  if (!c.length) return '';
+  return `bolt${c.length > 1 ? `s ×${c.length}` : ''} from ${facing ? sideOf(g, c[0]) : compass(g, c[0])}: step aside`;
+}

@@ -11,6 +11,7 @@ import { label, MODS, slotsUsed } from '../core/mods';
 import { hash, rng } from '../core/rng';
 import type { Entity, Game, Item } from '../core/types';
 import { fire, shots, type ShotData } from './shots';
+import { bossKind } from './bolts';
 import { WARM } from '../mods/sense';
 import { dealUnique } from '../mods/uniques';
 
@@ -100,7 +101,7 @@ const toP = (g: Game, e: Entity): [number, number, number] => {
 
 /** a bullet at angle `a` (radians, 0 = east) */
 function bullet(g: Game, e: Entity, a: number, speed: number, share = BULLET, range = 14): void {
-  fire(g, { x: e.x + Math.cos(a) * 0.4, y: e.y + Math.sin(a) * 0.4, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dmg: dmg(e, share), range, src: e, foe: true });
+  fire(g, { x: e.x + Math.cos(a) * 0.4, y: e.y + Math.sin(a) * 0.4, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dmg: dmg(e, share), range, src: e, foe: true, kind: bossKind(e.enemy!.type, speed) });
 }
 /** n bullets fanned `spread` radians round the line to you */
 function fan(g: Game, e: Entity, n: number, spread: number, speed: number, share = BULLET): void {
@@ -328,7 +329,7 @@ const cross = (o: { windup: number; rest: number; speed: number; diag?: boolean;
     return out;
   },
   land(g, e) {
-    for (const a of data(e).lines as number[]) for (const s of [0, 0.35]) fire(g, { x: e.x + Math.cos(a) * s, y: e.y + Math.sin(a) * s, vx: Math.cos(a) * o.speed, vy: Math.sin(a) * o.speed, dmg: dmg(e, BULLET * 1.3), range: 12, src: e, foe: true });
+    for (const a of data(e).lines as number[]) for (const s of [0, 0.35]) fire(g, { x: e.x + Math.cos(a) * s, y: e.y + Math.sin(a) * s, vx: Math.cos(a) * o.speed, vy: Math.sin(a) * o.speed, dmg: dmg(e, BULLET * 1.3), range: 12, src: e, foe: true, kind: bossKind(e.enemy!.type, o.speed) });
   },
 });
 

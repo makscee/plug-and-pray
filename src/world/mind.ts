@@ -42,6 +42,8 @@ tickHooks.push((g) => {
 export const mapHooks = {
   click: [] as ((g: Game, x: number, y: number) => void)[],
   draw: [] as ((g: Game, ctx: CanvasRenderingContext2D, ox: number, oy: number, px: number) => void)[],
+  /** something moving fast is on the map (shots in flight): it redraws at 12 Hz, not 4 */
+  fast: [] as ((g: Game) => boolean)[],
 };
 
 /** the map's cell size in px for a span of cells: big on a tall screen, small on a short one, unless zoom is set (the map's zoom link) */
@@ -163,7 +165,7 @@ function mapView(el: HTMLElement, inst: Inst, game: Game): View {
       const want = Math.max(3, Math.floor(mapCell.px(span)));
       if (want !== px) [px, next, canvas.width, canvas.height] = [want, 0, span * want, span * want];
       if (g.t < next) return;
-      next = g.t + 0.25;
+      next = g.t + (mapHooks.fast.some((f) => f(g)) ? 1 / 12 : 0.25);
       const p = g.player;
       ox = Math.floor(p.x) - (span >> 1);
       oy = Math.floor(p.y) - (span >> 1);
