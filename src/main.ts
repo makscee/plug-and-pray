@@ -7,6 +7,7 @@ import { newGame, say, tick } from './core/game';
 import { Screen } from './ui';
 import './ui/bigmap';
 import './ui/goal';
+import './tune/door';
 import './ui/door';
 import { start } from './audio';
 import { startKit } from './tune/start';

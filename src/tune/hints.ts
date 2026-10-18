@@ -8,7 +8,6 @@ import { active, def, label, param, slotsUsed } from '../core/mods';
 import { cells, dist, say, tickHooks } from '../core/game';
 import { canRead, carriesReader } from '../world/vectors';
 import { bossDown, floorAt, FLOORS, floorOf, LAST, STAIRS, stairsAt } from '../world/floors';
-import { atDoor, doorOf, keeperCheck, keeperLine } from './door';
 import { lightest, makeRoom } from '../body';
 import { DIRS, open } from '../core/grid';
 import { VERBS, verb, way } from '../core/verbs';
@@ -16,6 +15,14 @@ import { route } from '../mods/pilot';
 import type { Entity, Game, Line } from '../core/types';
 
 const told = new WeakSet<Game>();
+/** the keeper's door (src/tune/door.ts fills these in; it loads the bosses, so the sims never load it and
+ *  their hook order stays as it was) */
+export const keeperDoor: {
+  at: (g: Game, r?: number) => { x: number; y: number; dir: string } | null;
+  of: (g: Game, f: number) => { x: number; y: number; dir: string } | null;
+  line: (g: Game, f: number) => Line[];
+  ready: (g: Game, f: number) => boolean;
+} = { at: () => null, of: () => null, line: () => [], ready: () => false };
 /** how far (path cells) a hint looks for a way */
 const PLAN = 60;
 
@@ -209,11 +216,11 @@ function wayDown(g: Game): Line {
   const name = STAIRS[FLOORS[f].stairs!].name;
   if (bossDown(g)) return toCell(g, sx, sy, `${name} is open`, 'descend');
   // v2r1: it stops at the keeper's door and weighs you, instead of walking you in (src/tune/door.ts)
-  if (atDoor(g)) {
-    const [head, verdict] = keeperLine(g, f);
+  if (keeperDoor.at(g)) {
+    const [head, verdict] = keeperDoor.line(g, f);
     return [...head, ' ', ...verdict];
   }
-  const door = doorOf(g, f);
+  const door = keeperDoor.of(g, f);
   if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`))
     return door ? toCell(g, door.x, door.y, `the keeper's door; the way down, ${name}, lies past it`, 'where') : toCell(g, sx, sy, `the way down, ${name}, past its keeper`, 'help descend');
   const p = g.player;
@@ -265,7 +272,7 @@ export function goalLine(g: Game): string {
   const name = STAIRS[FLOORS[f].stairs!].name;
   const far = cells(Math.round(Math.hypot(sx - p.x, sy - p.y)));
   if (bossDown(g)) return `${n}: ${name} is open, ${far} ${word}: descend`;
-  if (atDoor(g, 2.5)) return `${n}: the keeper's door. ${keeperCheck(g, f).ready ? 'you look ready' : 'you are not ready: where says why'}`;
+  if (keeperDoor.at(g, 2.5)) return `${n}: the keeper's door. ${keeperDoor.ready(g, f) ? 'you look ready' : 'you are not ready: where says why'}`;
   if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`)) return `${n}: get past the keeper to the way down (stairs: ${name}, ${far} ${word})`;
   return `${n}: find the way down (stairs: unknown / ${word})`;
 }

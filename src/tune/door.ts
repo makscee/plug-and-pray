@@ -11,6 +11,7 @@ import { BOSS, LOADOUTS, variantOf, type BossDef } from '../fight/bosses';
 import { bossAt, bossDown, bossRoom, bossWoke, floorOf, inRoom, LAST, stairsChunk } from '../world/floors';
 import { readiness } from '../world/zones';
 import { dpsOf } from '../world/zonemath';
+import { keeperDoor } from './hints';
 
 export interface Door {
   /** the cell you stand on, a cell outside the room (a cell centre) */
@@ -133,3 +134,5 @@ tickHooks.push((g) => {
   s.add(f);
   say(g, ...keeperLine(g, f));
 });
+
+Object.assign(keeperDoor, { at: atDoor, of: doorOf, line: keeperLine, ready: (g: Game, f: number) => keeperCheck(g, f).ready });

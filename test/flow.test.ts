@@ -3,6 +3,7 @@ import '../src/mods';
 import '../src/world';
 import '../src/fight';
 import '../src/tune/hints';
+import '../src/tune/door';
 import { newGame, spawnEnemy, tick } from '../src/core/game';
 import { chunk, open } from '../src/core/grid';
 import { exec } from '../src/core/verbs';
@@ -92,7 +93,7 @@ describe('v2 flow', () => {
     expect(quiet).not.toEqual([8.5, 8.5]);
     // chased back to the landing: a foe near, so it is no quiet spot
     [g.player.x, g.player.y] = [8.5, 8.5];
-    spawnEnemy(g, 'mite', 8.5, 13.5);
+    spawnEnemy(g, 'mite', 8.5, 17.5); // 9 cells: no quiet spot, yet no fight to flee
     exec(g, 'unstuck');
     for (let k = 0; k < 2; k++) tick(g, 0.05);
     expect([g.player.x, g.player.y]).toEqual(quiet);

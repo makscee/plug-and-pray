@@ -33,9 +33,9 @@ const STEPS = [
   [0, '(g.player.inv = g.player.inv.filter(i => i.mod !== "halo" && i.res !== "glass"), true)'],
   ['go e 3'], [2, 'g.player.x >= 11.5 && g.player.path.length === 0'],
   ['status', 'g.log.some(l => l.join && JSON.stringify(l).includes("power 3/4"))'],
-  // unstuck: out of a wall at once; otherwise home to where you woke after 3 s
+  // unstuck: out of a wall at once; otherwise back to the last quiet spot (v2 flow: where `go e 3` stopped)
   [0, '(Object.assign(g.player, { x: 1.5, y: 1.5, path: [] }), true)'], ['unstuck', 'JSON.stringify(g.log).includes("wrench") && !(g.player.x === 1.5 && g.player.y === 1.5)'],
-  ['unstuck'], [3.2, 'g.player.x === 8.5 && g.player.y === 8.5'],
+  ['unstuck'], [3.2, 'g.player.y === 8.5 && g.player.x >= 10.5'],
   // tuning (#1328): the legs' first hint names the card reader; listen gives cells and a compass word
   [0, '(g.ents.push({ id: 99999, kind: "item", x: 12.5, y: 8.5, item: { kind: "res", res: "bone", n: 1 } }), true)'], // the chamber holds only the halo now
   ['listen', 'JSON.stringify(g.log).includes("a card reader and a memory card lie together") && /cells, (n|ne|e|se|s|sw|w|nw)\\./.test(JSON.stringify(g.log.slice(-4)))'],

@@ -28,7 +28,7 @@ export function clean(g: Game): void {
   g.player.inv = [];
 }
 
-/** v2r1 pace: the last quiet spot on this floor: no foe within 8 cells for 3 s and clear of the keeper's
+/** v2r1 pace: the last quiet spot on this floor: no foe within 10 cells for 3 s and clear of the keeper's
  *  room; unstuck folds you there, not back to the landing (a retreat cost 60-90 s of walking back) */
 const quiet = new WeakMap<Game, { since: number; at: [number, number] | null; floor: number }>();
 tickHooks.push((g) => {
@@ -37,19 +37,21 @@ tickHooks.push((g) => {
   let q = quiet.get(g);
   if (!q || q.floor !== f) quiet.set(g, (q = { since: g.t, at: null, floor: f }));
   const [bx, by] = bossAt(g.seed, f);
-  const calm = !g.ents.some((e) => e.enemy && dist(e, p) < 8) && Math.hypot(bx - p.x, by - p.y) > 12 && open(g, p.x, p.y);
+  const calm = !g.ents.some((e) => e.enemy && dist(e, p) < 10) && Math.hypot(bx - p.x, by - p.y) > 12 && open(g, p.x, p.y);
   if (!calm) q.since = g.t;
   else if (g.t - q.since >= 3) q.at = [Math.floor(p.x) + 0.5, Math.floor(p.y) + 0.5];
 });
 
-/** home is the last quiet spot on this floor, else where you landed on it (src/world/floors.ts) */
-const home = (g: Game): [number, number] => {
+/** home is the last quiet spot on this floor, else where you landed on it (src/world/floors.ts). Folding
+ *  away from a fight (a foe within 8 cells) goes the long way, to the landing: the walk back is your mending (folding to a
+ *  near quiet spot cost the sims 2-3 careful runs of 20, back in the fight half mended) */
+const home = (g: Game, fled: boolean): [number, number] => {
   const q = quiet.get(g);
-  // standing at it already (lost in a quiet place): the landing, as before
-  const ok = q?.floor === (g.floor ?? 0) && q.at && Math.hypot(q.at[0] - g.player.x, q.at[1] - g.player.y) > 4;
+  // near it already (lost in a quiet place): the landing, as before
+  const ok = !fled && q?.floor === (g.floor ?? 0) && q.at && Math.hypot(q.at[0] - g.player.x, q.at[1] - g.player.y) > 4;
   return ok ? q!.at! : origin(g.floor ?? 0);
 };
-const homing = new WeakMap<Game, number>();
+const homing = new WeakMap<Game, { at: number; fled: boolean }>();
 
 /** the nearest open cell centre to (x, y), searching rings out to r */
 function nearestOpen(g: Game, x: number, y: number, r = 4): [number, number] | null {
@@ -64,7 +66,7 @@ function nearestOpen(g: Game, x: number, y: number, r = 4): [number, number] | n
 }
 
 verb('unstuck', {
-  help: 'stuck or lost? unstuck: out of a wall, else back to the last quiet spot on this floor (3 s with a foe on you)',
+  help: 'stuck or lost? unstuck: out of a wall, else back to the last quiet spot on this floor (with a foe on you: 3 s, and home to where you landed)',
   run(g) {
     const p = g.player;
     p.path = [];
@@ -79,18 +81,20 @@ verb('unstuck', {
     }
     // lost: home at once when nothing is on you (playtest r2 pace); cornered: 3 s
     const close = g.ents.some((e) => e.enemy && dist(e, p) < 2);
-    homing.set(g, g.t + (close ? 3 : 0));
-    say(g, close ? 'you fold up and let the god\'s veins carry you back to where it was quiet. 3 s.' : 'you fold up and let the god\'s veins carry you back to where it was quiet.');
+    // fleeing a fight (a foe within 8 cells): the long way home, to mend on the walk back
+    const fled = g.ents.some((e) => e.enemy && dist(e, p) < 8);
+    homing.set(g, { at: g.t + (close ? 3 : 0), fled });
+    say(g, fled ? `you fold up and let the god\'s veins carry you home, far from this.${close ? ' 3 s.' : ''}` : 'you fold up and let the god\'s veins carry you back to where it was quiet.');
   },
 });
 
 tickHooks.push((g) => {
-  const at = homing.get(g);
-  if (at === undefined || g.t < at) return;
+  const h = homing.get(g);
+  if (!h || g.t < h.at) return;
   homing.delete(g);
   const p = g.player;
-  [p.x, p.y] = home(g);
+  [p.x, p.y] = home(g, h.fled);
   p.path = [];
   p.move = null;
-  say(g, 'you unfold where it was quiet.');
+  say(g, h.fled ? 'you wake where you landed. it is quiet here.' : 'you unfold where it was quiet.');
 });
