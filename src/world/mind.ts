@@ -45,13 +45,19 @@ export const mapHooks = {
   draw: [] as ((g: Game, ctx: CanvasRenderingContext2D, ox: number, oy: number, px: number) => void)[],
 };
 
+/** the map's cell size in px for a span of cells: big on a tall screen, small on a short one, unless zoom is set (the map's zoom link) */
+export const mapCell = {
+  zoom: null as boolean | null,
+  px: (span: number) => ((mapCell.zoom ?? innerHeight >= 900) ? 297 : 198) / span,
+};
+
 const CSS = { floor: '#6a5444', wall: '#2c221d', vein: '#7a4a2a', ichor: '#a02838', you: '#f0a050', vec: '#e0d0a0', printer: '#70a0a0' };
 
 function mapView(el: HTMLElement, inst: Inst, game: Game): View {
   const span = Math.round(param<number>(inst, 'span', 33));
-  const px = Math.max(3, Math.floor(198 / span));
+  // a cell's size follows mapCell (the map's zoom link, playtest r1: 6 px hid one-cell corridors)
+  let px = 0;
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = span * px;
   canvas.className = 'map';
   el.append(canvas);
   const ctx = canvas.getContext('2d')!;
@@ -66,6 +72,8 @@ function mapView(el: HTMLElement, inst: Inst, game: Game): View {
   return {
     update(g: Game) {
       if (!(inst.on && g.t >= inst.readyAt)) return;
+      const want = Math.max(3, Math.floor(mapCell.px(span)));
+      if (want !== px) [px, next, canvas.width, canvas.height] = [want, 0, span * want, span * want];
       if (g.t < next) return;
       next = g.t + 0.25;
       const p = g.player;

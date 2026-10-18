@@ -1,27 +1,66 @@
 // Keys and mouse for the gaits. The console keeps typing: while it has focus, keys are text;
 // Esc gives them back to movement and Enter takes them to the console again.
-// Arrow keys: servo gait steps. WASD: gyro heart walks. Mouse: with the gyro heart, a click on a
-// camera's eye (or the empty desk) locks the pointer and the mouse turns you; Esc lets it go.
-// Without a lock, dragging on the eye turns you too.
+// Arrow keys walk one cell with any legs: the servo gait steps, the stepper relay types `go n` (as its
+// buttons do), with neither you crawl. WASD: the gyro heart walks free; without one, WASD are arrows.
+// Q and E turn a quarter. T tidies the windows, P pauses, 1-4 switch to saved setups 1-4.
+// On the end screen Enter or R wakes again.
+// Mouse: with the gyro heart, a click on a camera's eye (or the empty desk) locks the pointer and the
+// mouse turns you; Esc lets it go. Without a lock, dragging on the eye turns you too.
 
-import { gyroMove, gyroTurn, hasGyro, saveSetup, servoStep } from './index';
+import { gyroMove, gyroTurn, hasGyro, saveSetup, servoStep, setupsOf } from './index';
 import { VERBS } from '../core/verbs';
+import { active, param } from '../core/mods';
+import { walk } from '../mods/gait';
 import { frameHooks } from '../ui';
+import { tidy } from '../ui/windows';
+import { togglePause } from '../ui/pause';
 import type { Game } from '../core/types';
 import './views';
 import { clean } from '../tune/start';
 
 const ARROWS: Record<string, string> = { ArrowUp: 'n', ArrowRight: 'e', ArrowDown: 's', ArrowLeft: 'w' };
-const WASD = ['w', 'a', 's', 'd'];
+const WASD: Record<string, string> = { w: 'n', a: 'w', s: 's', d: 'e' };
 const held = new Set<string>();
 const thaw = () => (window as unknown as { thaw: { g: Game; send(c: string): void } }).thaw;
 const typing = (t: EventTarget | null) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
 const consoleInput = () => document.querySelector<HTMLInputElement>('.win-console input');
+const wakeAgain = () => document.querySelector<HTMLButtonElement>('.dead button, .thaw-card button')?.click();
+
+/** one cell that way with whatever legs are on; quiet when a step is already queued */
+export function keyStep(g: Game, d: string): void {
+  if (servoStep(g, d)) return;
+  if (active(g, 'gait').some((i) => param(i, 'keys', false))) return; // the servo's own queue is full, or a wall
+  if (g.player.path.length > 1) return;
+  const goes = active(g, 'gait').some((i) => param(i, 'go', false));
+  if (!goes && hasGyro(g)) {
+    // the gyro heart: a quiet cell-long glide
+    g.player.pace = 2.5;
+    walk(g, d, 1);
+    return;
+  }
+  thaw().send(goes ? `go ${d}` : `crawl ${d}`);
+}
+
+/** a quarter turn: -1 left (Q), 1 right (E) */
+export function turn(g: Game, by: number): void {
+  const q = Math.PI / 2;
+  const p = g.player;
+  p.dir = ((((Math.round(p.dir / q) + by) * q) % (4 * q)) + 4 * q) % (4 * q);
+}
 
 // capture phase: runs before the console's own key handler
 addEventListener(
   'keydown',
   (e) => {
+    const g = thaw()?.g;
+    if (g?.ended && (e.key === 'Enter' || (!typing(e.target) && e.key.toLowerCase() === 'r'))) {
+      if (!typing(e.target) || !(e.target as HTMLInputElement).value.trim()) {
+        wakeAgain();
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
     if (typing(e.target)) {
       if (e.key === 'Escape') {
         (e.target as HTMLElement).blur();
@@ -35,19 +74,28 @@ addEventListener(
       e.preventDefault();
       return;
     }
-    const g = thaw()?.g;
-    if (!g) return;
-    const d = ARROWS[e.key];
+    if (!g || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    const d = ARROWS[e.key] ?? (!hasGyro(g) ? WASD[k] : undefined);
     if (d) {
-      servoStep(g, d);
+      keyStep(g, d);
       e.preventDefault();
       return;
     }
-    const k = e.key.toLowerCase();
-    if (WASD.includes(k)) {
+    if (WASD[k]) {
       held.add(k);
       e.preventDefault();
+      return;
     }
+    if (e.repeat && k !== 'q' && k !== 'e') return;
+    if (k === 'q' || k === 'e') turn(g, k === 'q' ? -1 : 1);
+    else if (k === 't') tidy();
+    else if (k === 'p') togglePause();
+    else if (k >= '1' && k <= '4') {
+      const name = Object.keys(setupsOf(g))[Number(k) - 1];
+      thaw().send(name ? `setup ${name}` : 'setup');
+    } else return;
+    e.preventDefault();
   },
   true,
 );
