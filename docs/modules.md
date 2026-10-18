@@ -116,5 +116,5 @@ number that rolls (the mirror ward's recharge gets shorter). `test/econ.test.ts`
   the ossuary lists lamps, glowing, sonar, edge and heat eyes, listeners, big-hit weapons, armour and regen; the
   furnace lists heat-proofing, or says that a rime hood would.
 
-Sims (`node scripts/sim.mjs 20 both`, 40 runs) before → after: finish 24 → 28, median Engine 24:42 → 22:33,
-power binding (power alone or with slots) 21% → 43%, slots alone 1% → 0%; nail psalms per end loadout 1.6 → 1.2 (it stays the lamp answer), bone lance in end loadouts 20–38% → 45–75%.
+Sims (`node scripts/sim.mjs 20 both`, 40 runs) before → after: finish 24 → 27, median Engine 24:42 → 22:33,
+power binding (power alone or with slots) 21% → 42%, slots alone 1% → 0%; nail psalms per end loadout 1.6 → 1.2 (it stays the lamp answer), bone lance in end loadouts 20–38% → 45–75%.
