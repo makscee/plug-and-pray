@@ -10,7 +10,7 @@ import { Cell, clear, ensure, open, setCell } from '../core/grid';
 import { label, MODS, slotsUsed } from '../core/mods';
 import { VERBS } from '../core/verbs';
 import { hash, rng } from '../core/rng';
-import type { Entity, Game, Item } from '../core/types';
+import type { Entity, Game, Item, Roll } from '../core/types';
 import { fire, shots, type ShotData } from './shots';
 import { bossKind } from './bolts';
 import { WARM } from '../mods/sense';
@@ -486,22 +486,23 @@ function boss(d: BossDef): void {
 }
 
 // floor 0, the cradle: melee and kiting
+// (v2-balance3, v2r3 fight: a slam from hugging range is left by one 1-cell step: 0.8 + 1 clears 1.4-1.6)
 boss({
   id: 'boss-warden', floor: 0, name: 'the great warden', hp: 100, damage: 2.6, speed: 1.6, walk: 'close', r: 0.55, at: [0.5],
   hint: 'it charges down the line it sees you on, and bites up close. step aside from the charge, then hit it while it reels.',
   turn: ['the great warden roars. it charges twice now.'],
   phases: [
-    [charge({ windup: 1.1, cells: 5, speed: 9, rest: 1.2, stun: 1.8 }), slam({ r: 1.6, windup: 1.2, rest: 2, move: 'lifts its jaws', warn: 'it lifts its jaws: it bites all round. step back.' })],
-    [charge({ windup: 1, cells: 6, speed: 10, rest: 0.4, stun: 1.5 }), charge({ windup: 0.8, cells: 6, speed: 10, rest: 1, stun: 1.6, move: 'charges again' }), slam({ r: 1.8, windup: 1.1, rest: 1.7, move: 'lifts its jaws' })],
+    [charge({ windup: 1.1, cells: 5, speed: 9, rest: 1.2, stun: 1.8 }), slam({ r: 1.4, windup: 1.2, rest: 2, move: 'lifts its jaws', warn: 'it lifts its jaws: it bites all round. step back.' })],
+    [charge({ windup: 1, cells: 6, speed: 10, rest: 0.4, stun: 1.5 }), charge({ windup: 0.8, cells: 6, speed: 10, rest: 1, stun: 1.6, move: 'charges again' }), slam({ r: 1.5, windup: 1.1, rest: 1.7, move: 'lifts its jaws' })],
   ],
 });
 boss({
-  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 80, damage: 2.1, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
+  id: 'boss-queen', floor: 0, name: 'the mite queen', hp: 110, damage: 2.4, speed: 0.7, walk: 'close', r: 0.6, at: [0.5],
   hint: 'she calls mites and stomps. thin the mites, keep off her stomp, bite her between.',
   turn: ['the mite queen shrieks. the brood comes faster.'],
   phases: [
-    [brood({ type: 'mite', n: 2, cap: 2, windup: 1, rest: 1.5 }), slam({ r: 1.7, windup: 1, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.7 cells. step back.' }), volley({ n: 1, spread: 0, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
-    [brood({ type: 'mite', n: 2, cap: 3, windup: 0.9, rest: 1.2 }), slam({ r: 2, windup: 1, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, move: 'spits acid' })],
+    [brood({ type: 'mite', n: 2, cap: 3, windup: 1, rest: 1.5 }), slam({ r: 1.5, windup: 1.2, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.5 cells. step back.' }), volley({ n: 3, spread: 0.5, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
+    [brood({ type: 'mite', n: 3, cap: 4, windup: 0.9, rest: 1.2 }), slam({ r: 1.6, windup: 1.2, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, times: 2, every: 0.6, move: 'spits acid' })],
   ],
 });
 boss({
@@ -526,7 +527,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 3.4, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-organ', floor: 1, name: 'the mimic organ', hp: 115, damage: 3.9, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it plays chords of slow notes at you, and moves between its pipes. its pedal note shakes the floor round it.',
   turn: ['the organ pulls out every stop. mimics drop from its pipes.'],
   phases: [
@@ -546,7 +547,7 @@ boss({
 
 // floor 2, the ossuary: FPS, bullet patterns
 boss({
-  id: 'boss-abbot', floor: 2, name: 'the high abbot', hp: 180, damage: 3, speed: 0.7, walk: 'close', armour: 0.8, r: 0.6, at: [0.5],
+  id: 'boss-abbot', floor: 2, name: 'the high abbot', hp: 200, damage: 3.5, speed: 0.7, walk: 'close', armour: 0.8, r: 0.6, at: [0.5],
   hint: 'bone shrugs off small hits. it sweeps round itself and throws fans of bone; later, a spiral.',
   turn: ['the high abbot lifts its crozier. bones begin to wheel round it.'],
   phases: [
@@ -574,8 +575,9 @@ boss({
 });
 
 // floor 3, the furnace: improved FPS, heavier patterns
+// (v2-balance3, v2r3 fight: the shortest fights of the run at 32-35 s; hp ×1.33-1.65 and softer blows: 40-45 s at about 82%)
 boss({
-  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 460, damage: 4.2, speed: 0, walk: 'still', r: 0.65, at: [0.5],
+  id: 'boss-saint', floor: 3, name: 'the burning saint', hp: 690, damage: 3, speed: 0, walk: 'still', r: 0.65, at: [0.5],
   hint: 'it pours out turning arms of fire and crosses of light. later the floor under you catches.',
   turn: ['the burning saint flares. fire runs to where you stand.'],
   phases: [
@@ -584,7 +586,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-hammer', floor: 3, name: 'the hammer twin', hp: 210, damage: 3.5, speed: 1.3, walk: 'close', armour: 0.6, r: 0.6, at: [0.5], mate: 'boss-bellows',
+  id: 'boss-hammer', floor: 3, name: 'the hammer twin', hp: 345, damage: 3.5, speed: 1.3, walk: 'close', armour: 0.6, r: 0.6, at: [0.5], mate: 'boss-bellows',
   hint: 'two of them: the hammer charges and slams, the bellows blows fire from afar. kill one and the other rages.',
   turn: ['the hammer twin glows white. it rages.'],
   phases: [
@@ -593,7 +595,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-bellows', floor: 3, name: 'the bellows twin', hp: 190, damage: 3.2, speed: 1.1, walk: 'keep', keep: 5, r: 0.6, at: [0.5], mate: 'boss-hammer',
+  id: 'boss-bellows', floor: 3, name: 'the bellows twin', hp: 315, damage: 3.2, speed: 1.1, walk: 'keep', keep: 5, r: 0.6, at: [0.5], mate: 'boss-hammer',
   hint: 'two of them: the hammer charges and slams, the bellows blows fire from afar. kill one and the other rages.',
   turn: ['the bellows twin wheezes. its fire comes in streams.'],
   phases: [
@@ -602,7 +604,7 @@ boss({
   ],
 });
 boss({
-  id: 'boss-worm', floor: 3, name: 'the slag worm', hp: 330, damage: 3.2, speed: 0.8, walk: 'drift', r: 0.7, at: [0.5],
+  id: 'boss-worm', floor: 3, name: 'the slag worm', hp: 400, damage: 3, speed: 0.8, walk: 'drift', r: 0.7, at: [0.5],
   hint: 'it digs in and comes up under you in a ring of slag. hit it while it is up; it spits triplets.',
   turn: ['the slag worm boils. where it comes up, slag stays.'],
   phases: [
@@ -611,9 +613,9 @@ boss({
   ],
 });
 
-// floor 4: the heart, every run the same; each phase is a floor's way of fighting
+// floor 4: the heart, every run the same; each phase is a floor's way of fighting (v2-balance3: hp 500 → 660)
 boss({
-  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 500, damage: 4.1, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
+  id: 'boss-heart', floor: 4, name: "the thaw engine's heart", hp: 660, damage: 4.1, speed: 0, walk: 'still', r: 0.75, at: [0.66, 0.33],
   hint: 'the heart of the engine. it fights the way every floor did: brood and toll, then lines and peals, then spirals and fire.',
   turn: ['the heart beats faster. light runs down its lines; the floor rings under you.', 'the heart burns white. fire pours out in arms, and the floor catches.'],
   phases: [
@@ -826,6 +828,8 @@ tickHooks.push((g, dt) => {
   marks(g);
 });
 
+/** the keepers of floors 3-5 mark their wind-ups in cyan */
+export const coldMarks = (g: Game): boolean => g.ents.some((e) => e.enemy && BOSS[e.enemy.type] && BOSS[e.enemy.type].floor >= 2);
 /** red embers on the floor round each wind-up's zones and pools: the eye shows where it will hit */
 function marks(g: Game): void {
   const want: [number, number][] = [];
@@ -839,7 +843,9 @@ function marks(g: Game): void {
   const was = marked.get(g);
   if (was?.key === key) return;
   g.ents = g.ents.filter((x) => !x.data?.mark);
-  for (const [x, y] of want) if (open(g, x, y)) spawn(g, { kind: 'prop', x, y, data: { mark: true } });
+  // v2-balance3: cyan from the ossuary down, where the dark floor ate the red (src/sight/scene.ts)
+  const cold = coldMarks(g);
+  for (const [x, y] of want) if (open(g, x, y)) spawn(g, { kind: 'prop', x, y, data: cold ? { mark: true, cold } : { mark: true } });
   marked.set(g, { key });
 }
 const marked = new WeakMap<Game, { key: string }>();
@@ -944,9 +950,10 @@ killHooks.push((g, e) => {
 // ---- test fights: ?boss=<floor>:<variant> in the browser, the boss sim in node
 
 /** a loadout typical for each floor, and the hp it has by then */
-export const LOADOUTS: { mods: string[]; flesh: number; slots: number; core: number }[] = [
+export const LOADOUTS: { mods: string[]; flesh: number; slots: number; core: number; rolls?: Record<string, Roll> }[] = [
   { mods: ['pinhole-eye', 'stepper-relay', 'spark-finger', 'censer-flail', 'lead-lung'], flesh: 0, slots: 6, core: 6 }, // v2 balance: what the run sim really has at the cradle's keeper
-  { mods: ['vidicon-tube', 'stepper-relay', 'nail-psalm', 'spark-finger', 'rivet-sling', 'plumb-line', 'lead-lung'], flesh: 8, slots: 8, core: 9 }, // v2 balance: the run sim's kit at the nave's keeper
+  // v2-balance3 (v2r3 fight: 76 of 80 real kits had the nail psalm tempered or attuned; plain, it won 8-23%): tempered once
+  { mods: ['vidicon-tube', 'stepper-relay', 'nail-psalm', 'spark-finger', 'rivet-sling', 'plumb-line', 'lead-lung'], flesh: 8, slots: 8, core: 9, rolls: { 'nail-psalm': { key: 'damage', mult: 1.68, tag: 'tempered', n: 1 } } },
   // floors 3-5 are fought through the FPS scope (stageBoss goes big with it)
   // (v2r2 fight: with the reins in the kit, as every run has them by then)
   { mods: ['pilgrim-scope', 'saints-reins', 'gyro-heart', 'bone-lance', 'nail-psalm', 'halo', 'frost-coat', 'map-spool'], flesh: 6, slots: 8, core: 14 },
@@ -971,7 +978,7 @@ export function stageBoss(g: Game, floor: number, variant?: string): Entity {
   p.slots = k.slots;
   p.core = k.core;
   p.flesh = k.flesh;
-  for (const mod of k.mods) if (MODS[mod]) p.installed.push({ uid: g.nextId++, mod, on: true, readyAt: g.t - 1, data: {} });
+  for (const mod of k.mods) if (MODS[mod]) p.installed.push({ uid: g.nextId++, mod, on: true, readyAt: g.t - 1, data: {}, ...(k.rolls?.[mod] ? { roll: { ...k.rolls[mod] } } : {}) });
   p.slots = Math.max(k.slots, slotsUsed(g)); // some modules take two slots (v2 inventory)
   p.maxHp = 10 + k.flesh + p.installed.reduce((s, i) => s + Number(MODS[i.mod]?.params.hp ?? 0), 0);
   p.hp = p.maxHp;

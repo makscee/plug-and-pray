@@ -430,14 +430,17 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
     // offered nothing, or the map); `last` (swap in): then the map, as the install hint offers it (r5)
     const cam = def(it).family === 'camera';
     const eye = (i: Inst) => cam && def(i).family === 'camera';
-    const map = (i: Inst) => last && param<string>(i, 'what', '') === 'map';
     // v2r3 fun: weapons go last, after the map when an eye will be on (an eye's swap turned both weapons off
     // with mites near), and never the last weapon left on
     const seeing = cam || p.installed.some((i) => i.on && def(i).family === 'camera' && !out.includes(i));
+    // v2-balance3 (v2r3 fight: `swap in frost coat` with no eye yet turned the map off and left you blind):
+    // the map gives way only while an eye will be on
+    const map = (i: Inst) => last && seeing && param<string>(i, 'what', '') === 'map';
     const w = (i: Inst) => (eye(i) ? 0 : map(i) ? (seeing ? 4.5 : 8) : weapon(i) ? 6 : weight(g, i));
     const armed = () => p.installed.filter((i) => i.on && weapon(i) && !out.includes(i) && !off.includes(i)).length;
     const spare = (i: Inst) => !weapon(i) || armed() > 1;
-    const all = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && (light(i) || eye(i) || map(i)));
+    // (with no eye a spare weapon gives way in the map's place)
+    const all = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && (light(i) || eye(i) || map(i) || (last && !seeing && weapon(i))));
     // a weapon only when the rest cannot cover it
     const rest = all.filter((i) => !weapon(i));
     const can = rest.reduce((n, i) => n + def(i).power, 0) >= short ? rest : all;
@@ -451,7 +454,10 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
         off.push(i);
         short -= def(i).power;
       }
-    if (short > 0) return `not enough power for ${def(it).name}, and nothing lighter to switch off.`;
+    if (short > 0) {
+      const blind = !seeing && p.installed.some((i) => i.on && param<string>(i, 'what', '') === 'map');
+      return blind ? `not enough power for ${def(it).name}: only your map is left to switch off, and that would blind you. switch something off by hand.` : `not enough power for ${def(it).name}, and nothing lighter to switch off.`;
+    }
   }
   return more.length ? { remove, more, off } : { remove, off };
 }

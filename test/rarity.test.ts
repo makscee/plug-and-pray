@@ -36,7 +36,7 @@ describe('v2 rarity', () => {
     const rare = { mod: 'bone-lance', rarity: 'rare' as const };
     expect(param<number>(fine, 'damage')).toBeCloseTo(6 * 1.15);
     expect(param<number>(rare, 'damage')).toBeCloseTo(6 * 1.3);
-    expect(param<number>(rare, 'cooldown')).toBe(2.2);
+    expect(param<number>(rare, 'cooldown')).toBe(MODS['bone-lance'].params.cooldown);
     expect(param<number>({ mod: 'dawn-eye', rarity: 'rare' }, 'range')).toBeCloseTo(9 * 1.3);
     expect(label(rare)).toBe('rare bone lance');
     expect(label({ ...fine, roll: { key: 'damage', mult: 1.4, tag: 'attuned' } })).toBe('fine attuned bone lance');
