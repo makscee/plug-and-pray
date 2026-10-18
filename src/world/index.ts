@@ -9,3 +9,4 @@ import './printer';
 import './drain';
 import './mind';
 import './stage';
+import './secrets';
