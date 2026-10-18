@@ -203,6 +203,8 @@ verb('setup', {
       if (!all.length) return say(g, 'no setups saved. turn on what you want, then: save setup battle');
       return say(g, ['setups: ', ...all.flatMap((n, k) => [k ? '  ' : '', { text: n, cmd: `setup ${n}` }])]);
     }
+    // r4: `setup 1` is the first, as the 1-4 keys are
+    if (/^\d$/.test(name) && !all.includes(name) && all[Number(name) - 1]) name = all[Number(name) - 1];
     const errs = useSetup(g, name);
     if (!errs) return say(g, `no setup called ${name}.`);
     say(g, `setup ${name}: warming up.${errs.length ? ' ' + errs.join('; ') + '.' : ''}`);

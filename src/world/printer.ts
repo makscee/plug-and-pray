@@ -8,7 +8,7 @@ import { dist, say, tickHooks } from '../core/game';
 import { def, label } from '../core/mods';
 import { does } from '../mods/describe';
 import { hash, rng } from '../core/rng';
-import { addItem, findInst, findItem, goThere, verb } from '../core/verbs';
+import { addItem, findInst, findItem, goThere, verb, VERBS } from '../core/verbs';
 import type { Entity, Game, Item, Line, Res } from '../core/types';
 import { lootMod } from './spawn';
 import { cradleEye } from './secrets';
@@ -84,6 +84,8 @@ verb('print', {
   run(g, [what]) {
     const e = printerNear(g);
     if (!e) return say(g, noMachine(g, false));
+    // r4: plurals work (print eyes, print weapons)
+    if (what?.endsWith('s') && (AIMED[what.slice(0, -1)] || what === 'slots' || what === 'modules')) what = what.slice(0, -1);
     const far = (e.data?.far as number) ?? 0;
     if (what === 'slot') {
       if (g.player.slots >= MAX_SLOTS) return say(g, 'the board is full: eight slots.');
@@ -107,7 +109,7 @@ verb('print', {
       if (it.kind === 'mod') say(g, ['the printer spits out: ', { text: label(it), cmd: `install ${label(it)}` }]);
       return;
     }
-    say(g, 'a printer. it is warm, and it waits.', ...menu(g, e));
+    say(g, what ? `no kind called ${what}.` : 'a printer. it is warm, and it waits.', ...menu(g, e));
   },
 });
 
@@ -180,7 +182,7 @@ export function offers(g: Game, e: Entity): (Item | null)[] {
 function shopMenu(g: Game, e: Entity): Line[] {
   const lines: Line[] = offers(g, e).map((it, k) =>
     it && it.kind === 'mod'
-      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}: ${fmt(priceAt(e, k, it))}. ${does(it)}`]
+      ? [{ text: `buy ${k + 1}`, cmd: `buy ${k + 1}` }, `  ${label(it)}${def(it).family === 'power' || !def(it).power ? '' : ` (${def(it).power}p)`}: ${fmt(priceAt(e, k, it))}. ${does(it)}`]
       : [`  ${k + 1}: an empty niche.`],
   );
   lines.push([{ text: 'reroll', cmd: 'reroll' }, `  new relics: ${fmt(PRICES.reroll)}`]);
@@ -188,12 +190,15 @@ function shopMenu(g: Game, e: Entity): Line[] {
 }
 
 verb('buy', {
-  help: 'at a reliquary: buy 1, buy 2, buy 3',
-  run(g, [which]) {
+  help: 'at a reliquary: buy 1, buy 2, buy 3, or by name: buy bone lance',
+  run(g, args) {
     const e = shopNear(g);
     if (!e) return say(g, noMachine(g, true));
     const list = offers(g, e);
-    const k = Number(which) - 1;
+    // r4 final: `buy <name>` too
+    const q = args.join(' ').replace(/-/g, ' ');
+    const named = list.findIndex((it) => !!q && !!it && it.kind === 'mod' && label(it).replace(/-/g, ' ').includes(q));
+    const k = /^\d+$/.test(q) ? Number(q) - 1 : named;
     const it = list[k];
     if (!it) return say(g, 'the reliquary shows:', ...shopMenu(g, e));
     const c = priceAt(e, k, it);
@@ -229,6 +234,27 @@ export const SCRAP_GLASS = 0.5;
 const ground = new WeakMap<Game, number>();
 export const scrapOf = (it: Item): Cost => (it.kind === 'mod' && def(it).family !== 'unique' ? PRICES.scrap[Math.min(2, def(it).tier)] : {});
 
+/** r4 final: why this card reader may not leave you (the last one, shards still unread; one reader per world), or null */
+export function lastReader(g: Game, it: Item | undefined): string | null {
+  if (!it || it.kind !== 'mod' || it.mod !== 'card-reader') return null;
+  const p = g.player;
+  const readers = p.inv.filter((i) => i.kind === 'mod' && i.mod === 'card-reader').length + p.installed.filter((i) => i.mod === 'card-reader').length;
+  const read = g.cards.filter((c) => c.startsWith('shard-')).length;
+  return readers === 1 && read < 3 ? `that is your only card reader, and ${3 - read} shard${read === 2 ? '' : 's'} still wait${read === 2 ? 's' : ''} to be read. no other reader lies out there.` : null;
+}
+
+// the last card reader does not leave the bag by `drop` either
+const drop = VERBS.drop;
+if (drop)
+  VERBS.drop = {
+    ...drop,
+    run(g, args) {
+      const why = lastReader(g, g.player.inv[findItem(g, args)]);
+      if (why) return say(g, why);
+      drop.run(g, args);
+    },
+  };
+
 /** when the last card-reader warning was given, per game */
 const warned = new WeakMap<Game, number>();
 
@@ -246,6 +272,8 @@ verb('recycle', {
     // r2: your only card reader, with a card still unread: ask once (a playtester ground both and had to buy one back)
     const p = g.player;
     const readers = p.inv.filter((i) => i.kind === 'mod' && i.mod === 'card-reader').length + p.installed.filter((i) => i.mod === 'card-reader').length;
+    const why = lastReader(g, it);
+    if (why) return say(g, why);
     if (it.mod === 'card-reader' && readers === 1 && p.inv.some((i) => i.kind === 'card') && (warned.get(g) ?? -99) < g.t - 20) {
       warned.set(g, g.t);
       return say(g, ['that is your only card reader, and you carry a card no one has read. ', { text: 'recycle it anyway', cmd: 'recycle card reader' }]);

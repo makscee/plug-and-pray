@@ -154,6 +154,8 @@ verb('offer', {
       p.hp = p.maxHp;
       return say(g, 'the altar closes your wounds.');
     }
+    // r4: `offer bone` says what the altar takes rather than the bare menu again
+    if (what) return say(g, `the altar takes no single ${what}. it takes these, and pays in power, flesh or mending:`, ...menu(g));
     say(g, 'an altar. it wants an offering.', ...menu(g));
   },
 });

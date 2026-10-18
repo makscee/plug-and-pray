@@ -23,7 +23,8 @@ family('mind', {
     if (!ours(inst)) return prev?.buttons?.(g, inst) ?? [];
     const w = param<string>(inst, 'what', '');
     if (w === 'reader') return g.player.inv.some((i) => i.kind === 'card') ? [{ label: 'read card', cmd: 'read card' }] : [];
-    if (g.vectors.length) return [{ label: 'vectors', cmd: 'vectors' }];
+    // r4: the map has `vectors` on its legend line (a button row here grew it over the console at 1280x720)
+    if (g.vectors.length && w !== 'map') return [{ label: 'vectors', cmd: 'vectors' }];
     return [];
   },
 });

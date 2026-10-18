@@ -35,3 +35,5 @@
 .thaw-card .tally .grade { color: #a03a10; }
 .thaw-card button { color: #a03a10; font-size: 26px; }
 .thaw-end ~ .hpbar, body[data-state='thaw'] .hpbar { opacity: 0; }
+/* r4: said at once, so the melt reads as the ending */
+.thaw-drinks { position: absolute; left: 0; right: 0; top: 88%; margin: 0; text-align: center; font-size: 28px; color: #fff4dc; text-shadow: 0 0 12px #e07a3a; }
