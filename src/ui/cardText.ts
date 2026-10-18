@@ -16,7 +16,7 @@ export interface CardText {
 
 export const CARD_TEXT: Record<string, CardText> = {
   // ---- eyes
-  'pinhole-eye': { does: 'a dim grey view of what is ahead', good: 'free to run (0 power) · short, slow and grey: swap it out early' },
+  'pinhole-eye': { does: 'a dim grey view of what is ahead', good: 'your first sight, but hungry (3 power): it costs you a weapon early · short, slow and grey: swap it out' },
   'dawn-eye': { does: 'a clear colour view: you see what things are', good: 'the honest all-rounder · needs light to see far in the dark' },
   'vidicon-tube': { does: 'a colour view that smears when you move', good: 'cheap colour at 1 power · ghosts trail behind moving things' },
   'saints-lens': { does: 'a sharp, far, fast colour view', good: 'the best plain eye · 4 power and 2 slots' },
