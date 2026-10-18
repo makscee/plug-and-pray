@@ -139,9 +139,7 @@ describe('secrets', () => {
     const g = newGame(2);
     const [px, py] = opening(2).shop;
     chunk(g, px, py);
-    const shop = g.ents.find((e) => e.kind === 'printer' && e.data?.shop)!;
-    g.player.x = shop.x;
-    g.player.y = shop.y;
+    // from where you wake: the reliquary's hollow wall lies a chunk off
     g.ents = g.ents.filter((e) => !e.enemy);
     wear(g, 'bat-psalter');
     run(g, 0.2);
