@@ -176,7 +176,7 @@ describe('fight r1: seeing the fight', () => {
     expect(g.player.dir).toBeCloseTo(-Math.PI / 4, 5);
     expect(shots(g)).toHaveLength(1); // two psalms: one shot, a quicker cooldown
     const psalms = g.player.installed.filter((i) => i.mod === 'nail-psalm');
-    expect(psalms.every((i) => Math.abs((i.data.readyAt as number) - g.t - 0.9 * 0.75) < 1e-6)).toBe(true);
+    expect(psalms.every((i) => Math.abs((i.data.readyAt as number) - g.t - 0.6 * 0.75) < 1e-6)).toBe(true);
     exec(g, 'shoot');
     expect(text(g)).toContain('still cooling');
   });

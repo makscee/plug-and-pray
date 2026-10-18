@@ -54,6 +54,8 @@ export const uniqueItem = (id: string): Item => ({ kind: 'mod', mod: id, rarity:
 
 /** uniques dealt so far, per game: each one shows up once a run (until the deck runs out) */
 const dealt = new WeakMap<Game, Set<string>>();
+/** how many uniques this run has dealt (the balance sim counts them) */
+export const dealtOf = (g: Game): number => dealt.get(g)?.size ?? 0;
 /** the next unique from this run's deck (seeded): `early` deals only the cheap ones */
 export function dealUnique(g: Game, early = false): Item {
   let s = dealt.get(g);

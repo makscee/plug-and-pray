@@ -54,12 +54,12 @@ describe('v2 floors', () => {
     }
   });
 
-  it('the stairs lie in a corner chunk, in front of them the boss room; you land in the middle', () => {
+  it('the stairs lie in an edge chunk, in front of them the boss room; you land in the middle', () => {
     for (let seed = 1; seed <= 20; seed++)
       for (let f = 0; f < LAST; f++) {
         const [cx, cy] = stairsChunk(seed, f);
-        expect(Math.abs(cx - f * STRIDE)).toBe(2);
-        expect(Math.abs(cy)).toBe(2);
+        expect(Math.abs(cx - f * STRIDE) + Math.abs(cy)).toBe(2);
+        expect(cx === f * STRIDE || cy === 0).toBe(true);
         const [x0, y0, x1, y1] = bossRoom(seed, f);
         const [sx, sy] = stairsAt(seed, f);
         expect(sx > x0 && sx < x1 + 1 && sy > y0 && sy < y1 + 1).toBe(true);

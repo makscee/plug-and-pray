@@ -17,7 +17,7 @@ import { ZONES, zoneFar } from './zones';
 
 export const MAX_SLOTS = 8;
 /** the chance a reliquary past the cradle keeps a unique (v2 rarity) */
-export const UNIQUE_SHELF = 0.35;
+export const UNIQUE_SHELF = 0.15; // v2 balance: ~3 uniques a run (bosses on 2 and 4 deal one each now that every floor has a reliquary)
 export type Cost = Partial<Record<Res, number>>;
 
 /** every price and yield in one place: by module tier 0, 1, 2 (uniques never sell or recycle) */
@@ -28,7 +28,7 @@ export const PRICES = {
   reroll: { bone: 1, glass: 1 } as Cost,
   /** v2 rarity: on top of a relic's shop price */
   rarity: { fine: { copper: 1 }, rare: { glass: 1, copper: 2 }, unique: { bone: 1, glass: 1, copper: 2, ichor: 1 } } as Partial<Record<string, Cost>>,
-  scrap: [{ bone: 1, copper: 1 }, { bone: 2, glass: 1, copper: 1 }, { bone: 2, glass: 2, copper: 1, ichor: 1 }] as Cost[],
+  scrap: [{ bone: 2, copper: 1 }, { bone: 2, glass: 1, copper: 1 }, { bone: 2, glass: 2, copper: 1, ichor: 1 }] as Cost[],
 };
 
 export function slotCost(g: Game): Cost {
@@ -108,7 +108,7 @@ verb('print', {
       pay(g, c);
       const made = ((e.data!.made as number) ?? 0) + 1;
       e.data!.made = made;
-      const it: Item = lootMod(rng(hash(g.seed, 51, e.id, made)), far, fam);
+      const it: Item = lootMod(rng(hash(g.seed, 51, e.id, made)), far, fam, !g.floor);
       addItem(g, it);
       g.events.push({ type: 'print', at: [e.x, e.y] });
       if (it.kind === 'mod') say(g, ['the printer spits out: ', { text: label(it), cmd: `install ${label(it)}` }]);
@@ -169,7 +169,7 @@ export function offers(g: Game, e: Entity): (Item | null)[] {
     const out: Item[] = [];
     for (let k = 0; k < 20 && out.length < 3; k++) {
       // a reliquary reaches one tier past its printer neighbours: that is what it is for
-      const it = lootMod(r, far + 2);
+      const it = lootMod(r, far + 2, undefined, !g.floor);
       // playtest r3: not one you carry or wear already
       const owned = (m: string) => g.player.inv.some((o) => o.kind === 'mod' && o.mod === m) || g.player.installed.some((o) => o.mod === m);
       if (it.kind === 'mod' && !out.some((o) => o.kind === 'mod' && o.mod === it.mod) && (k >= 14 || !owned(it.mod))) out.push(it);

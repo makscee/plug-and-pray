@@ -73,7 +73,7 @@ describe('rolls, attune and the economy (r1 econ)', () => {
     const g = newGame(3);
     startKit(g);
     expect(g.player.inv.find((i) => i.kind === 'res' && i.res === 'copper')).toMatchObject({ n: 2 });
-    expect(PRICES.scrap[0]).toEqual({ bone: 1, copper: 1 });
+    expect(PRICES.scrap[0]).toEqual({ bone: 2, copper: 1 }); // v2 r1 fun: recycling pays bone too
     const shop = { id: 999, kind: 'printer' as const, x: 0, y: 0, data: { far: 1, shop: true } };
     for (let k = 0; k < 5; k++) {
       shop.data = { far: 1, shop: true, rolls: k } as never;

@@ -23,11 +23,12 @@ export const kitOnly = (m: { params: Record<string, unknown> }): boolean => !!m.
 
 /** a module for a chunk this far out (in chunks): tiers open up with distance; uniques never roll.
  *  60% of rolls come from the zone's own tier (the furnace: its own kit), so each zone brings new modules */
-export function lootMod(r: Rng, far: number, family?: string): Item {
+export function lootMod(r: Rng, far: number, family?: string, cradle = false): Item {
   const z = zoneFar(far);
   const maxTier = ZONES[z].tier;
   // r2 econ: an aimed print (`print weapon`) rolls within one family
-  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique' && (z >= 3 || !FURNACE_KIT.includes(m.id)) && (family ? m.family === family : !kitOnly(m)));
+  // v2 balance (r1 pace): the cradle is melee only; the first ranged weapon is the choir nave's (its kit)
+  const pool = Object.values(MODS).filter((m) => m.tier <= maxTier && m.family !== 'unique' && (z >= 3 || !FURNACE_KIT.includes(m.id)) && (family ? m.family === family : !kitOnly(m)) && !(cradle && ranged(m)));
   const own = pool.filter((m) => (z >= 3 ? FURNACE_KIT.includes(m.id) : m.tier === maxTier));
   const m = r.pick(maxTier >= 1 && own.length && r.chance(0.6) ? own : pool);
   const item: Item = { kind: 'mod', mod: m.id };
@@ -44,6 +45,9 @@ export function lootMod(r: Rng, far: number, family?: string): Item {
   return item;
 }
 
+/** a weapon that reaches past arm's length (the cradle rolls none) */
+export const ranged = (m: { family: string; params: Record<string, unknown> }): boolean => m.family === 'weapon' && Number(m.params.range ?? 1.3) >= 3;
+
 /** per zone: the chance a rolled module is fine, and rare (v2 rarity: fine ×1.15 on its key number, rare ×1.3) */
 export const RARITY_ODDS: [number, number][] = [[0.12, 0.03], [0.2, 0.07], [0.25, 0.12], [0.28, 0.18], [0.3, 0.22]]; // v2 floors: the heart is a fifth
 
@@ -52,7 +56,7 @@ const held = (g: Game, it: Item) => it.kind === 'mod' && (g.player.inv.some((i) 
 /** a loot roll, rolled again (up to `tries` times, from `r`) while it is a module you already have
  *  (playtest r2 pace: psalm ×2, spool ×3; a find you hold reads as noise) */
 export function fresh(g: Game, it: Item, r: Rng, far: number, tries = 4): Item {
-  for (let k = 0; k < tries && held(g, it); k++) it = lootMod(r, far);
+  for (let k = 0; k < tries && held(g, it); k++) it = lootMod(r, far, undefined, !g.floor);
   return it;
 }
 
@@ -70,7 +74,7 @@ export function opening(seed: number): Record<Room, [number, number]> {
 const is = (c: Chunk, [cx, cy]: [number, number]) => c.cx === cx && c.cy === cy;
 
 /** the second weapons the cradle printer keeps beside it (one per seed) */
-export const SECOND = ['rivet-sling', 'choir-bell', 'censer-flail'];
+export const SECOND = ['choir-bell', 'censer-flail']; // v2 balance: melee only (the rivet sling reaches 4)
 
 /** which way a number is better: moved to src/core/mods.ts (v2 rarity reads it too) */
 export { BETTER };
@@ -156,7 +160,7 @@ export function fill(g: Game, c: Chunk): void {
   const again = rng(hash(g.seed, 14, c.cx, c.cy));
   for (let k = 0; k < loot; k++) {
     const [x, y] = cellIn(r, c, g.seed);
-    const it: Item = r.chance(0.55) ? lootMod(r, far) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 2) };
+    const it: Item = r.chance(0.55) ? lootMod(r, far, undefined, f === 0) : { kind: 'res', res: r.pick(RES.slice(0, 3)), n: r.int(1, 2) };
     spawn(g, { kind: 'item', x, y, item: again.chance(0.5) ? fresh(g, it, again, far) : it });
   }
   // enemies: the fight slice's own chunk hook (src/fight/spawn.ts)
