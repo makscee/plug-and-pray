@@ -1,0 +1,42 @@
+/* v2 fps: the scope's window and the big view (src/sight/fps.ts) */
+canvas.eye.scope { width: 240px; height: 135px; }
+.scope-hint { color: var(--dim); font-size: 16px; margin-top: 2px; }
+
+#bigview { position: fixed; inset: 0; z-index: 1; background: #000; overflow: hidden; cursor: crosshair; }
+#bigview[hidden] { display: none; }
+#bigview .big-pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+#bigview .big-over { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#bigview .big-lock { position: absolute; left: 50%; top: 72%; transform: translateX(-50%); padding: 3px 12px; color: var(--acc); background: #000b; border: 1px solid var(--acc); pointer-events: none; }
+#bigview .big-lock[hidden] { display: none; }
+#bigview .big-keys { position: absolute; left: 12px; top: 8px; white-space: nowrap; font-size: 16px; color: #c8b8a0; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+#bigview .big-keys .dashkey { font-weight: normal; display: none; }
+#bigview[data-mk='2'] .big-keys .dashkey { display: inline; }
+#bigview .big-boss { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: min(400px, calc(100vw - 32px)); text-align: center; color: #ff8a6c; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+#bigview .big-boss[hidden] { display: none; }
+#bigview .big-boss .bar { display: block; width: 100%; height: 12px; margin-top: 2px; border-color: #ff6a50; }
+#bigview .big-boss .bar b { background: #e03828; }
+#bigview .big-warn { position: absolute; left: 50%; top: 32%; transform: translateX(-50%); padding: 2px 12px; font-size: 26px; color: #ff6a50; background: #000a; border: 1px solid #ff6a50; white-space: nowrap; pointer-events: none; animation: bigwarn 0.5s steps(2) infinite; }
+#bigview .big-warn[hidden] { display: none; }
+@keyframes bigwarn { 50% { border-color: transparent; } }
+#bigview .big-hud { position: absolute; right: 12px; bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 6px 10px; background: #000a; border: 1px solid var(--line); pointer-events: none; font-size: 20px; }
+#bigview .big-hud .hp.low { color: var(--hurt); }
+#bigview .big-hud .w small { color: var(--dim); font-size: 16px; }
+#bigview .big-hud .w em { font-style: normal; color: var(--acc); }
+#bigview .big-hud .w.none { color: var(--hurt); }
+#bigview .bar { display: inline-block; width: 110px; height: 9px; border: 1px solid var(--dim); vertical-align: middle; }
+#bigview .bar b { display: block; height: 100%; background: var(--fg); }
+#bigview .hp .bar b { background: #d8483a; }
+#bigview .bar.cool { width: 70px; border-color: var(--acc); }
+#bigview .bar.cool b { background: var(--acc); }
+
+/* big: every window folds away but the console, which shrinks to a slim overlay bottom left */
+body.big .hpbar { display: none; }
+body.big #desk { z-index: 2; pointer-events: none; }
+body.big #desk > .win:not(.win-console) { display: none; }
+body.big #desk > .win-console { left: 12px !important; top: auto !important; bottom: 10px; width: 430px; background: #000a; border-color: #0000; box-shadow: none; pointer-events: auto; opacity: 0.9; }
+body.big #desk > .win-console .title, body.big #desk > .win-console .acts, body.big #desk > .win-console .foot { display: none; }
+body.big #desk > .win-console .out { height: 104px; font-size: 18px; }
+body.big #desk > .win-console.min .body { display: block; }
+/* an elite's warning sits under the boss bar */
+body.big .elite-warn { top: 52px; }
+body.big .shard-fanfare.live { padding-top: 64px; }

@@ -183,6 +183,7 @@ const ORB: Look = { geo: shotGeo, color: 0xffe0a0, glow: 0xffd070, y: 0.4, heat:
 const NAIL: Look = { geo: shotGeo, color: 0xd0e0ff, glow: 0xa0c0ff, y: 0.35, heat: 0.6 };
 
 function lookOf(e: Entity): Look | null {
+  if (e.data?.shot && e.data.kind) return null; // v2 shots with a kind: drawn glowing by placeHooks (src/sight/fps.ts)
   if (e.data?.shot) return e.data.foe ? ORB : NAIL; // the fight slice's projectiles
   if (e.enemy) return null; // enemies are sprites (spriteOf)
   if (e.kind === 'printer') return { geo: printerGeo, color: 0x5a4a40, glow: 0x803010, y: 0.45, heat: 0.4 };
@@ -400,7 +401,11 @@ function place(g: Game, mode: Mode, hidden = false, filter = ''): void {
     ents.add(o);
   }
   addPuffs(g, mode);
+  for (const f of placeHooks) f(g, ents, mode);
 }
+
+/** more things to draw around you each shot (v2: glowing bolts, src/sight/fps.ts): (game, group, mode) */
+export const placeHooks: ((g: Game, group: THREE.Group, mode: Mode) => void)[] = [];
 
 // ---- modes
 
@@ -453,6 +458,8 @@ export interface Shot {
   hidden?: boolean;
   /** the eye's filter: some things show on one filter only (marks.ts) */
   filter?: string;
+  /** a wide shot (the FPS eye's big view): px across, `res` px high, and `fov` is then degrees across */
+  w?: number;
 }
 
 const targets = new Map<string, THREE.WebGLRenderTarget>();
@@ -481,7 +488,7 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   grid.visible = mode === 'color' && dark > 0;
   gridLight.value = Math.min(1, dark * 2.5);
   // snap to half the camera's pixels: the wobble shows even on a big lens
-  snap.value = s.res / 2;
+  snap.value = s.w ? s.res : s.res / 2; // a wide view wobbles at its own pixels: wide is wobblier across already
   range.value = s.range;
   glow.position.set(p.x, 0.6, p.y);
   const ls = lamps(g);
@@ -504,15 +511,18 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   // heat and depth read black as nothing there; only colour eyes see the haze
   scene.background = mode === 'color' ? haze : black;
   scene.fog = mode === 'color' ? new THREE.Fog(HAZE, s.range * 0.6, s.range * 1.05) : null;
-  camera.fov = s.fov;
+  const w = s.w ?? s.res;
+  camera.aspect = w / s.res;
+  // a wide shot's fov runs across; three's runs up and down
+  camera.fov = s.w ? (2 * Math.atan(Math.tan((s.fov * Math.PI) / 360) / camera.aspect) * 180) / Math.PI : s.fov;
   camera.updateProjectionMatrix();
   camera.position.set(p.x, 0.5, p.y);
   camera.lookAt(p.x + Math.sin(p.dir), 0.5, p.y - Math.cos(p.dir));
   // depth is data, not colour: its target stores the bytes as written
-  const tk = `${s.res}:${mode === 'depth'}`;
+  const tk = `${w}x${s.res}:${mode === 'depth'}`;
   let rt = targets.get(tk);
   if (!rt) {
-    rt = new THREE.WebGLRenderTarget(s.res, s.res);
+    rt = new THREE.WebGLRenderTarget(w, s.res);
     if (mode !== 'depth') rt.texture.colorSpace = THREE.SRGBColorSpace;
     targets.set(tk, rt);
   }
@@ -547,12 +557,12 @@ export function shoot(g: Game, s: Shot): Uint8Array {
     for (const o of hide) o.visible = true;
   } else renderer.render(scene, camera);
   scene.overrideMaterial = null;
-  const buf = new Uint8Array(s.res * s.res * 4);
-  renderer.readRenderTargetPixels(rt, 0, 0, s.res, s.res, buf);
+  const buf = new Uint8Array(w * s.res * 4);
+  renderer.readRenderTargetPixels(rt, 0, 0, w, s.res, buf);
   renderer.setRenderTarget(null);
   // GL rows are bottom up
   const out = new Uint8Array(buf.length);
-  const row = s.res * 4;
+  const row = w * 4;
   for (let y = 0; y < s.res; y++) out.set(buf.subarray((s.res - 1 - y) * row, (s.res - y) * row), y * row);
   return out;
 }

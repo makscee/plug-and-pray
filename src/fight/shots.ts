@@ -16,10 +16,15 @@ export interface ShotData {
   /** who fired it: id and enemy type, for the ward's return and the death line */
   src: number;
   type?: string;
+  /** its look (src/fight/bolts.ts: bolt, slag, ...) and how close it must pass to hit; old shots have neither */
+  kind?: string;
+  r?: number;
 }
 
-export function fire(g: Game, o: { x: number; y: number; vx: number; vy: number; dmg: number; range: number; src: Entity | null; foe: boolean }): Entity {
+export function fire(g: Game, o: { x: number; y: number; vx: number; vy: number; dmg: number; range: number; src: Entity | null; foe: boolean; kind?: string; r?: number }): Entity {
   const data: ShotData = { shot: true, vx: o.vx, vy: o.vy, dmg: o.dmg, left: o.range, foe: o.foe, src: o.src?.id ?? 0, type: o.src?.enemy?.type };
+  if (o.kind) data.kind = o.kind;
+  if (o.r) data.r = o.r;
   return spawn(g, { kind: 'prop', x: o.x, y: o.y, data: data as unknown as Record<string, unknown> });
 }
 
@@ -39,7 +44,7 @@ export function tickShots(g: Game, dt: number): void {
       d.left -= (speed * dt) / n;
       if (!open(g, s.x, s.y) || d.left <= 0) gone = true;
       else if (d.foe) {
-        if (Math.hypot(s.x - g.player.x, s.y - g.player.y) < HIT) {
+        if (Math.hypot(s.x - g.player.x, s.y - g.player.y) < (d.r ?? HIT)) {
           const from = g.ents.find((e) => e.id === d.src) ?? { id: d.src, kind: 'enemy' as const, x: s.x, y: s.y, enemy: { type: d.type ?? 'seraph', hp: 0, readyAt: 0, data: {} } };
           hurt(g, d.dmg, from);
           gone = true;

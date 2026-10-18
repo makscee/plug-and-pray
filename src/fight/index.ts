@@ -17,6 +17,7 @@ import './eye';
 import './warn';
 import './shard';
 import './death';
+import { arm } from './bolts';
 
 const near = (a: Entity, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -299,3 +300,6 @@ tickHooks.push((g) => {
   const line: Line = [`${by === 'mite' ? 'bitten' : 'struck'}. you stop. `, { text: `go ${back} 3`, cmd: `go ${back} 3` }, ' back the way you came'];
   say(g, line);
 });
+
+// v2: foes shoot back from floor 3 on (src/fight/bolts.ts); after the roster above is registered
+arm();

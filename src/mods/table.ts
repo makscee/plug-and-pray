@@ -86,4 +86,8 @@ mods([
   { id: 'suture-moth', name: 'suture moth', family: 'body', power: 1, warm: 1, tier: 1, params: { mend: 4, recharge: 18 }, text: 'a moth that sews. it waits until you are torn.' },
   { id: 'rime-hood', name: 'rime hood', family: 'body', power: 1, warm: 1, tier: 1, params: { heatproof: 1, chill: 1 }, text: 'frost that keeps a head cool in the furnace, and cold everywhere else.' },
   { id: 'thorn-mantle', name: 'thorn mantle', family: 'body', power: 1, warm: 1, tier: 1, params: { thorns: 1 }, text: 'whatever bites you bleeds for it.' },
+  // v2 fps (floors 3 and 4's kits): eyes that go big (`big`, key v): mouse-look, click to shoot, wasd to strafe.
+  // Their own keys: big (the mark: 1, 2), wide (px across; res is px high), fov (degrees across), speed (cells/s)
+  { id: 'pilgrim-scope', name: 'pilgrim scope', family: 'camera', power: 2, warm: 1.5, tier: 3, params: { big: 1, res: 108, wide: 192, colors: 0, fps: 60, fov: 90, range: 10, speed: 2.6, filter: 'color' }, text: 'a soldier-saint\'s eye. v: it fills your sight; the mouse turns you, a click shoots.' },
+  { id: 'martyr-scope', name: 'martyr scope', family: 'camera', power: 3, warm: 1.5, tier: 3, params: { big: 2, res: 180, wide: 320, colors: 0, fps: 60, fov: 110, range: 13, speed: 2.9, filter: 'color' }, text: 'it saw its death coming and stepped aside. wider, sharper; shift dashes, hits marked.' },
 ]);
