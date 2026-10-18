@@ -8,6 +8,7 @@ import { exec } from '../core/verbs';
 import type { Game } from '../core/types';
 import { middle, rooms } from './gen';
 import { bossAt, bossRoom, FLOORS, goDown, onBossDown, stairsAt, stairsChunk } from './floors';
+import { PER_FLOOR, PIECE_MID, piecesOf } from './pieces';
 import { clean } from '../tune/start';
 import { opening } from './spawn';
 
@@ -68,6 +69,23 @@ const STAGES: Record<string, (g: Game) => void> = {
     if (f) goDown(g, f);
     kit(g, ['vidicon-tube', 'stepper-relay', 'map-spool', ...(f ? ['censer-flail', 'frost-coat'] : ['spark-finger'])]);
     say(g, `staged: floor ${f + 1}, ${FLOORS[f].name}.`);
+  },
+  // v2 variety: in front of one of the floor's set pieces (&k=0 or 1), looking at its centrepiece
+  piece(g) {
+    const f = Math.min(floorParam(), FLOORS.length - 2);
+    if (f) goDown(g, f);
+    const k = Number(params?.get('k') ?? 0) || 0;
+    const [id, cx, cy] = piecesOf(g.seed, f)[k % PER_FLOOR];
+    chunk(g, cx, cy);
+    const [mx, my] = [cx * CHUNK + PIECE_MID[0] + 0.5, cy * CHUNK + PIECE_MID[1] + 0.5];
+    const spots: [number, number][] = [];
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) if (Math.hypot(dx, dy) >= 2.5 && Math.hypot(dx, dy) <= 3.6 && open(g, mx + dx, my + dy)) spots.push([mx + dx, my + dy]);
+    const [sx, sy] = spots.sort((a, b) => b[1] - a[1] || Math.abs(a[0] - mx) - Math.abs(b[0] - mx))[0] ?? [mx, my + 2];
+    goTo(g, sx, sy);
+    g.player.dir = Math.atan2(mx - sx, -(my - sy));
+    kit(g, ['pilgrim-scope', 'stepper-relay', 'map-spool', 'spark-finger', 'halo']);
+    for (let y = cy * CHUNK; y < (cy + 1) * CHUNK; y++) for (let x = cx * CHUNK; x < (cx + 1) * CHUNK; x++) g.seen.add(`${x},${y}`);
+    say(g, `staged: ${id}, a set piece of floor ${f + 1}.`);
   },
   // the boss room's doorway, the boss not yet awake
   boss(g) {

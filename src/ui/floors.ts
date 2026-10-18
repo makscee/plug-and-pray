@@ -6,7 +6,7 @@
 import { frameHooks } from '.';
 import type { Game } from '../core/types';
 import { mapHooks } from '../world/mind';
-import { bossDown, FLOORS, floorOf, STAIRS, type Stairs } from '../world/floors';
+import { bossDown, FLOORS, floorOf, STAIRS, WANTS, type Stairs } from '../world/floors';
 import './floors.css';
 
 interface Seen {
@@ -32,7 +32,7 @@ frameHooks.push((g) => {
     s.floor = f;
     s.down = bossDown(g, f);
     const F = FLOORS[f];
-    banner('descend', `<div class="floor-drop"></div><div class="floor-card"><p class="floor-n">floor ${f + 1} of ${FLOORS.length}</p><p class="floor-name">${F.name}</p><p class="floor-gimmick">${F.gimmick}</p></div>`, 5200);
+    banner('descend', `<div class="floor-drop"></div><div class="floor-card"><p class="floor-n">floor ${f + 1} of ${FLOORS.length}</p><p class="floor-name">${F.name}</p><p class="floor-gimmick">${F.gimmick}</p>${WANTS[f] ? `<p class="floor-wants">${WANTS[f]}</p>` : ''}</div>`, 5200);
     return;
   }
   const down = bossDown(g, f);

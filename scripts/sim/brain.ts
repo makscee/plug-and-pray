@@ -15,6 +15,7 @@ import { offeringOf } from '../../src/end/timeline';
 import * as zones from '../../src/world/zones';
 import * as floors from '../../src/world/floors';
 import * as altar from '../../src/world/altar';
+import * as kit from '../../src/world/cache';
 import { dpsOf } from '../../src/world/zonemath';
 import { startKit } from '../../src/tune/start';
 import { light } from '../../src/sight/lamp';
@@ -144,7 +145,7 @@ function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantRead
       const d0 = p('damage', 1);
       const dmg = deep ? 0.6 * d0 + 0.4 * Math.max(d0 * 0.2, d0 - 1.2) : d0;
       let v = (dmg / p('cooldown', 1)) * 40;
-      if (param(it, 'sweep', false) && zone >= 1) v *= 1.4;
+      if (param(it, 'sweep', false)) v *= 1.4; // v2 variety: the cradle swarms too (the choir bell)
       if (p('glow') && zone === 2) v += 100;
       // aimed: you line up, but only they reach a seraph lamp (and the furnace saint) down its own line
       return (param(it, 'aim', 'auto') === 'aimed' ? v * 0.6 + (zone >= 1 ? p('range', 6) * 3 : 0) : v + p('range', 1.3) * 2) - loud;
@@ -153,7 +154,8 @@ function worth0(g: Game, it: { mod: string; roll?: any }, zone: number, wantRead
       // the rime hood: worth it in the furnace, a chill anywhere else (it is taken off on the way home)
       const inFurnace = zones.zoneAt(g.player.x, g.player.y) === 3 || (zone === 3 && zones.zoneAt(g.player.x, g.player.y) === 2);
       const heat = inFurnace ? p('heatproof') * 200 : p('chill') ? -60 : 0;
-      return p('hp') * 5 + p('regen') * (zone === 2 ? 60 : 120) + p('armour') * 45 + (param(it, 'ward', false) ? 25 : 0) + p('mend') * 6 + p('thorns') * 30 + heat + p('haste') * 60 - loud;
+      // armour against the cradle's and the nave's half-hp bites stops most of each (the frost coat)
+      return p('hp') * 5 + p('regen') * (zone === 2 ? 60 : 120) + p('armour') * (zone <= 1 ? 80 : 45) + (param(it, 'ward', false) ? 25 : 0) + p('mend') * 6 + p('thorns') * 30 + heat + p('haste') * 60 - loud;
     }
     case 'power':
       return 0; // power modules are chosen for what they let you run
@@ -547,6 +549,9 @@ export function play(seed: number, o: Opts): Run {
       why = 'mend before the keeper';
       return 2;
     }
+    // v2 variety: the floor's kit cache (src/world/cache.ts): two free picks by worth, more for bone when it pays, the rest to scrap
+    const kc = kit.cacheNear(g);
+    if (kc) return cachePick(kc);
     // install / remove toward the best loadout
     const zt = targetZone();
     // r2 decide: a carried reader reads for a bone; installing it is for when bone runs out
@@ -705,6 +710,25 @@ export function play(seed: number, o: Opts): Run {
       return offer.cmd;
     }
     return null;
+  }
+  /** the kit cache's best pick by worth for the floor (a second eye no better than the one held is worth nothing), or scrap */
+  function cachePick(c: kit.Cache): string {
+    const zt = Math.max(targetZone(), zoneHere());
+    const held = [...P.installed, ...P.inv].filter((i): i is any => 'mod' in i);
+    const eyeBest = Math.max(0, ...held.filter((i) => MODS[i.mod].family === 'camera').map((i) => worth(g, i, zt, false)));
+    const val = (it: { mod: string }) => {
+      const fam = MODS[it.mod].family;
+      if (fam === 'power') return param<number>(it, 'power', 0) * 25;
+      // the floor's headline (an FPS eye on 3 and 4) is what a person takes first
+      const w = worth(g, it, zt, false) + (it.mod === floors.KIT[g.floor]?.[0] ? 60 : 0);
+      return fam === 'camera' ? w - eyeBest : w;
+    };
+    const best = c.offer.map((it, k) => ({ k, v: 'mod' in it ? val(it) : 0 })).sort((a, b) => b.v - a.v)[0];
+    const cost = kit.costOf(c);
+    const spare = o.style === 'careful' ? 1 : 0;
+    why = 'bone ' + resOf(g, 'bone') + ' ' + c.offer.map((it, k) => ('mod' in it ? `${it.mod}:${Math.round(val(it))}` : '') + (k === best?.k ? '*' : '')).join(' ');
+    if (best && (cost === 0 || (resOf(g, 'bone') >= cost + spare && best.v >= 40))) return 'pick ' + (best.k + 1);
+    return 'scrap';
   }
   function machineOffers(m: Entity): { cmd: string; ok: boolean }[] {
     const out: { cmd: string; ok: boolean }[] = [];

@@ -18,6 +18,7 @@ import './warn';
 import './death';
 import './bosses';
 import './unarmed';
+import './dodge';
 import { arm } from './bolts';
 
 const near = (a: Entity, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);

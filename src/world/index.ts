@@ -13,3 +13,6 @@ import './events';
 import './secrets';
 import './finds';
 import './bosswire';
+import './cache';
+import './piecefill';
+import './gimmicks';

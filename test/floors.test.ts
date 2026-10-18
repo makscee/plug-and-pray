@@ -4,6 +4,7 @@ import { newGame, strike, tick } from '../src/core/game';
 import { CHUNK, Cell, cell, chunk, open } from '../src/core/grid';
 import { exec, VERBS } from '../src/core/verbs';
 import type { Game } from '../src/core/types';
+import { cacheNear } from '../src/world/cache';
 import { bossAt, bossDown, bossRoom, FLOORS, goDown, inside, KIT, LAST, onBossDown, origin, stairsAt, stairsChunk, STRIDE } from '../src/world/floors';
 import { variantOf } from '../src/fight/bosses';
 
@@ -91,9 +92,9 @@ describe('v2 floors', () => {
     expect(g.floor).toBe(1);
     expect([g.player.x, g.player.y]).toEqual(origin(1));
     expect(text(g)).toMatch(/FLOOR 2: THE CHOIR NAVE/);
-    // the floor above is left behind; its kit lies where you land
+    // the floor above is left behind; its kit waits in a cache where you land (src/world/cache.ts)
     expect(g.ents.every((e) => Math.round(e.x / CHUNK / STRIDE) === 1)).toBe(true);
-    for (const m of KIT[1]) expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === m && Math.hypot(e.x - g.player.x, e.y - g.player.y) < 6), m).toBe(true);
+    expect(cacheNear(g)?.offer.map((i) => (i.kind === 'mod' ? i.mod : '')).sort()).toEqual([...KIT[1]].sort());
   });
 
   it('the heart keeper\'s death is the thaw', () => {
