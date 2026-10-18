@@ -151,7 +151,13 @@ export const resetMapTold = () => (toldClick = new WeakSet());
 export interface Fill {
   size: () => [number, number, number];
   hz: number;
+  /** where you sit down the picture, 0..1 (the middle when left out) */
+  at?: number;
 }
+
+/** a map walks you where you click: one that takes clicks, the screen-filling one, and (v2r2 ux: the first eye
+ *  took click-to-walk away and felt like a loss) any map until you first go down: the surveyor's map is floor 2's */
+export const walksOnClick = (g: Game, inst: Inst): boolean => !!param(inst, 'click', false) || !g.floor;
 
 export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => number, fill?: Fill): View {
   const all = Math.round(param<number>(inst, 'span', 33));
@@ -165,17 +171,18 @@ export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => num
   const canvas = document.createElement('canvas');
   canvas.className = 'map';
   canvas.dataset.detail = String(detail);
-  if (!param(inst, 'click', false) && !fill) canvas.style.cursor = 'default';
+  const walks = () => !!fill || walksOnClick(game, inst);
+  if (!walks()) canvas.style.cursor = 'default';
   el.append(canvas);
   const ctx = canvas.getContext('2d')!;
   let next = 0;
   let [ox, oy] = [0, 0];
   canvas.addEventListener('click', (ev) => {
     // v2 (Maks 10-18): clicking to walk is an upgrade; the map spool only remembers
-    if (!param(inst, 'click', false) && !fill) {
+    if (!walks()) {
       if (toldClick.has(game)) return;
       toldClick.add(game);
-      return say(game, ['the map spool only remembers; it takes no clicks. the buttons in the console walk you (', { text: 'where', cmd: 'where' }, '); a surveyor\'s map walks you where you click.']);
+      return say(game, ['below the cradle the map spool only remembers; it takes no clicks. the buttons in the console walk you (', { text: 'where', cmd: 'where' }, '); a surveyor\'s map walks you where you click.']);
     }
     const r = canvas.getBoundingClientRect();
     const x = ox + Math.floor(((ev.clientX - r.left) / r.width) * span);
@@ -189,11 +196,13 @@ export function mapView(el: HTMLElement, inst: Inst, game: Game, big?: () => num
       const down = fill ? m : n;
       if (want !== px || n !== span || down !== rows) [px, span, rows, next, canvas.width, canvas.height] = [want, n, down, 0, n * want, down * want];
       canvas.dataset.cells = String(span);
+      const cur = walks() ? '' : 'default';
+      if (canvas.style.cursor !== cur) canvas.style.cursor = cur;
       if (g.t < next) return;
       next = g.t + (fill ? 1 / fill.hz : mapHooks.fast.some((f) => f(g)) ? 1 / 12 : 0.25);
       const p = g.player;
       ox = Math.floor(p.x) - (span >> 1);
-      oy = Math.floor(p.y) - (rows >> 1);
+      oy = Math.floor(p.y) - (fill?.at !== undefined ? Math.round(rows * fill.at) : rows >> 1);
       // where this picture's top-left cell is, for what draws over it (the backdrop's radar)
       canvas.dataset.ox = String(ox);
       canvas.dataset.oy = String(oy);

@@ -6,7 +6,7 @@ import { CHUNK, Cell, chunk, setCell } from '../src/core/grid';
 import type { Game } from '../src/core/types';
 import { generate, rooms, spot } from '../src/world/gen';
 import { CARDS } from '../src/world/cards';
-import { FURNACE_KIT, lootMod, opening, SECOND } from '../src/world/spawn';
+import { eyeChunk, FURNACE_KIT, lootMod, opening, SECOND } from '../src/world/spawn';
 import { MODS } from '../src/core/mods';
 import { rng } from '../src/core/rng';
 
@@ -122,7 +122,8 @@ describe('the world', () => {
       const inChunk = (e: { x: number; y: number }, [cx, cy]: [number, number]) => Math.floor(e.x / CHUNK) === cx && Math.floor(e.y / CHUNK) === cy;
       expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === 'card-reader' && inChunk(e, o.reader))).toBe(true);
       expect(g.ents.some((e) => e.item?.kind === 'card' && inChunk(e, o.reader))).toBe(true);
-      expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === 'pinhole-eye' && inChunk(e, o.eye))).toBe(true);
+      // v2r2 ux: the first eye two chunks out on the eye's side, made with the landing
+      expect(g.ents.some((e) => e.item?.kind === 'mod' && e.item.mod === 'pinhole-eye' && inChunk(e, eyeChunk(seed)))).toBe(true);
       const pr = g.ents.find((e) => e.kind === 'printer' && !e.data?.shop && inChunk(e, o.printer))!;
       expect(pr).toBeTruthy();
       expect(g.ents.some((e) => e.item?.kind === 'mod' && SECOND.includes(e.item.mod) && Math.hypot(e.x - pr.x, e.y - pr.y) < 1)).toBe(true);

@@ -73,7 +73,7 @@ describe('secrets', () => {
     const g = newGame(3);
     // not the cradle's: the scratched wall beside it names it, so a lattice eye would find it too
     const [sx, sy] = opening(3).shop;
-    const s = world(g).find((x) => x.kind === 'hollow' && (Math.floor(x.x / 16) !== sx || Math.floor(x.y / 16) !== sy))!;
+    const s = world(g).find((x) => x.kind === 'hollow' && !x.eye && (Math.floor(x.x / 16) !== sx || Math.floor(x.y / 16) !== sy))!;
     face(g, s);
     wear(g, 'dawn-eye', 'lattice-eye', 'spark-finger');
     run(g, 0.2);

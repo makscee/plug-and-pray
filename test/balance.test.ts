@@ -19,12 +19,13 @@ describe('v2 balance', () => {
     expect(e.enemy!.data.noticed).toBe(true);
     e.enemy!.hp = BOSS['boss-warden'].hp * 0.8; // still in phase 0: its line is full hp
     const p = g.player;
-    // step far off: it starts nothing new and heals once LEASH_HEAL s pass
+    // step far off: it starts nothing new and mends once LEASH_HEAL s pass
     p.x += LEASH + 3;
     e.enemy!.data.windup = 0;
     run(g, LEASH_HEAL + 1);
     expect(e.enemy!.data.windup).toBeFalsy();
-    expect(e.enemy!.hp).toBe(BOSS['boss-warden'].hp);
+    // v2r2 fun: 15% back, never past its phase line
+    expect(e.enemy!.hp).toBe(Math.round(BOSS['boss-warden'].hp * 0.95));
   });
 
   it('the cradle rolls no ranged weapon; the nave does', () => {

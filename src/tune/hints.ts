@@ -5,7 +5,7 @@
 // open floor, so a button walks the first straight leg of a real way there, never into a wall.
 
 import { active, def, label, param, slotsUsed } from '../core/mods';
-import { cells, dist, say, tickHooks } from '../core/game';
+import { cells, dist, itemName, say, tickHooks } from '../core/game';
 import { canRead, carriesReader } from '../world/vectors';
 import { bossDown, floorAt, FLOORS, floorOf, LAST, STAIRS, stairsAt } from '../world/floors';
 import { lightest, makeRoom } from '../body';
@@ -89,6 +89,7 @@ if (go)
 
 function toward(g: Game, mod: string, sound: string): Line | null {
   const p = g.player;
+  if (mod === 'pinhole-eye' && !eyeHinted(g) && ![...p.inv, ...p.installed].some((i) => 'mod' in i && i.mod === mod)) return ['an eye glints somewhere out on this floor. walk; the map will catch it.'];
   // v2r1 pace: a second card reader lies about as loot; the one with the card beside it comes first
   const card = (e: Entity) => g.ents.some((o) => o.item?.kind === 'card' && dist(o, e) < 1);
   const e = g.ents
@@ -96,6 +97,9 @@ function toward(g: Game, mod: string, sound: string): Line | null {
     .sort((a, b) => +card(b) - +card(a) || dist(a, p) - dist(b, p))[0];
   // playtest r3: one you wear counts too (it pointed at a second dawn eye)
   if (!e || [...p.inv, ...p.installed].some((i) => 'mod' in i && i.mod === mod)) return null;
+  // v2r2 ux: the first eye lies sealed behind a cracked wall: the way is to the wall, and the act is break
+  const sealed = e.data?.sealed as [number, number] | undefined;
+  if (sealed) return toCell(g, sealed[0] + 0.5, sealed[1] + 0.5, `${sound}, sealed behind a cracked wall`, 'break');
   return toCell(g, e.x, e.y, sound);
 }
 
@@ -110,6 +114,16 @@ function toCell(g: Game, x: number, y: number, sound: string, act = 'take'): Lin
   const [ax, n] = way.long(g, x, y);
   const cmd = active(g, 'gait').some((i) => param(i, 'go', false)) ? `go ${ax} ${n}` : `crawl ${ax}`;
   return [`${sound}, ${cells(Math.round(Math.hypot(dx, dy)))} ${word}. first: `, { text: cmd, cmd }];
+}
+
+/** v2r2 fun + ux: the first eye is named only after this long (game s), or once you walk within EYE_NEAR of it,
+ *  so the map-only start lasts a while: you walk, click the map and hear hearts before anything points the way */
+export const EYE_HINT = 60;
+export const EYE_NEAR = 12;
+const firstEye = (g: Game): Entity | undefined => g.ents.find((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === 'pinhole-eye' && !e.data?.mimic);
+export function eyeHinted(g: Game): boolean {
+  const e = firstEye(g);
+  return !!g.floor || g.t >= EYE_HINT || !e || dist(e, g.player) < EYE_NEAR;
 }
 
 /** what the wake hint points at (the map marks them too, while they lie there) */
@@ -146,7 +160,7 @@ if (take)
       // v2r1 ux: dragging was never taught; the first module you pick up says it once
       if (g.player.inv.filter((i) => i.kind === 'mod').length > mods && !toldDrag.has(g)) {
         toldDrag.add(g);
-        say(g, 'drag it from the inventory onto the modules grid to install it, or onto an installed module to swap the two. a click works too.');
+        say(g, 'drag it from the inventory onto the modules grid to install it, or onto an installed module to swap the two. a click shows what it does; a double-click installs it.');
       }
       const now = g.player.inv.filter((i) => i.kind === 'card' || (i.kind === 'mod' && i.mod === 'card-reader')).length;
       const read = VERBS.read;
@@ -156,6 +170,16 @@ if (take)
         say(g, [`a card to read; the carried reader wants a bone. `, ...readFix(g)]);
     },
   };
+
+const toldEye = new WeakSet<Game>();
+tickHooks.push((g) => {
+  if (g.floor || toldEye.has(g) || !eyeHinted(g)) return;
+  toldEye.add(g);
+  const e = firstEye(g);
+  if (!e || g.player.installed.some((i) => def(i).family === 'camera') || g.player.inv.some((i) => i.kind === 'mod' && def(i).family === 'camera')) return;
+  const line = toward(g, 'pinhole-eye', '◆ the map has caught a glint: your first eye');
+  if (line) say(g, line);
+});
 
 tickHooks.push((g) => {
   if (told.has(g) || !active(g, 'gait').some((i) => param(i, 'go', false))) return;
@@ -195,6 +219,9 @@ function after(g: Game): Line[] {
   const hasReader = [...p.inv, ...p.installed].some((i) => 'mod' in i && i.mod === 'card-reader');
   if (!hasReader && (g.floor ?? 0) < 3 && !g.ents.some((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === 'card-reader'))
     out.push(['no card reader: ', { text: 'print mind', cmd: 'print mind' }, ' at a printer.']);
+  // v2r2 ux: a rare boss drop was left on the floor while `where` pointed past it
+  const r = rareNear(g);
+  if (r) out.push(toCell(g, r.x, r.y, `✦ the ${itemName(r.item!)} lies where it fell`));
   out.push(wayDown(g));
   const v = g.vectors.filter((v) => !v.found && v.what !== 'way down').sort((a, b) => dist(a, p) - dist(b, p))[0];
   if (v) out.push(toCell(g, v.x, v.y, `the ${v.what}`));
@@ -207,6 +234,15 @@ function after(g: Game): Line[] {
   return out;
 }
 
+
+/** a rare or unique module lying near on this floor, seen, not a mimic: the nearest */
+export function rareNear(g: Game): Entity | undefined {
+  const p = g.player;
+  const f = floorOf(g);
+  return g.ents
+    .filter((e) => e.kind === 'item' && e.item?.kind === 'mod' && (e.item.rarity === 'rare' || e.item.rarity === 'unique') && !e.data?.mimic && floorAt(e.x) === f && dist(e, p) < 25 && g.seen.has(`${Math.floor(e.x)},${Math.floor(e.y)}`))
+    .sort((a, b) => dist(a, p) - dist(b, p))[0];
+}
 
 /** v2 floors: the floor's goal, always: the open stairs, the known way down past its keeper, or a rough word */
 function wayDown(g: Game): Line {
@@ -272,6 +308,10 @@ export function goalLine(g: Game): string {
   if (!f && !p.installed.some((i) => def(i).family === 'camera')) {
     if (held && held.kind === 'mod') return `${n}: install the ${label(held)}: your first sight`;
     const eye = g.ents.find((e) => e.kind === 'item' && e.item?.kind === 'mod' && e.item.mod === 'pinhole-eye' && !e.data?.mimic);
+    const sealed = eye?.data?.sealed as [number, number] | undefined;
+    if (sealed && Math.abs(Math.floor(p.x) - sealed[0]) + Math.abs(Math.floor(p.y) - sealed[1]) <= 1)
+      return `${n}: your first eye is sealed in the wall here: stand by the crack and break it (any weapon)`;
+    if (eye && !eyeHinted(g)) return `${n}: you have no eye. walk out: click the map or use the arrows; an eye lies somewhere here`;
     if (eye) {
       const w = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(eye.x - p.x, -(eye.y - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8].toUpperCase();
       return `${n}: you have no eye. find one: the ◆ on the map, ${cells(Math.round(Math.hypot(eye.x - p.x, eye.y - p.y)))} ${w} (where)`;
@@ -281,6 +321,11 @@ export function goalLine(g: Game): string {
   const word = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(sx - p.x, -(sy - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8].toUpperCase();
   const name = STAIRS[FLOORS[f].stairs!].name;
   const far = cells(Math.round(Math.hypot(sx - p.x, sy - p.y)));
+  const rare = bossDown(g) ? rareNear(g) : undefined;
+  if (rare) {
+    const w = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'][Math.round((((Math.atan2(rare.x - p.x, -(rare.y - p.y)) * 180) / Math.PI + 360) % 360) / 45) % 8].toUpperCase();
+    return `${n}: ✦ take the ${itemName(rare.item!)} where it fell, ${cells(Math.round(dist(rare, p)))} ${w}; then ${name}, ${far} ${word}`;
+  }
   if (bossDown(g)) return `${n}: ${name} is open, ${far} ${word}: descend`;
   if (keeperDoor.at(g, 2.5)) return `${n}: the keeper's door. ${keeperDoor.ready(g, f) ? 'you look ready' : 'you are not ready: where says why'}`;
   if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`)) return `${n}: get past the keeper to the way down (stairs: ${name}, ${far} ${word})`;

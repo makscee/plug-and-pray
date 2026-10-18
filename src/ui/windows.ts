@@ -152,7 +152,8 @@ export function rank(el: HTMLElement): number {
     const eye = Number(el.dataset.eye ?? 3);
     return eye < 2 ? 0.1 + eye * 0.2 : eye === 2 ? 0.35 : el.dataset.layer ? 0.55 : 0.6;
   }
-  if (el.querySelector('canvas.map')) return 1;
+  // v2r2 ux: in a boss fight the map outranks everything (it docked at 1280x720 in the furnace keeper's room)
+  if (el.querySelector('canvas.map')) return document.body.classList.contains('boss-on') ? 0.05 : 1;
   return el.querySelector('.foot button') ? 2 : 3;
 }
 
@@ -295,20 +296,24 @@ export function restore(el: HTMLElement): void {
   dock();
 }
 
-/** lay the minimised windows out along the bottom, left to right, around the windows already there */
+/** lay the minimised windows out from the bottom up, around the windows already there, only in the side columns
+ *  (v2r2 ux: they spilled across the view's middle band, where the foes are); with no room, they stack in the left one */
 function dock(): void {
   const mins = [...document.querySelectorAll<HTMLElement>('.win.min')];
   mins.forEach((m) => (m.dataset.tidy = '1'));
+  const mid = middle();
+  const band = { left: mid.left, top: 0, right: mid.right, bottom: innerHeight };
+  const column = { left: innerWidth - COLUMN, top: 0, right: innerWidth, bottom: innerHeight };
   for (const m of mins) {
     const { width: w, height: h } = m.getBoundingClientRect();
-    const others = rects(m);
-    let spot: [number, number] | null = null;
-    for (let y = innerHeight - h - 6; y >= TOP && !spot; y -= h + 4)
-      for (let x = 16; x + w <= innerWidth - 8; x += 8)
-        if (!others.some((r) => hit(x, y, w, h, r, 3))) {
-          spot = [x, y];
-          break;
-        }
+    const find = (others: Rect[]) => {
+      for (let y = innerHeight - h - 6; y >= TOP; y -= h + 4)
+        for (let x = 16; x + w <= innerWidth - 8; x += 8) if (!others.some((r) => hit(x, y, w, h, r, 3))) return [x, y] as [number, number];
+      return null;
+    };
+    // no room left: over an open module window at the side (never over another chip, the console or the middle)
+    const chips = [...document.querySelectorAll<HTMLElement>('.win.min, .win-console')].filter((o) => o !== m && !o.dataset.tidy).map((o) => o.getBoundingClientRect());
+    const spot = find([...rects(m), band]) ?? find([...chips, band, column]);
     moveTo(m, spot ?? [16, innerHeight - h - 6]);
     delete m.dataset.tidy;
   }
@@ -358,8 +363,9 @@ function layout(all: boolean): void {
  * shortens its output under 800 px tall) */
 export const consoleAt = (): [number, number] => [Math.max(16, innerWidth / 2 - 240), Math.max(TOP, innerHeight - (innerHeight < 800 ? 262 : 330))];
 
-/** the console on screen: back to its own spot unless you dragged it, else just inside the edges */
-function homeConsole(): void {
+/** the console on screen: back to its own spot unless you dragged it, else just inside the edges
+ *  (v2r2 ux: its button rows grew it 20 px off the bottom at 1280x800; the console calls it as it grows) */
+export function homeConsole(): void {
   const con = document.querySelector<HTMLElement>('.win-console');
   if (!con) return;
   if (!con.dataset.moved) moveTo(con, consoleAt());
@@ -374,8 +380,8 @@ export function tidy(): void {
 }
 
 /** r4: the map docked by the game (a burst of installs) comes back out, docking text-only windows in its way */
-function mapBack(): void {
-  for (const w of modWins()) if (rank(w) === 1 && w.classList.contains('min') && !w.dataset.hand && !w.dataset.moved) promote(w);
+export function mapBack(): void {
+  for (const w of modWins()) if (w.querySelector('canvas.map') && w.classList.contains('min') && !w.dataset.hand && !w.dataset.moved) promote(w);
 }
 
 // a smaller window (devtools, un-maximising): the console back on screen first, then every module

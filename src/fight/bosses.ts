@@ -208,7 +208,7 @@ const charge = (o: { windup: number; cells: number; speed: number; rest: number;
 const slam = (o: { r: number; windup: number; rest: number; share?: number; move?: string; warn?: string }): Atk => ({
   id: 'slam',
   move: o.move ?? 'rears up to slam',
-  warn: o.warn ?? `it rears up: it will slam everything within ${o.r} cells. step out.`,
+  warn: o.warn ?? `it rears up: it will slam everything within ${o.r} cells. step back.`,
   windup: o.windup,
   rest: o.rest,
   when: (_g, _e, r) => r < o.r + 1.5,
@@ -494,7 +494,7 @@ boss({
   hint: 'she calls mites and stomps. thin the mites, keep off her stomp, bite her between.',
   turn: ['the mite queen shrieks. the brood comes faster.'],
   phases: [
-    [brood({ type: 'mite', n: 2, cap: 2, windup: 1, rest: 1.5 }), slam({ r: 1.7, windup: 1, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.7 cells. step out.' }), volley({ n: 1, spread: 0, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
+    [brood({ type: 'mite', n: 2, cap: 2, windup: 1, rest: 1.5 }), slam({ r: 1.7, windup: 1, rest: 1.6, move: 'rears to stomp', warn: 'the queen rears: her stomp reaches 1.7 cells. step back.' }), volley({ n: 1, spread: 0, speed: 3.2, windup: 0.8, rest: 1.4, times: 2, every: 0.6, move: 'spits acid', warn: 'she spits slow acid at you: sidestep it.' })],
     [brood({ type: 'mite', n: 2, cap: 3, windup: 0.9, rest: 1.2 }), slam({ r: 2, windup: 1, rest: 1.2, move: 'rears to stomp' }), volley({ n: 3, spread: 0.6, speed: 3.4, windup: 0.7, rest: 1.2, move: 'spits acid' })],
   ],
 });
@@ -677,8 +677,13 @@ function dodge(g: Game, e: Entity, dt: number): boolean {
 
 /** past this many cells from you, or with you this far from its post, a boss starts nothing new */
 export const LEASH = 10;
-/** and after this long away it heals back to its phase line */
-export const LEASH_HEAL = 6;
+/** and after this long with you out of its room it heals back to its phase line (v2r2 ux: a dodge out of the
+ *  door read as a retreat; 8 s out, not a step) */
+export const LEASH_HEAL = 8;
+/** how much of its hp a boss mends after a retreat (once per retreat), never past its phase line */
+export const LEASH_MEND = 0.15;
+/** out of its room: farther than this from its post on either axis (the rooms are 13 and 14 across) */
+const ROOM_HALF = 7.5;
 
 function bossAi(g: Game, e: Entity, dt: number): void {
   const d = data(e);
@@ -739,13 +744,20 @@ function bossAi(g: Game, e: Entity, dt: number): void {
     }
     const line = phaseOf(e) ? def.at[phaseOf(e) - 1] : 1;
     const max = Number(d.maxHp ?? def.hp);
-    if (g.t - Number(d.awayAt) > LEASH_HEAL && e.enemy!.hp < line * max) {
-      e.enemy!.hp = Math.round(line * max);
-      say(g, `${def.name} gathers itself, whole again to ${Math.round(line * 100)}%.`);
+    const out = Math.max(Math.abs(p.x - hx), Math.abs(p.y - hy)) > ROOM_HALF;
+    if (!out) d.outAt = 0;
+    else if (!d.outAt) d.outAt = g.t;
+    // v2r2 fun: once a retreat, and only 15% back, up to its phase line: leaving keeps most of your progress
+    if (d.outAt && g.t - Number(d.outAt) > LEASH_HEAL && g.t - Number(d.awayAt) > LEASH_HEAL && !d.healed && e.enemy!.hp < line * max) {
+      d.healed = true;
+      e.enemy!.hp = Math.round(Math.min(line * max, e.enemy!.hp + LEASH_MEND * max));
+      say(g, `${def.name} gathers itself, back to ${Math.round((e.enemy!.hp / max) * 100)}%.`);
     }
     return;
   }
   d.awayAt = 0;
+  d.outAt = 0;
+  d.healed = false;
   if (def.dodge && dodge(g, e, dt)) return;
   if (def.walk === 'close') walkTo(g, e, dt, 1);
   else if (def.walk === 'keep') walkTo(g, e, dt, def.keep ?? 4);
