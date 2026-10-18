@@ -25,6 +25,8 @@ export const keeperDoor: {
   of: (g: Game, f: number) => { x: number; y: number; dir: string } | null;
   line: (g: Game, f: number) => Line[];
   ready: (g: Game, f: number) => boolean;
+  /** v2r6: ready but thin ('' when not) */
+  risky?: (g: Game, f: number) => string;
 } = { at: () => null, of: () => null, line: () => [], ready: () => false };
 /** how far (path cells) a hint looks for a way */
 const PLAN = 60;
@@ -413,7 +415,7 @@ export function goalLine(g: Game): string {
     return `${n}: ✦ take the ${itemName(rare.item!).replace(/^the /, '')} where it fell, ${cells(Math.round(dist(rare, p)))} ${w}; then ${name}, ${far} ${word}`;
   }
   if (bossDown(g)) return `${n}: ${name} is open, ${far} ${word}: descend`;
-  if (keeperDoor.at(g, 2.5)) return `${n}: the keeper's door. ${keeperDoor.ready(g, f) ? 'you look ready' : 'you are not ready: where says why'}`;
+  if (keeperDoor.at(g, 2.5)) return `${n}: the keeper's door. ${keeperDoor.ready(g, f) ? (keeperDoor.risky?.(g, f) ? 'risky: likely a retreat or two' : 'you look ready') : 'you are not ready: where says why'}`;
   if (g.vectors.some((v) => v.what === 'way down') || g.seen.has(`${Math.floor(sx)},${Math.floor(sy)}`)) return `${n}: get past the keeper to the way down (stairs: ${name}, ${far} ${word})`;
   return `${n}: find the way down (stairs: unknown / ${word})`;
 }

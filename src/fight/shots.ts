@@ -35,6 +35,21 @@ export const shots = (g: Game): Entity[] => g.ents.filter((e) => e.kind === 'pro
 
 const HIT = 0.45;
 
+/** v2r6 newcomer (half his shots in the bell-ringer's room struck its pillars): low stone your shots fly over.
+ *  src/fight/bosses.ts sets it to the pillars of the floor 1-2 keepers' rooms; foes' shots still break on them */
+export const low: { at: (g: Game, x: number, y: number) => boolean } = { at: () => false };
+/** open to your shots */
+export const openShot = (g: Game, x: number, y: number): boolean => open(g, x, y) || low.at(g, x, y);
+/** a clear line for your shots (src/core/grid.ts clear, low stone counted open) */
+export function clearShot(g: Game, ax: number, ay: number, bx: number, by: number): boolean {
+  const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 3);
+  for (let k = 1; k < n; k++) {
+    const t = k / n;
+    if (!openShot(g, ax + (bx - ax) * t, ay + (by - ay) * t)) return false;
+  }
+  return true;
+}
+
 /** the last foe shot that reached you: when, whose, which way it flew (src/fight/aim.ts names an unseen one's way) */
 export const bolted = new WeakMap<Game, { t: number; from: Entity; vx: number; vy: number }>();
 
@@ -48,11 +63,12 @@ export function tickShots(g: Game, dt: number): void {
       s.x += (d.vx * dt) / n;
       s.y += (d.vy * dt) / n;
       d.left -= (speed * dt) / n;
-      if (!open(g, s.x, s.y) || d.left <= 0) {
+      const free = d.foe ? open(g, s.x, s.y) : openShot(g, s.x, s.y);
+      if (!free || d.left <= 0) {
         gone = true;
         // your shot struck nothing: a soft whiff, never the hit sound (Maks 10-18); v2r5 run: on a wall or a
         // pillar it says so (a pillar in the line read as "you miss ×2" for a minute)
-        if (!d.foe) g.events.push({ type: 'miss', at: [s.x, s.y], data: !open(g, s.x, s.y) ? { stone: true, name: d.name } : undefined });
+        if (!d.foe) g.events.push({ type: 'miss', at: [s.x, s.y], data: !free ? { stone: true, name: d.name } : undefined });
       }
       else if (d.foe) {
         if (Math.hypot(s.x - g.player.x, s.y - g.player.y) < (d.r ?? HIT)) {

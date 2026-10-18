@@ -5,13 +5,13 @@
 // dodge your shots and reward range, the ossuary's and the furnace's throw bullet patterns you strafe through.
 // `spawnBoss(g, floor, x, y)` places one; its death calls `bossHooks.down` (the floors slice sets it) and
 // drops a fine+ module (a unique on floors 1 and 3). `stageBoss` sets up a test fight (?boss=, the sim).
-import { dist, enemy, hurt, killHooks, say, spawn, spawnEnemy, tickHooks } from '../core/game';
+import { dist, enemy, hurt, hurtHooks, killHooks, say, spawn, spawnEnemy, tickHooks } from '../core/game';
 import { Cell, clear, ensure, open, setCell } from '../core/grid';
 import { label, MODS, slotsUsed } from '../core/mods';
 import { VERBS } from '../core/verbs';
 import { hash, rng } from '../core/rng';
 import type { Entity, Game, Item, Roll } from '../core/types';
-import { fire, shots, type ShotData } from './shots';
+import { fire, low, shots, type ShotData } from './shots';
 import { bossKind } from './bolts';
 import { WARM } from '../mods/sense';
 import { inRoom } from '../world/floors';
@@ -167,6 +167,8 @@ function summon(g: Game, e: Entity, type: string, n: number, cap: number): void 
       if (!open(g, x, y)) continue;
       const m = spawnEnemy(g, type, x, y);
       Object.assign(m.enemy!.data, { noticed: true, summoner: e.id, mult: 1, warned: true });
+      // v2r6 newcomer: its brood is leashed to its room with it (outOf below)
+      if (roomed(g, e)) m.enemy!.data.keeperRoom = bdef(e).floor;
       break;
     }
   }
@@ -699,8 +701,48 @@ export const LEASH = 10;
 /** and after this long with you out of its room it heals back to its phase line (v2r2 ux: a dodge out of the
  *  door read as a retreat; 8 s out, not a step) */
 export const LEASH_HEAL = 8;
-/** how much of its hp a boss mends after a retreat (once per retreat), never past its phase line */
+/** how much of its hp a boss mends after a retreat, never past its phase line: once a fight on floors 1-2 (v2r6
+ *  newcomer: a mend after every retreat ate each entry's progress), once a retreat deeper down */
 export const LEASH_MEND = 0.15;
+
+/** a keeper that stands in its floor's room (not a staged test fight) */
+const roomed = (g: Game, e: Entity): boolean => {
+  const [hx, hy] = (data(e).home as [number, number]) ?? [e.x, e.y];
+  return inRoom(g.seed, bdef(e).floor, hx, hy);
+};
+/** v2r6 newcomer (the bell-ringer's peal and a choir lamp killed him at the door, after "it will not follow you
+ *  out"): with you out of a keeper's room (its door cell counts as out), nothing of the keeper's or its brood's
+ *  reaches you: its wind-ups fall on nothing, its shots in flight go out, a hit there is no hit */
+export function outOf(g: Game, e: Entity): boolean {
+  if (!e.enemy) return false;
+  const f = BOSS[e.enemy.type] ? (roomed(g, e) ? bdef(e).floor : undefined) : (e.enemy.data.keeperRoom as number | undefined);
+  return f !== undefined && !inRoom(g.seed, f, g.player.x, g.player.y);
+}
+// v2r6 newcomer: the pillars of the floor 1-2 keepers' rooms are low: your shots fly over them (src/fight/shots.ts).
+// A pillar is a lone stone cell (open all round) within 7 cells of such a keeper's post
+low.at = (g, x, y) => {
+  const [cx, cy] = [Math.floor(x), Math.floor(y)];
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if ((i || j) && !open(g, cx + i + 0.5, cy + j + 0.5)) return false;
+  return g.ents.some((e) => {
+    if (!e.enemy || !BOSS[e.enemy.type] || bdef(e).floor > 1) return false;
+    const [hx, hy] = (data(e).home as [number, number]) ?? [e.x, e.y];
+    return Math.hypot(cx + 0.5 - hx, cy + 0.5 - hy) <= 7;
+  });
+};
+hurtHooks.unshift((g, n, from) => {
+  const src = from && (g.ents.find((e) => e.id === from.id) ?? from);
+  return src && outOf(g, src) ? 0 : n;
+});
+tickHooks.push((g) => {
+  const gone = new Set<number>();
+  for (const s of shots(g)) {
+    const d = s.data as unknown as ShotData;
+    if (!d.foe) continue;
+    const src = g.ents.find((e) => e.id === d.src);
+    if (src && outOf(g, src)) gone.add(s.id);
+  }
+  if (gone.size) g.ents = g.ents.filter((e) => !gone.has(e.id));
+});
 /** out of its room: farther than this from its post on either axis (the rooms are 13 and 14 across) */
 const ROOM_HALF = 7.5;
 
@@ -733,8 +775,10 @@ function bossAi(g: Game, e: Entity, dt: number): void {
     d.move = '';
     d.zones = null;
     d.wide = false;
-    atk?.land(g, e, zones);
-    d.chan = !!atk?.chan;
+    // you left the room while it wound up: it falls on nothing (outOf)
+    const away = outOf(g, e);
+    if (!away) atk?.land(g, e, zones);
+    d.chan = !away && !!atk?.chan;
     d.nextAt = g.t + (atk?.rest ?? 1);
     return;
   }
@@ -769,7 +813,7 @@ function bossAi(g: Game, e: Entity, dt: number): void {
     const out = Math.max(Math.abs(p.x - hx), Math.abs(p.y - hy)) > ROOM_HALF;
     if (!out) d.outAt = 0;
     else if (!d.outAt) d.outAt = g.t;
-    // v2r2 fun: once a retreat, and only 15% back, up to its phase line: leaving keeps most of your progress
+    // v2r2 fun: only 15% back, up to its phase line: leaving keeps most of your progress (once a fight on floors 1-2)
     if (d.outAt && g.t - Number(d.outAt) > LEASH_HEAL && g.t - Number(d.awayAt) > LEASH_HEAL && !d.healed && e.enemy!.hp < line * max) {
       d.healed = true;
       e.enemy!.hp = Math.round(Math.min(line * max, e.enemy!.hp + LEASH_MEND * max));
@@ -779,7 +823,7 @@ function bossAi(g: Game, e: Entity, dt: number): void {
   }
   d.awayAt = 0;
   d.outAt = 0;
-  d.healed = false;
+  if (def.floor >= 2) d.healed = false;
   if (def.dodge && dodge(g, e, dt)) return;
   if (def.walk === 'close') walkTo(g, e, dt, 1);
   else if (def.walk === 'keep') walkTo(g, e, dt, def.keep ?? 4);
