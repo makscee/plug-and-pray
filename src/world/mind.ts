@@ -100,6 +100,23 @@ function mapView(el: HTMLElement, inst: Inst, game: Game): View {
           ctx.fillStyle = CSS.printer;
           ctx.fillRect((e.x - ox) * px - px / 2, (e.y - oy) * px - px / 2, px, px);
         }
+      // seen loot (playtest r3): a small dot in a pile's colour, a small accent square for a module or card
+      for (const e of g.ents) {
+        if (e.kind !== 'item' || !e.item || e.data?.mimic || !g.seen.has(`${Math.floor(e.x)},${Math.floor(e.y)}`)) continue;
+        const [cx, cy] = [(Math.floor(e.x) + 0.5 - ox) * px, (Math.floor(e.y) + 0.5 - oy) * px];
+        if (e.item.kind === 'res') {
+          ctx.fillStyle = NAMED[e.item.res];
+          ctx.beginPath();
+          ctx.arc(cx, cy, Math.max(2, px * 0.25), 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          const s = Math.max(3, Math.round(px * 0.5));
+          ctx.fillStyle = '#000';
+          ctx.fillRect(cx - s / 2 - 1, cy - s / 2 - 1, s + 2, s + 2);
+          ctx.fillStyle = CSS.you;
+          ctx.fillRect(cx - s / 2, cy - s / 2, s, s);
+        }
+      }
       // vectors: a cross where they end, or a tick on the edge toward them
       const half = (span * px) / 2;
       for (const v of g.vectors) {

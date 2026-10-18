@@ -26,7 +26,7 @@ function targets(g: Game): { x: number; y: number; name: string }[] {
   return out;
 }
 
-const LEGEND = 'legend: ◆ where the hints and cards point · green ◇ a set piece\'s finds · teal printer or reliquary · red enemy · arrow you';
+const LEGEND = 'legend: ◆ where the hints and cards point · green ◇ a set piece\'s finds · small dot a pile (bone, glass, copper, ichor) · small square a module · teal printer or reliquary · red enemy · arrow you';
 /** per map canvas: where its top-left cell is and how big a cell draws, for the hover */
 const at = new WeakMap<HTMLCanvasElement, { g: Game; ox: number; oy: number; px: number }>();
 
@@ -42,7 +42,7 @@ function hover(c: HTMLCanvasElement): void {
   });
   const legend = document.createElement('p');
   legend.className = 'map-legend';
-  legend.innerHTML = `<i style="color:${ACC}">◆</i> hints, cards · <i style="color:#b0f080">◇</i> finds · hover names a cell · `;
+  legend.innerHTML = `<i style="color:${ACC}">◆</i> hints, cards · <i style="color:#b0f080">◇</i> finds · <i style="color:#7fd8d0">•</i> piles · <i style="color:${ACC}">▪</i> modules · hover names a cell · `;
   const zoom = document.createElement('button');
   const big = () => mapCell.zoom ?? innerHeight >= 900;
   zoom.textContent = big() ? 'smaller' : 'zoom';
