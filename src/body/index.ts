@@ -6,7 +6,7 @@ import { dist, say, tickHooks } from '../core/game';
 import { active, def, label, ownSocket, param, powerMax, powerUsed, rarityOf, size, slotsUsed, switchOff, switchOn, traits, type Modish } from '../core/mods';
 import { Cell, DIRS, cell, clear, dirAngle, setCell } from '../core/grid';
 import { VERBS, addItem, findInst, findItem, instRef, verb } from '../core/verbs';
-import type { Entity, Game, Inst } from '../core/types';
+import type { Entity, Game, Inst, Line } from '../core/types';
 import { walk } from '../mods/gait';
 import { MAX_CORE } from '../world/altar';
 
@@ -317,6 +317,7 @@ for (const name of ['on', 'install']) {
           say(g, [`short ${short}⚡︎: `, { text, cmd: [...off.map((i) => `off ${instRef(g, i)}`), `on ${instRef(g, inst)}`].join('; ') }, '. your weapon stays on.' + gen]);
         } else say(g, `short ${short}⚡︎, and only your weapon could give it.` + gen);
       }
+      if (inst && !inst.on) say(g, ...genLink(g));
       if (hinted.has(g)) return;
       hinted.add(g);
       say(g, [
@@ -406,6 +407,14 @@ function kept(g: Game, i: Inst, it: { mod: string }): boolean {
   return false;
 }
 
+/** a generator you carry and have not installed (the ember cell) */
+const bagGen = (g: Game): Modish | undefined => g.player.inv.find((it) => it.kind === 'mod' && def(it as Modish).family === 'power') as Modish | undefined;
+/** a button that installs it, when one is in the bag */
+const genLink = (g: Game): Line[] => {
+  const gen = bagGen(g);
+  return gen ? [['', { text: `install ${def(gen).name}`, cmd: `install ${def(gen).name}` }, ' first: it gives the power.']] : [];
+};
+
 export interface Room {
   /** taken out for a slot */
   remove?: Inst;
@@ -465,15 +474,17 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
     const seeing = cam || p.installed.some((i) => i.on && def(i).family === 'camera' && !out.includes(i));
     // v2-balance3 (v2r3 fight: `swap in frost coat` with no eye yet turned the map off and left you blind):
     // the map gives way only while an eye will be on
-    const map = (i: Inst) => last && seeing && param<string>(i, 'what', '') === 'map';
-    const w = (i: Inst) => (eye(i) ? 0 : map(i) ? (seeing ? 4.5 : 8) : weapon(i) ? 6 : weight(g, i));
+    // v3r1 floor 1 (`swap in pinhole eye` took the map, then said "the map stays"): never the map for an eye,
+    // and a spare weapon before the map for anything else
+    const map = (i: Inst) => last && seeing && !cam && param<string>(i, 'what', '') === 'map';
+    const w = (i: Inst) => (eye(i) ? 0 : map(i) ? (armed() > 1 ? 7 : 4.5) : weapon(i) ? 6 : weight(g, i));
     const armed = () => p.installed.filter((i) => i.on && weapon(i) && !out.includes(i) && !off.includes(i)).length;
     const swarms = () => p.installed.filter((i) => i.on && swarm(i) && !out.includes(i) && !off.includes(i)).length;
     const spare = (i: Inst) => !weapon(i) || (armed() > 1 && (!swarm(i) || swarm(it) || swarms() > 1));
     // (with no eye a spare weapon gives way in the map's place)
     const all = p.installed.filter((i) => i.on && !out.includes(i) && def(i).power > 0 && (light(i) || eye(i) || map(i) || (last && !seeing && weapon(i))));
     // a weapon only when the rest cannot cover it
-    const rest = all.filter((i) => !weapon(i));
+    const rest = all.filter((i) => !weapon(i) && !(map(i) && armed() > 1));
     const can = rest.reduce((n, i) => n + def(i).power, 0) >= short ? rest : all;
     // one that frees enough, the lightest and cheapest; else the lightest, biggest first, until it fits
     const one = can.filter((i) => def(i).power >= short && spare(i)).sort((a, b) => w(a) - w(b) || def(a).power - def(b).power)[0];
@@ -486,6 +497,9 @@ export function makeRoom(g: Game, it: { mod: string }, installed: boolean, last 
         short -= def(i).power;
       }
     if (short > 0) {
+      // v3r1 floor 1: the ember cell in your bag is the answer; name it
+      const gen = bagGen(g);
+      if (gen) return `not enough power for ${def(it).name}: install your ${def(gen).name} first (+${Math.round(param<number>(gen, 'power', 0))} power).`;
       const blind = !seeing && p.installed.some((i) => i.on && param<string>(i, 'what', '') === 'map');
       // v2r6 newcomer: "only your map is left" while a weapon was still on: name what is, the map stays
       // (never the legs: a weapon first, else any other module)
@@ -510,7 +524,15 @@ verb('swap', {
     if (!it || ('kind' in it && it.kind !== 'mod')) return say(g, 'swap in what? a module you carry, or one installed and off.');
     if (it === inst && inst.on) return say(g, `${label(inst)} is on already.`);
     const room = makeRoom(g, it as { mod: string }, it === inst, true);
-    if (typeof room === 'string') return say(g, room);
+    if (typeof room === 'string') {
+      // v3r1 floor 1 (`swap in frost coat` refused while the door card offered "swap spark finger for frost
+      // coat"): a carried module falls back to the door card's pick, take one out by hand and install
+      const out = it !== inst && !bagGen(g) ? freeing(g, it as { mod: string }) : undefined;
+      if (!out || !VERBS.remove || !VERBS.install) return say(g, room, ...genLink(g));
+      const name = label(it as Inst);
+      VERBS.remove.run(g, instRef(g, out).split(' '));
+      return VERBS.install.run(g, name.split(' '));
+    }
     const did: string[] = [];
     const inBag = new Set(p.inv);
     for (const r of room.remove ? [room.remove, ...(room.more ?? [])] : []) {

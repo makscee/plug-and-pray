@@ -163,7 +163,9 @@ frameHooks.push((g) => {
     firstView.add(g);
     if (!g.floor) {
       pl.base!.data.flashAt = g.t;
-      say(g, `◆ first sight. coarse and close, but yours; it sharpens as you find better eyes. the map stays: M, and a click on it still walks you.`);
+      // v3r1 floor 1: "the map stays" only while a map is on
+      const map = g.player.installed.some((i) => i.on && param<string>(i, 'what', '') === 'map');
+      say(g, `◆ first sight. coarse and close, but yours; it sharpens as you find better eyes.${map ? ' the map stays: M, and a click on it still walks you.' : ''}`);
     }
   }
   if (mode === 'map' || fading) drawMap(g, b);

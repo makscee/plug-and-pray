@@ -4,7 +4,7 @@
 import { dist, REACH, say, tickHooks } from '../core/game';
 import { active, def, label, param, powerMax, powerUsed } from '../core/mods';
 import { canHit } from '../mods/sense';
-import { verb, VERBS } from '../core/verbs';
+import { goThere, verb, VERBS } from '../core/verbs';
 import type { Game, Line, Seg } from '../core/types';
 import { aimed } from './aim';
 
@@ -73,16 +73,20 @@ verb('attack', {
   run(g) {
     if (!armed(g)) return warnUnarmed(g);
     if (aimed(g).length) return VERBS.shoot.run(g, []);
-    // v2r4 ux: once a fight, not on every press
-    if (tipped.has(g)) return;
-    tipped.add(g);
     const w = active(g, 'weapon')[0];
     // v2r4 run: a lamp 2 cells off, unseen with no eye, never got hit while `attack` said "stand by it"
     const reach = Math.max(...active(g, 'weapon').map((i) => param<number>(i, 'range', 1.3)));
     const foe = g.ents.filter((e) => e.enemy?.data.noticed).sort((a, b) => dist(a, g.player) - dist(b, g.player))[0];
     const d = foe ? dist(foe, g.player) : 99;
-    if (foe && d <= 8 && (d > reach || !canHit(g, foe)))
-      return say(g, d > reach ? `it is ${d.toFixed(1)} cells off; your ${label(w)} reaches ${reach}. step in.` : `you can't see it ${d.toFixed(1)} cells off: step right next to it (${REACH} cells) and your ${label(w)} strikes.`);
+    // v3r1 floor 1 (`attack` 25 times at a warden out of reach said nothing): out of reach says why, every press
+    if (foe && d > reach) {
+      const [far, go] = goThere(g, foe.x, foe.y, true);
+      return say(g, [`nothing in reach: it is ${far}; your ${label(w)} reaches ${+reach.toFixed(1)}. `, go]);
+    }
+    if (foe && !canHit(g, foe)) return say(g, `you can't see it ${d.toFixed(1)} cells off: step right next to it (${REACH} cells) and your ${label(w)} strikes.`);
+    // v2r4 ux: once a fight, not on every press
+    if (tipped.has(g)) return say(g, `in reach: your ${label(w)} strikes by itself.`);
+    tipped.add(g);
     say(g, `your ${label(w)} strikes by itself whatever comes close. stand by it.`);
   },
 });

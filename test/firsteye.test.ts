@@ -1,8 +1,8 @@
-// v3 (Maks 10-18): the first eye lies in the open on the walk to the keeper, 60-80% of the way, on every seed
+// v3 (Maks 10-18): the first eye lies in the open on the walk to the keeper, 50-70% of the way, on every seed
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../src/core/game';
 import { CHUNK, Cell, cell } from '../src/core/grid';
-import { firstEye, EYE_BAND, EYE_MIN } from '../src/world/spawn';
+import { firstEye, EYE_BAND, EYE_GAP, EYE_MIN } from '../src/world/spawn';
 import { bossRoom, inRoom, inside, origin } from '../src/world/floors';
 import '../src/mods';
 import '../src/world';
@@ -28,7 +28,8 @@ function steps(g: ReturnType<typeof newGame>, [ax, ay]: number[], [bx, by]: numb
 }
 
 describe('v3: the first eye', () => {
-  it('lies on open floor, walkable from the start, out of the keeper\'s room, 70-90% of the way to it', () => {
+  it('lies on open floor, walkable from the start, out of the keeper\'s room, 50-70% of the way to it, 10 steps before its door', () => {
+    const ratios: number[] = [];
     for (let seed = 1; seed <= 60; seed++) {
       const g = newGame(seed);
       const e = g.ents.find((x) => x.item?.kind === 'mod' && x.item.mod === 'pinhole-eye')!;
@@ -43,9 +44,13 @@ describe('v3: the first eye', () => {
       expect(room).toBeGreaterThan(there);
       const f = firstEye(seed);
       expect(f.along).toBeGreaterThanOrEqual(EYE_BAND[0]);
-      expect(there / f.way, `seed ${seed}`).toBeGreaterThanOrEqual(0.69);
-      expect(there, `seed ${seed}`).toBeGreaterThanOrEqual(Math.min(EYE_MIN, f.way - 1));
-      expect(there / f.way, `seed ${seed}`).toBeLessThanOrEqual(0.95);
+      expect(there / f.way, `seed ${seed}`).toBeGreaterThanOrEqual(0.45);
+      expect(there, `seed ${seed}`).toBeGreaterThanOrEqual(Math.min(EYE_MIN, f.way - EYE_GAP));
+      expect(there / f.way, `seed ${seed}`).toBeLessThanOrEqual(0.72);
+      // v3r1 floor 1: well before the keeper's door
+      expect(f.way - there, `seed ${seed}`).toBeGreaterThanOrEqual(EYE_GAP);
+      ratios.push(there / f.way);
     }
+    console.log('first eye along', Math.min(...ratios).toFixed(2), Math.max(...ratios).toFixed(2));
   });
 });
