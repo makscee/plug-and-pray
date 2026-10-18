@@ -49,6 +49,7 @@ function swing(g: Game, e: Entity, o: { windup: number; reach: number; say: stri
   if (!en.data.windup) {
     if (near(e, p) > o.reach || g.t < en.readyAt) return false;
     en.data.windup = g.t + o.windup;
+    en.data.windAt = g.t; // when it began: the sim's player reacts a moment after (scripts/sim/brain.ts)
     en.data.move = o.move;
     en.data.wide = o.reach > 2; // a reach this wide shows as a wider pose and a ring on the map
     say(g, o.say);
@@ -188,6 +189,7 @@ function warden(g: Game, e: Entity, dt: number): void {
   const corridor = !open(g, e.x + sx, e.y + sy) && !open(g, e.x - sx, e.y - sy);
   d.back = corridor ? DASH.back : 0;
   d.windup = g.t + DASH.windup + (corridor ? 0.5 : 0);
+  d.windAt = g.t;
   d.move = 'warden draws breath';
   say(g, corridor ? '⚠ the choir warden backs off and draws breath. no room to step aside: get round a corner.' : '⚠ the choir warden draws breath. step aside.');
 }
@@ -215,6 +217,7 @@ function saint(g: Game, e: Entity, dt: number): void {
   if (near(e, p) <= CROSS.near && g.t >= ((d.crossAt as number) ?? 0) && clear(g, e.x, e.y, p.x, p.y)) {
     d.crossAt = g.t + CROSS.cooldown;
     d.windup = g.t + CROSS.windup;
+    d.windAt = g.t;
     d.move = 'saint gathers a cross';
     say(g, '⚠ the furnace saint gathers its light into a cross. get off its lines.');
     return;
@@ -246,9 +249,9 @@ enemy('hum', { name: 'the hum', hp: 4, speed: 1.1, damage: 1, cooldown: 2, sense
 enemy('mimic', { name: 'a mimic', hp: 3, speed: 1.4, damage: 1.5, cooldown: 1.6, sense: 8 });
 // zones (balance pass): the furnace's lamp, and one elite per zone guarding its shard (src/world/vectors.ts)
 enemy('pyre', { name: 'a pyre seraph', hp: 3, speed: 0, damage: 1.5, cooldown: 2.4, sense: 9, ai: seraph });
-enemy('warden', { name: 'the choir warden', hp: 13, speed: 1.7, damage: 1.5, cooldown: 1.3, sense: 7, ai: warden }); // r2 loop: hp ×1.6 (was 8, 13, 20): long enough for its telegraphs to matter
-enemy('abbot', { name: 'the bone abbot', hp: 21, speed: 0.8, damage: 4, cooldown: 2.2, sense: 8, ai: abbot, armour: 1.2 });
-enemy('saint', { name: 'the furnace saint', hp: 32, speed: 0, damage: 3.5, cooldown: 1.8, sense: 10, ai: saint });
+enemy('warden', { name: 'the choir warden', hp: 11, speed: 1.7, damage: 1.5, cooldown: 1.3, sense: 7, ai: warden }); // r2 loop: hp ×1.4 (was 8, 13, 20): long enough for its telegraphs to matter
+enemy('abbot', { name: 'the bone abbot', hp: 18, speed: 0.8, damage: 4, cooldown: 2.2, sense: 8, ai: abbot, armour: 1.2 });
+enemy('saint', { name: 'the furnace saint', hp: 28, speed: 0, damage: 3.5, cooldown: 1.8, sense: 10, ai: saint });
 /** the elite that guards each zone's shard (zone 3's also guards the engine) */
 export const ELITE = ['', 'warden', 'abbot', 'saint'];
 
