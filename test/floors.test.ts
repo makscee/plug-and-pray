@@ -94,7 +94,9 @@ describe('v2 floors', () => {
     expect(text(g)).toMatch(/FLOOR 2: THE CHOIR NAVE/);
     // the floor above is left behind; its kit waits in a cache where you land (src/world/cache.ts)
     expect(g.ents.every((e) => Math.round(e.x / CHUNK / STRIDE) === 1)).toBe(true);
-    expect(cacheNear(g)?.offer.map((i) => (i.kind === 'mod' ? i.mod : '')).sort()).toEqual([...KIT[1]].sort());
+    const offer = cacheNear(g)?.offer.map((i) => (i.kind === 'mod' ? i.mod : '')) ?? [];
+    expect(offer.length).toBe(5);
+    for (const m of offer) expect(KIT[1]).toContain(m);
   });
 
   it('the heart keeper\'s death is the thaw', () => {

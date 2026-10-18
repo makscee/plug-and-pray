@@ -12,7 +12,7 @@ import { instRef, VERBS } from '../core/verbs';
 import type { Game, Inst, Item, Roll } from '../core/types';
 import * as windows from './windows';
 import { costs, does } from '../mods/describe';
-import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear } from '../world/printer';
+import { affords, fmt, offers, PRICES, priceAt, scrapOf, shopNear, shutEye } from '../world/printer';
 import { altarNear, offers as altarOffers } from '../world/altar';
 import { atStairs, STAIRS, type Stairs } from '../world/floors';
 import { nearPieces } from '../world/events';
@@ -260,7 +260,8 @@ export class Panels {
         const price = priceAt(shop, k, it);
         rows.push({
           icon: it, name: label(it), tip: `${does(it)}\n${costs(it)}`, rar: rarOf(it),
-          buttons: [{ label: '?', cmd: `info ${label(it)}` }, affords(g, price) ? { label: 'buy', cmd: `buy ${k + 1}`, note: fmt(price) } : { label: 'buy', note: `${fmt(price)}: short` }],
+          // v2r3 fun: an eye stays behind glass till your first eye is found
+          buttons: [{ label: '?', cmd: `info ${label(it)}` }, shutEye(g, it) ? { label: 'buy', note: 'shut till your first eye' } : affords(g, price) ? { label: 'buy', cmd: `buy ${k + 1}`, note: fmt(price) } : { label: 'buy', note: `${fmt(price)}: short` }],
         });
       });
     }
