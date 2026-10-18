@@ -16,7 +16,7 @@ describe('accessible start (10-18)', () => {
     for (let k = 0; k < 30; k++) tick(g, 0.05);
     expect(g.player.installed.every((i) => working(g, i))).toBe(true);
     expect(g.player.slots - g.player.installed.length).toBe(2);
-    expect(g.player.core - powerUsed(g)).toBe(2);
+    expect(g.player.core - powerUsed(g)).toBe(1); // module pass: power binds first (the pinhole is free, the core is 4)
     exec(g, 'go e 2');
     expect(g.player.path.length).toBeGreaterThan(0);
   });

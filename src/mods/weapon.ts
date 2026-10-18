@@ -8,6 +8,7 @@ import type { Game } from '../core/types';
 /** the overclock coil's haste: every weapon cools this many times faster */
 export const haste = (g: Game): number => 1 + active(g, 'body').reduce((s, i) => s + param<number>(i, 'haste', 0), 0);
 import { clear } from '../core/grid';
+import { canHit } from './sense';
 
 family('weapon', {
   tick(g, inst) {
@@ -16,7 +17,8 @@ family('weapon', {
     if (g.t < ready) return;
     const range = param<number>(inst, 'range', 1.3);
     const p = g.player;
-    const near = g.ents.filter((e) => e.enemy && dist(e, p) <= range && clear(g, p.x, p.y, e.x, e.y)).sort((a, b) => dist(a, p) - dist(b, p));
+    // only what you perceive (an eye, a scanner) or can touch; the hidden only when perceived (src/mods/sense.ts)
+    const near = g.ents.filter((e) => e.enemy && dist(e, p) <= range && clear(g, p.x, p.y, e.x, e.y) && canHit(g, e)).sort((a, b) => dist(a, p) - dist(b, p));
     if (!near.length) return;
     inst.data.readyAt = g.t + param<number>(inst, 'cooldown', 1) / haste(g);
     // a sweeping weapon (the censer flail) hits everything in reach, the rest the nearest

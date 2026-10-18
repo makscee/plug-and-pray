@@ -19,6 +19,8 @@ export interface EnemyDef {
   ai?: (g: Game, e: Entity, dt: number) => void;
   /** seen by cameras? the hum is not */
   hidden?: boolean;
+  /** taken off every hit it takes (strike): walkers and the abbot are bone */
+  armour?: number;
 }
 export const ENEMIES: Record<string, EnemyDef> = {};
 export function enemy(type: string, d: EnemyDef): void {
@@ -67,7 +69,7 @@ export function spawn(g: Game, e: Omit<Entity, 'id'>): Entity {
 export function spawnEnemy(g: Game, type: string, x: number, y: number): Entity {
   const d = ENEMIES[type];
   if (!d) throw new Error(`unknown enemy ${type}`);
-  return spawn(g, { kind: 'enemy', x, y, enemy: { type, hp: d.hp, readyAt: 0, data: {} } });
+  return spawn(g, { kind: 'enemy', x, y, enemy: { type, hp: d.hp, readyAt: 0, data: d.armour ? { armour: d.armour } : {} } });
 }
 
 export function itemName(it: Item): string {
@@ -97,6 +99,9 @@ export const hurtHooks: ((g: Game, n: number, from?: Entity) => number)[] = [];
 
 export function strike(g: Game, e: Entity, n: number): void {
   if (!e.enemy) return;
+  // armoured foes (walkers, the abbot) shrug off part of every hit: big single hits beat fast small ones
+  const armour = (e.enemy.data.armour as number) ?? 0;
+  if (armour > 0) n = Math.max(n * 0.2, n - armour);
   e.enemy.hp -= n;
   g.events.push({ type: 'hit', at: [e.x, e.y], data: e.id });
   if (e.enemy.hp <= 0) {
@@ -183,6 +188,7 @@ export function chase(g: Game, e: Entity, dt: number): void {
   // within a diagonal step it strikes too (a corner can stop it closing the last bit)
   if (!home && dist(e, p) <= REACH && g.t >= e.enemy!.readyAt) {
     e.enemy!.readyAt = g.t + d.cooldown;
+    e.enemy!.data.felt = g.t; // a hidden thing that strikes gives itself away for a moment (src/mods/sense.ts)
     hurt(g, d.damage, e);
   }
 }

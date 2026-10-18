@@ -233,3 +233,27 @@ export function foresee(g: Game, secs?: number): Foresight[] {
   }
   return out;
 }
+
+// ---- power runs short before slots do (docs/modules.md): the first time it refuses, point at setups
+
+const hinted = new WeakSet<Game>();
+for (const name of ['on', 'install']) {
+  const base = VERBS[name];
+  if (!base) continue;
+  VERBS[name] = {
+    ...base,
+    run(g, args) {
+      const n = g.log.length;
+      base.run(g, args);
+      if (hinted.has(g) || !g.log.slice(n).some((l) => l.some((s) => (typeof s === 'string' ? s : s.text).includes('not enough power')))) return;
+      hinted.add(g);
+      say(g, [
+        'power runs out before slots do. switch something off, or keep two setups and swap: ',
+        { text: 'save setup explore', cmd: 'save setup explore' },
+        '  ',
+        { text: 'save setup battle', cmd: 'save setup battle' },
+        '. a generator (ember cell, votive battery) trades a slot for power.',
+      ]);
+    },
+  };
+}

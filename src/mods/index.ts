@@ -9,3 +9,4 @@ import '../world';
 import '../body';
 import '../tune/hints';
 import './pilot';
+import './sense';

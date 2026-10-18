@@ -1,6 +1,6 @@
 // What a new chunk holds: loot by distance, enemies, printers. The start chamber is fixed:
 // you wake holding an eye, legs, a map and the spark finger (src/tune/start.ts); a halo at your feet,
-// the dawn eye one chunk east, the card reader and a first memory card one chunk south, a printer one chunk west, a reliquary (shop) one chunk north.
+// the dawn eye one chunk east, the card reader, a first memory card and an ember cell one chunk south, a printer one chunk west, a reliquary (shop) one chunk north.
 
 import { CHUNK, chunkHook, Cell } from '../core/grid';
 import { spawn } from '../core/game';
@@ -55,6 +55,8 @@ export function fill(g: Game, c: Chunk): void {
     const [x, y] = cellIn(r, c, g.seed);
     spawn(g, { kind: 'item', x, y, item: { kind: 'mod', mod: 'card-reader' } });
     spawn(g, { kind: 'item', x, y, item: { kind: 'card', card: nextLog(g) } });
+    // module pass: the first generator lies with the reader, so the first colour eye or second weapon has its power
+    spawn(g, { kind: 'item', x: x + 0.3, y, item: { kind: 'mod', mod: 'ember-cell' } });
   }
   const printer = (c.cx === -1 && c.cy === 0) || (far >= 1.5 && r.chance(0.15));
   if (printer) {

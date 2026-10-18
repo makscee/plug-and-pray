@@ -14,6 +14,7 @@ import * as zones from '../../src/world/zones';
 import * as altar from '../../src/world/altar';
 import { dpsOf } from '../../src/world/zonemath';
 import { startKit } from '../../src/tune/start';
+import { light } from '../../src/sight/lamp';
 
 export interface Snap {
   t: number;
@@ -47,6 +48,14 @@ export interface Run {
   homes: number;
   recycled: number;
   log: string[];
+  /** loadout pressure, sampled every 10 s: power full with a slot free, slots full with power free, both */
+  bound: { power: number; slots: number; both: number; n: number };
+  /** power modules ever switched on */
+  generators: string[];
+  /** what was on when it first walked into each zone, and at the end */
+  loadouts: Record<string, string[]>;
+  /** times it switched a module off to make room (a setup change) */
+  offs: number;
 }
 
 const DT = 0.1;
@@ -62,25 +71,49 @@ const resAll = (g: Game) => g.player.inv.reduce((n, i) => n + (i.kind === 'res' 
 function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReader: boolean): number {
   const m = MODS[it.mod];
   const p = (k: string, f = 0) => param<number>(it, k, f);
+  const loud = p('loud') * 8;
+  const deep = zone >= 2;
   switch (m.family) {
     case 'gait':
       return param(it, 'go', false) ? 1000 : 0;
-    case 'camera':
-      return 200 + p('res') / 10 + p('fps');
-    case 'weapon': {
-      const v = (p('damage', 1) / p('cooldown', 1)) * 40;
-      return param(it, 'aim', 'auto') === 'aimed' ? v * 0.6 : v + p('range', 1.3) * 2;
+    case 'camera': {
+      // the eye that perceives in the zone ahead (src/mods/sense.ts): dark ossuary, the hum, the furnace's glare
+      const f = param<string>(it, 'filter', 'color');
+      let v = 200 + p('res') / 10 + p('fps');
+      if (zone === 2) v += f === 'sonar' || f === 'edge' || f === 'heat' ? 60 : f === '1bit' ? 30 : 0;
+      if (deep && (f === 'sonar' || f === 'heat')) v += 25;
+      if (zone === 3 && f === 'heat') v -= 90;
+      return v - loud;
     }
-    case 'body':
-      return p('hp') * 5 + p('regen') * 120 + p('armour') * 45 + (param(it, 'ward', false) ? 25 : 0) + p('mend') * 6 + p('thorns') * 30 + p('heatproof') * 30 + p('haste') * 60;
+    case 'weapon': {
+      // armour (walkers, the abbot) takes 0.6 off each hit in the deep zones; a sweep pays against swarms
+      const dmg = Math.max(p('damage', 1) * 0.2, p('damage', 1) - (deep ? 0.4 : 0));
+      let v = (dmg / p('cooldown', 1)) * 40;
+      if (param(it, 'sweep', false) && zone >= 1) v *= 1.4;
+      if (p('glow') && zone === 2) v += 100;
+      return (param(it, 'aim', 'auto') === 'aimed' ? v * 0.6 : v + p('range', 1.3) * 2) - loud;
+    }
+    case 'body': {
+      // the rime hood: worth it in the furnace, a chill anywhere else (it is taken off on the way home)
+      const inFurnace = zones.zoneAt(g.player.x, g.player.y) === 3 || (zone === 3 && zones.zoneAt(g.player.x, g.player.y) === 2);
+      const heat = inFurnace ? p('heatproof') * 200 : p('chill') ? -60 : 0;
+      return p('hp') * 5 + p('regen') * (zone === 2 ? 60 : 120) + p('armour') * 45 + (param(it, 'ward', false) ? 25 : 0) + p('mend') * 6 + p('thorns') * 30 + heat + p('haste') * 60 - loud;
+    }
     case 'power':
       return 0; // power modules are chosen for what they let you run
     case 'lamp':
-      return zones.needsLamp(zone) ? 150 : 0;
+      return zones.needsLamp(zone) || zones.needsLamp(zones.zoneAt(g.player.x, g.player.y)) ? 150 + p('radius') * 5 : 0;
+    case 'scanner': {
+      const sees = param<string[]>(it, 'sees', []);
+      if (sees.includes('metal') && zone >= 1) return 25; // mimics wake early
+      if ((sees.includes('flesh') || sees.includes('heat')) && deep) return 45; // the hum
+      return 0;
+    }
     case 'mind': {
       const what = param<string>(it, 'what', '');
       if (what === 'reader') return wantReader ? 300 : 0;
       if (what === 'map') return 8;
+      if (what === 'ledger') return 30; // the tithe: kills pay out twice as often
       return 0;
     }
     default:
@@ -89,7 +122,7 @@ function worth(g: Game, it: { mod: string; roll?: any }, zone: number, wantReade
 }
 
 /** the best loadout: greedy by worth, one camera, power modules added when the rest needs them */
-function bestLoadout(g: Game, zone: number, wantReader: boolean): Set<object> {
+function bestLoadout(g: Game, zone: number, wantReader: boolean, lift: { power?: number; slots?: number } = {}): Set<object> {
   const P = g.player;
   const all: { ref: object; mod: string; roll?: any }[] = [
     ...P.installed.map((i) => ({ ref: i as object, mod: i.mod, roll: i.roll })),
@@ -101,10 +134,19 @@ function bestLoadout(g: Game, zone: number, wantReader: boolean): Set<object> {
     .filter((a) => MODS[a.mod].family !== 'power')
     .map((a) => ({ ...a, w: worth(g, a, zone, wantReader) }))
     .filter((a) => a.w > 0)
-    .sort((a, b) => b.w - a.w);
+    // power is the scarce thing (docs/modules.md): rank by worth per power; an eye pays 15 a point
+    .map((a) => {
+      const pw = MODS[a.mod].power;
+      const fam = MODS[a.mod].family;
+      return { ...a, rank: fam === 'gait' ? a.w : fam === 'camera' ? a.w - 15 * pw + 1000 : a.w / Math.max(1, pw) };
+    })
+    .sort((a, b) => b.rank - a.rank);
+  // the first weapon comes before everything but legs: an unarmed body dies to the first mites
+  const firstWeapon = rest.find((a) => MODS[a.mod].family === 'weapon');
+  if (firstWeapon) rest.splice(rest.indexOf(firstWeapon), 1), rest.splice(rest.findIndex((a) => MODS[a.mod].family !== 'gait') < 0 ? rest.length : rest.findIndex((a) => MODS[a.mod].family !== 'gait'), 0, firstWeapon);
   const pick = new Set<object>();
-  let slots = P.slots;
-  let cap = P.core;
+  let slots = lift.slots ?? P.slots;
+  let cap = lift.power ?? P.core;
   let used = 0;
   let cams = 0;
   const fams = new Map<string, number>();
@@ -112,6 +154,9 @@ function bestLoadout(g: Game, zone: number, wantReader: boolean): Set<object> {
     const m = MODS[a.mod];
     if (m.family === 'camera' && cams >= 1) continue;
     if (m.family === 'lamp' && (fams.get('lamp') ?? 0) >= 1) continue;
+    if (m.family === 'scanner' && (fams.get('scanner') ?? 0) >= 1) continue;
+    // one of each module but weapons: a second rime hood or lead lung adds nothing worth its power
+    if (m.family !== 'weapon' && all.some((x) => pick.has(x.ref) && x.mod === a.mod)) continue;
     if (m.family === 'gait' && (fams.get('gait') ?? 0) >= 1) continue;
     if (m.family === 'mind' && all.filter((x) => pick.has(x.ref) && MODS[x.mod].family === 'mind' && param(x, 'what', '') === param(a, 'what', '')).length) continue;
     if (slots < 1) break;
@@ -146,7 +191,7 @@ export function play(seed: number, o: Opts): Run {
   const g = newGame(seed);
   startKit(g);
   const P = g.player;
-  const run: Run = { seed, style: o.style, ended: 'time', t: 0, marks: {}, snaps: [], steps: [], bought: [], resPeak: 0, resEnd: 0, kills: 0, homes: 0, recycled: 0, log: [] };
+  const run: Run = { seed, style: o.style, ended: 'time', t: 0, marks: {}, snaps: [], steps: [], bought: [], resPeak: 0, resEnd: 0, kills: 0, homes: 0, recycled: 0, log: [], bound: { power: 0, slots: 0, both: 0, n: 0 }, generators: [], loadouts: {}, offs: 0 };
   const seen = new Set<string>();
   // things given up on, for a minute (a corner it could not get round, a lamp it could not reach)
   const bans = new Map<object, number>();
@@ -250,7 +295,10 @@ export function play(seed: number, o: Opts): Run {
     }
     if (P.path.length) { why = 'path ' + P.path.length + ' ' + JSON.stringify(P.path[0]) + ' at ' + P.x.toFixed(2) + ',' + P.y.toFixed(2) + ' pace ' + P.pace; return 0.3; }
     // rest: after a fold home, to full; otherwise to 70% when nothing is near
-    const canMend = !(zones.needsLamp(zoneHere()) && !active(g, 'lamp').length) || active(g, 'body').some((i) => param<number>(i, 'regen', 0) > 0);
+    const canMend = !((zones.needsLamp(zoneHere()) || active(g, 'body').some((i) => param<number>(i, 'chill', 0) > 0)) && !light(g)) || active(g, 'body').some((i) => param<number>(i, 'regen', 0) > 0);
+    // a rime hood outside the furnace only chills: off with it before anything else
+    const hood = zoneHere() !== 3 && P.installed.find((i) => param<number>(i, 'chill', 0) > 0);
+    if (hood && !canMend) return 'remove ' + labelOf(hood);
     if (!canMend && hpFrac < 0.6 && !foes.some((e) => dist(e, P) < 6) && !(g.t < ((P as any)._homing ?? -1))) {
       (P as any)._homing = g.t + 3.2;
       why = 'cold: home to mend';
@@ -288,12 +336,13 @@ export function play(seed: number, o: Opts): Run {
       if (out) return 'remove ' + words(out.mod);
     }
     const pick = bestLoadout(g, Math.max(zt, zoneHere()), wantReader);
-    for (const i of P.installed) if (!pick.has(i)) return 'remove ' + labelOf(i);
+    for (const i of P.installed) if (!pick.has(i)) return run.offs++, 'remove ' + labelOf(i);
     for (const i of P.inv) if (i.kind === 'mod' && pick.has(i) && P.installed.length < P.slots) return 'install ' + labelOf(i);
     for (const i of P.installed) if (!i.on && MODS[i.mod].power + powerUsed(g) <= powerMax(g)) return 'on ' + labelOf(i);
     if (active(g, 'mind').some((i) => param(i, 'what', '') === 'reader') && P.inv.some((i) => i.kind === 'card')) return 'read card';
     // grind what the loadout leaves out (keep spare power modules: they come in when power runs short)
-    const spare = P.inv.find((i) => i.kind === 'mod' && !pick.has(i) && MODS[i.mod].family !== 'unique' && (MODS[i.mod].family !== 'power' || (param(i, 'slots', 0) > 0 && P.slots >= printer.MAX_SLOTS)) && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader') && !(MODS[i.mod].family === 'lamp' && ![...P.inv, ...P.installed].some((x) => x !== i && 'mod' in x && MODS[x.mod].family === 'lamp')));
+    const wouldRun = bestLoadout(g, Math.max(zt, zoneHere()), wantReader, { power: 99 });
+    const spare = P.inv.find((i) => i.kind === 'mod' && !pick.has(i) && !wouldRun.has(i) && MODS[i.mod].family !== 'unique' && (MODS[i.mod].family !== 'power' || (param(i, 'slots', 0) > 0 && P.slots >= printer.MAX_SLOTS)) && !(MODS[i.mod].family === 'mind' && param(i, 'what', '') === 'reader') && !(MODS[i.mod].family === 'lamp' && ![...P.inv, ...P.installed].some((x) => x !== i && 'mod' in x && MODS[x.mod].family === 'lamp')));
     if (spare && 'mod' in spare) {
       run.recycled++;
       return 'recycle ' + labelOf(spare);
@@ -520,10 +569,34 @@ export function play(seed: number, o: Opts): Run {
 
   let last = '';
   let same = 0;
+  let nextBound = 0;
+  let deepest = -1;
+  const onNow = () => P.installed.filter((i) => i.on).map((i) => labelOf(i));
   while (!g.ended && g.t < o.limit) {
     if (g.t >= nextSnap) {
       snap();
       nextSnap += 60;
+    }
+    if (g.t >= nextBound) {
+      nextBound += 10;
+      const pFree = powerMax(g) - powerUsed(g);
+      const sFree = P.slots - P.installed.length;
+      // what it would run with unlimited power, or unlimited slots, against what it can run now
+      const zb = Math.max(targetZone(), zoneHere());
+      const value = (set: Set<object>) => [...set].reduce((n, r) => n + ('mod' in (r as any) && MODS[(r as any).mod].family !== 'power' ? Math.min(worth(g, r as any, zb, false), 500) : 0), 0);
+      const now = value(bestLoadout(g, zb, false));
+      const morePower = value(bestLoadout(g, zb, false, { power: 99 })) > now + 1;
+      const moreSlots = value(bestLoadout(g, zb, false, { slots: 99 })) > now + 1;
+      void pFree, void sFree;
+      run.bound.n++;
+      if (morePower && moreSlots) run.bound.both++;
+      else if (morePower) run.bound.power++;
+      else if (moreSlots) run.bound.slots++;
+    }
+    for (const i of P.installed) if (i.on && MODS[i.mod].family === 'power' && param<number>(i, 'power', 0) > 0 && !run.generators.includes(labelOf(i))) run.generators.push(labelOf(i));
+    if (zoneHere() > deepest && (deepest >= 0 || g.t >= 60)) {
+      deepest = zoneHere();
+      run.loadouts['z' + deepest] = onNow();
     }
     for (const i of [...P.inv, ...P.installed]) if ('mod' in i && i.mod === 'thaw-engine') mark('engine found');
     g.cards.forEach((c) => (c.startsWith('shard') ? mark('shard ' + c) : mark('card ' + c)));
@@ -548,6 +621,7 @@ export function play(seed: number, o: Opts): Run {
     }
   }
   snap();
+  run.loadouts.end = onNow();
   run.ended = g.ended ?? 'time';
   run.t = Math.round(g.t);
   run.kills = g.stats.kills;

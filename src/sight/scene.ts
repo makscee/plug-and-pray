@@ -141,7 +141,7 @@ export function look(type: string, l: Look): void {
 }
 look('mite', { geo: new THREE.TetrahedronGeometry(0.16), color: 0x8a8070, glow: 0x501818, y: 0.2, spin: 6, bob: 0.06, heat: 0.7 });
 look('seraph', { geo: new THREE.IcosahedronGeometry(0.28, 0), color: 0xf0e0b0, glow: 0xffd070, y: 0.6, spin: 0.5, bob: 0.05, heat: 1 });
-look('walker', { geo: new THREE.BoxGeometry(0.4, 0.8, 0.3), color: 0xd8c8a8, glow: 0x281810, y: 0.4, heat: 0.8 });
+look('walker', { geo: new THREE.BoxGeometry(0.4, 0.8, 0.3), color: 0xd8c8a8, glow: 0x281810, y: 0.4, heat: 0.15 }); // cold bone: a heat eye never shows it (src/mods/sense.ts)
 look('mimic', { geo: new THREE.OctahedronGeometry(0.12), color: 0x806040, glow: 0xc08040, y: 0.15, spin: 1, heat: 0.5 });
 look('hum', { geo: new THREE.SphereGeometry(0.2, 5, 3), color: 0x000000, glow: 0x000000, y: 0.5, heat: 0.9 });
 
@@ -162,9 +162,9 @@ const shotGeo = new THREE.IcosahedronGeometry(0.1, 0);
 const ORB: Look = { geo: shotGeo, color: 0xffe0a0, glow: 0xffd070, y: 0.4, heat: 1 };
 const NAIL: Look = { geo: shotGeo, color: 0xd0e0ff, glow: 0xa0c0ff, y: 0.35, heat: 0.6 };
 
-function lookOf(e: Entity): Look | null {
+function lookOf(e: Entity, hidden = false): Look | null {
   if (e.data?.shot) return e.data.foe ? ORB : NAIL; // the fight slice's projectiles
-  if (e.enemy) return ENEMIES[e.enemy.type]?.hidden ? null : LOOKS[e.enemy.type] ?? LOOKS.mite;
+  if (e.enemy) return ENEMIES[e.enemy.type]?.hidden && !hidden ? null : LOOKS[e.enemy.type] ?? LOOKS.mite;
   if (e.kind === 'printer') return { geo: printerGeo, color: 0x5a4a40, glow: 0x803010, y: 0.45, heat: 0.4 };
   const it = e.item;
   if (!it) return null;
@@ -188,13 +188,13 @@ function matOf(l: Look, mode: Mode): THREE.Material {
   return mat;
 }
 
-/** entities near you as their shapes; hidden enemies never show on any camera */
-function place(g: Game, mode: Mode): void {
+/** entities near you as their shapes; hidden enemies show only on sonar and heat eyes */
+function place(g: Game, mode: Mode, hidden = false): void {
   ents.clear();
   const p = g.player;
   for (const e of g.ents) {
     if (Math.abs(e.x - p.x) > R || Math.abs(e.y - p.y) > R) continue;
-    const l = lookOf(e);
+    const l = lookOf(e, hidden);
     if (!l) continue;
     if (mode === 'heat' && l.heat < 0.3) continue;
     const o = new THREE.Mesh(l.geo, mode === 'depth' ? depthMat : matOf(l, mode));
@@ -252,6 +252,8 @@ export interface Shot {
   /** cells: things past it fade into black */
   range: number;
   mode?: Mode;
+  /** shows the hidden (the hum): sonar and heat eyes */
+  hidden?: boolean;
 }
 
 const targets = new Map<string, THREE.WebGLRenderTarget>();
@@ -274,7 +276,7 @@ export function shoot(g: Game, s: Shot): Uint8Array {
   const mode = s.mode ?? 'color';
   const p = g.player;
   build(g, p.x, p.y);
-  place(g, mode);
+  place(g, mode, !!s.hidden);
   // snap to half the camera's pixels: the wobble shows even on a big lens
   snap.value = s.res / 2;
   range.value = s.range;

@@ -3,6 +3,7 @@
 import { dist, hurt, REACH, say, START_HP, strike, tickHooks, hurtHooks, ENEMIES } from '../core/game';
 import { COLD, HEAT, SEAR, zoneAt } from '../world/zones';
 import { active, family, param } from '../core/mods';
+import { light } from '../sight/lamp';
 import type { Game, Inst } from '../core/types';
 
 /** hp per second with no body module, once you have gone QUIET seconds without damage */
@@ -17,8 +18,9 @@ export function tickBody(g: Game, dt: number): void {
   p.maxHp = START_HP + (p.flesh ?? 0) + sum(g, 'hp');
   if (p.hp > p.maxHp) p.hp = p.maxHp;
   const z = zoneAt(p.x, p.y);
-  // the ossuary's cold: no mending without a lamp on (body modules still mend, at half)
-  const cold = z === COLD && !active(g, 'lamp').length;
+  // the ossuary's cold: no mending without light (a lamp, or a glowing module; body modules still mend,
+  // at half). A rime hood carries that chill everywhere: the furnace's answer costs you elsewhere.
+  const cold = (z === COLD || (z !== HEAT && sum(g, 'chill') > 0)) && !light(g);
   const regen = cold ? sum(g, 'regen') / 2 : REGEN + sum(g, 'regen');
   if (g.t - p.hurtAt >= QUIET && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + regen * dt);
   // the furnace's heat sears unless something keeps it off

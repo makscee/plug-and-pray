@@ -12,6 +12,7 @@ import { addItem, exec, verb } from '../core/verbs';
 import { frameHooks } from '../ui';
 import { view } from '../ui/views';
 import { near, see, shoot, type Mode } from './scene';
+import { eyeRange } from '../mods/sense';
 import './lamp';
 import './scanner';
 import { clean } from '../tune/start';
@@ -261,9 +262,11 @@ view('camera', (el, inst, g) => {
       if (g.t < next) return;
       const step = 1 / param<number>(inst, 'fps', 1);
       next = g.t + step;
-      const range = param<number>(inst, 'range', 8);
+      // what the eye shows is what you can hit (src/mods/sense.ts): colour needs light in the dark ossuary,
+      // heat washes out in the furnace; sonar and heat show the hidden
+      const range = eyeRange(g, inst);
       const name = param<string>(inst, 'filter', 'color');
-      const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color' });
+      const px = shoot(g, { res, fov: param<number>(inst, 'fov', 60), range, mode: MODES[name] ?? 'color', hidden: name === 'sonar' || name === 'heat' });
       see(g, range);
       // a failed read (a lost GL context, a frame the GPU dropped) comes back all zero: hold the
       // last good frame for one read only, never longer (Maks 10-18: held frames froze an eye)
