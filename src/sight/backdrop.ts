@@ -29,7 +29,7 @@ import { near, shoot } from './scene';
 import { HOLLOW } from './marks';
 import { secrets } from '../world/secrets';
 import { addBlur, addLag, addNoise, blank, creases, FILTERS, foeOutside, heatRamp, MODES, staticFrame } from './index';
-import { fovAcross, plan, rowsOf, shownLayers, turnLayers, type Layer } from './layers';
+import { baseLook, fovAcross, plan, rowsOf, shownLayers, turnLayers, type Layer } from './layers';
 import { bigOn, reins } from '../body/fps';
 import './backdrop.css';
 
@@ -261,7 +261,8 @@ function drawBase(g: Game, b: Bd, inst: Inst): void {
   if (!MODES[name]) addBlur(px, h, Math.round(param<number>(inst, 'blur', 0)), w);
   // v2r2 fight: a noisy eye steadies with a foe after you near (the carrion eye hid the bell at 5 cells)
   const noise = engagedWithin(g, 6) ? 0 : param<number>(inst, 'noise', 0);
-  (FILTERS[name] ?? FILTERS.color)(px, h, { colors: param<number>(inst, 'colors', 0), noise, t: g.t, range, w });
+  const look = baseLook(inst);
+  (FILTERS[look.filter] ?? FILTERS.color)(px, h, { colors: look.colors, noise, t: g.t, range, w });
   addNoise(px, h, noise, Math.random, w);
   const lag = param<number>(inst, 'lag', 0);
   if (lag > 0) {

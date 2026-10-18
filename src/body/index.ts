@@ -453,6 +453,7 @@ verb('swap', {
     const room = makeRoom(g, it as { mod: string }, it === inst, true);
     if (typeof room === 'string') return say(g, room);
     const did: string[] = [];
+    const inBag = new Set(p.inv);
     for (const r of room.remove ? [room.remove, ...(room.more ?? [])] : []) {
       switchOff(g, r);
       p.installed = p.installed.filter((i) => i !== r);
@@ -470,6 +471,12 @@ verb('swap', {
       return say(g, err ?? `${label(inst)} on${why}`);
     }
     const before = new Set(p.installed);
+    // v2r3 ux: what came out takes the bag spot of what went in
+    const back = p.inv.filter((o) => !inBag.has(o) && o.kind === 'mod');
+    if (back.length && k >= 0) {
+      p.inv = p.inv.filter((o) => !back.includes(o));
+      p.inv.splice(Math.min(k, p.inv.length), 0, ...back);
+    }
     oneInstall.run(g, words);
     const added = p.installed.find((i) => !before.has(i));
     if (added) say(g, `${label(added)} ${added.on ? 'on' : 'in, off'}${why}`);

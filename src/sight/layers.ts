@@ -41,6 +41,15 @@ export function shownLayers(g: Game, layers: Plan['layers']): Plan['layers'] {
 /** the next pair of layers */
 export const turnLayers = (g: Game): void => void turned.set(g, (turned.get(g) ?? 0) + 1);
 
+/** how the base view draws an eye: a black & white eye as the base reads as nothing (v2r3 ux: the carrion eye's
+ *  full-screen dither was the first sight on the obvious path), so alone it draws as twelve greys; beside a colour or
+ *  grey eye it stays its own black & white, a layer */
+export function baseLook(inst: Modish): { filter: string; colors: number } {
+  const f = param<string>(inst, 'filter', 'color');
+  if (f === '1bit') return { filter: 'gray', colors: 12 };
+  return { filter: f, colors: param<number>(inst, 'colors', 0) };
+}
+
 /** the layer an eye adds when it is not the base */
 export function layerOf(inst: Modish): Layer {
   const f = param<string>(inst, 'filter', 'color');

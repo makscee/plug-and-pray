@@ -409,9 +409,11 @@ function layerHere(g: Game, f: string): string {
         const v = veinOf(cell(g, x, y));
         if (v && v !== 'bone' && !named.get(g)?.has(`${x},${y}`)) k++;
       }
-    return `glints here: ${n(k, 'vein', 'veins')} of glass, copper or ichor within 2 chunks.`;
+    return k ? `glints here: ${n(k, 'vein', 'veins')} of glass, copper or ichor within 2 chunks.` : 'hides nothing from it here: no veins of glass, copper or ichor within 2 chunks.';
   }
   const k = secrets(g).filter((s) => s.kind === KINDS[f] && !s.done && Math.hypot(s.x - p.x, s.y - p.y) < R).length;
+  // v2r3 ux: "is scratched here: no walls of scripture" said yes and no at once
+  if (!k) return `hides nothing from it here: no ${f === 'sonar' ? 'hollow shells' : f === 'heat' ? 'handprints' : 'scripture'} within 2 chunks.`;
   if (f === 'sonar') return `rings hollow here: ${n(k, 'shell', 'shells')} within 2 chunks.`;
   if (f === 'heat') return `runs warm here: ${n(k, 'trail', 'trails')} of handprints within 2 chunks.`;
   return `is scratched here: ${n(k, 'wall', 'walls')} of scripture within 2 chunks.`;

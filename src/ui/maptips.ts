@@ -115,7 +115,7 @@ function hover(c: HTMLCanvasElement): void {
 export function whatAt(g: Game, x: number, y: number, detail = 1): string {
   const p = g.player;
   const here = (e: { x: number; y: number }) => Math.floor(e.x) === x && Math.floor(e.y) === y;
-  const t = hintTargets(g).find(here);
+  const t = hintNear(g, x, y);
   if (here(p)) return 'you';
   if (t) return `${t.name} (the hints point here)`;
   const m = markAt(g, x, y);
@@ -138,7 +138,7 @@ export function infoAt(g: Game, x: number, y: number): string[] {
   const p = g.player;
   const here = (e: { x: number; y: number }) => Math.floor(e.x) === x && Math.floor(e.y) === y;
   if (here(p)) return ['you', `${Math.max(0, Math.ceil(p.hp * 2) / 2)}/${p.maxHp} hp`];
-  const t = hintTargets(g).find(here);
+  const t = hintNear(g, x, y);
   if (t) return [t.name, 'the hints point here.'];
   const k = know(g, x, y);
   const e = k === 'seen' || k === 'scanned' ? g.ents.find((e) => here(e) && (e.kind === 'printer' || e.kind === 'item' || (e.enemy && !ENEMIES[e.enemy.type]?.hidden))) : undefined;
@@ -163,10 +163,12 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
   const vec = c.parentElement?.querySelector<HTMLElement>('.map-vectors');
   if (vec && vec.hidden === !!g.vectors.length) vec.hidden = (vec.previousElementSibling as HTMLElement).hidden = !g.vectors.length;
   const [w, h] = [c.width, c.height];
+  const named: { x: number; y: number; r: number; name: string; d: number }[] = [];
   for (const t of hintTargets(g)) {
     let x = (t.x - ox) * px;
     let y = (t.y - oy) * px;
-    if (x < 0 || y < 0 || x >= w || y >= h) {
+    const inside = !(x < 0 || y < 0 || x >= w || y >= h);
+    if (!inside) {
       // off the map: on the edge, toward it
       const [dx, dy] = [x - w / 2, y - h / 2];
       const k = (w / 2 - 6) / Math.max(Math.abs(dx), Math.abs(dy));
@@ -189,8 +191,25 @@ mapHooks.draw.push((g, ctx, ox, oy, px) => {
     ctx.lineTo(x - r, y);
     ctx.closePath();
     ctx.fill();
+    if (inside) named.push({ x, y, r, name: t.name.replace(/^(a|an|the) /, ''), d: Math.hypot(t.x - g.player.x, t.y - g.player.y) });
+  }
+  // v2r3 ux: a ◆ on the map says what it is (off the map, the backdrop's chevrons say it): the nearest four
+  const fs = Math.max(11, Math.min(18, Math.round(px * 1.3)));
+  ctx.font = `${fs}px VT323, monospace`;
+  ctx.textAlign = 'left';
+  for (const n of named.sort((a, b) => a.d - b.d).slice(0, 4)) {
+    const tw = ctx.measureText(n.name).width;
+    const lx = n.x + n.r + 4 + tw + 4 > w ? n.x - n.r - 6 - tw : n.x + n.r + 4;
+    const ly = Math.max(fs, Math.min(h - 3, n.y + fs * 0.35));
+    ctx.fillStyle = 'rgba(10, 8, 7, 0.85)';
+    ctx.fillRect(lx - 2, ly - fs * 0.8, tw + 4, fs);
+    ctx.fillStyle = ACC;
+    ctx.fillText(n.name, lx, ly);
   }
 });
+
+/** a hint target on or beside cell (x, y): the ◆ draws bigger than its cell, so the hover forgives a cell */
+const hintNear = (g: Game, x: number, y: number) => hintTargets(g).find((t) => Math.abs(Math.floor(t.x) - x) <= 1 && Math.abs(Math.floor(t.y) - y) <= 1);
 
 /** no pilot: a click on the map walks the first straight leg toward that cell (playtest r2: it did nothing) */
 const toldPilot = new WeakSet<Game>();
